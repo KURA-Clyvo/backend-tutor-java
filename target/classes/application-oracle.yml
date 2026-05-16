@@ -1,0 +1,23 @@
+# =============================================================================
+#  Profile: oracle
+#  Usado quando o Oracle 19c/23c está rodando no Docker (Gustavo/Clayton)
+#  Comando: mvn spring-boot:run   (profile padrão)
+# =============================================================================
+
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+    username: ${ORACLE_USER:kura_user}
+    password: ${ORACLE_PASS:kura_pass}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      pool-name: KuraTutorPool
+
+  jpa:
+    database-platform: org.hibernate.dialect.OracleDialect
+    hibernate:
+      ddl-auto: validate    # schema já criado pelo DDL do Clayton — NÃO deixa o Hibernate alterar
+    show-sql: true
