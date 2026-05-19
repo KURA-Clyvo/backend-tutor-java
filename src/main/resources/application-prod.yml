@@ -1,0 +1,39 @@
+# ==============================================================================
+# KURA · Profile: prod
+# Banco: Oracle 19c (oracle.fiap.com.br:1521/orcl — schema compartilhado .NET/Java).
+# TODAS as variáveis abaixo são obrigatórias. Ausência causa falha na inicialização.
+# ==============================================================================
+
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+
+  jpa:
+    database-platform: org.hibernate.dialect.OracleDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+    # Localização padrão (classpath:db/migration) — callbacks não rodam em prod
+    locations: classpath:db/migration
+
+kura:
+  jwt:
+    # Sem fallback — ausência de JWT_SECRET causa startup failure intencional
+    secret: ${JWT_SECRET}
+    expiration-ms: 900000
+
+logging:
+  level:
+    br.com.clyvo.kura: INFO
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO
