@@ -135,4 +135,17 @@ public class AuthService {
         return TokenResponse.of(accessToken, refreshToken, ACCESS_EXPIRES_SECONDS,
                 conta.getIdConta(), conta.getTutor().getNmTutor());
     }
+
+    /**
+     * Invalida o refresh token do tutor autenticado.
+     * Idempotente: se o email não existir no banco (não deveria acontecer com token válido),
+     * simplesmente não faz nada.
+     */
+    @Transactional
+    public void logout(String email) {
+        contaRepo.findByDsEmailLogin(email).ifPresent(conta -> {
+            conta.invalidarRefresh();
+            contaRepo.save(conta);
+        });
+    }
 }

@@ -151,6 +151,12 @@ public class ContaTutor {
         this.dtRefreshExpira = expira;
     }
 
+    /** Invalida o refresh token armazenado — chamado no logout. */
+    public void invalidarRefresh() {
+        this.dsRefreshTokenHash = null;
+        this.dtRefreshExpira    = null;
+    }
+
     // ── Factory methods ───────────────────────────────────────────────────────
 
     /**

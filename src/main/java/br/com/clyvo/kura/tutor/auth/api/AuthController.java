@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -64,5 +65,19 @@ public class AuthController {
     })
     public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/logout")
+    @Operation(
+            summary = "Logout do tutor",
+            description = "Invalida o refresh token armazenado. Requer Bearer token válido no header Authorization."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Logout realizado — refresh token invalidado"),
+            @ApiResponse(responseCode = "401", description = "Não autenticado")
+    })
+    public ResponseEntity<Void> logout(Authentication auth) {
+        authService.logout(auth.getName());
+        return ResponseEntity.noContent().build();
     }
 }
