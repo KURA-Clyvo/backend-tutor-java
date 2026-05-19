@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  *
  * NOTA: Getters/setters explícitos (sem Lombok) para compatibilidade
  * com Eclipse/STS sem o plugin de anotações instalado.
- * Esse foi o bug dos campos final nao inicializados na v1.
  */
 @Entity
 @Table(name = "conta_tutor")
@@ -32,6 +31,17 @@ public class ContaTutor {
 
     @Column(name = "ds_senha_hash", nullable = false, length = 256)
     private String dsSenhaHash;
+
+    // Rastreabilidade do convite que originou esta conta — UK_CONTA_INVITE_USED
+    @Column(name = "id_invite_usado")
+    private Long idInviteUsado;
+
+    // Refresh token hasheado (BCrypt) — rotacionado a cada login
+    @Column(name = "ds_refresh_token_hash", length = 256)
+    private String dsRefreshTokenHash;
+
+    @Column(name = "dt_refresh_expira")
+    private LocalDateTime dtRefreshExpira;
 
     @CreatedDate
     @Column(name = "dt_criacao", nullable = false, updatable = false)
@@ -60,57 +70,117 @@ public class ContaTutor {
 
     public ContaTutor() {}
 
-    // Getters
-    public Long getIdConta() { return idConta; }
-    public Tutor getTutor() { return tutor; }
-    public String getDsEmailLogin() { return dsEmailLogin; }
-    public String getDsSenhaHash() { return dsSenhaHash; }
-    public LocalDateTime getDtCriacao() { return dtCriacao; }
-    public LocalDateTime getDtUltimoLogin() { return dtUltimoLogin; }
-    public Integer getNrTentativasLogin() { return nrTentativasLogin; }
-    public LocalDateTime getDtBloqueio() { return dtBloqueio; }
-    public String getStAtiva() { return stAtiva; }
-    public String getStEmailVerificado() { return stEmailVerificado; }
-    public String getDsTokenReset() { return dsTokenReset; }
-    public LocalDateTime getDtTokenExpira() { return dtTokenExpira; }
+    // ── Getters ───────────────────────────────────────────────────────────────
+    public Long getIdConta()                  { return idConta; }
+    public Tutor getTutor()                   { return tutor; }
+    public String getDsEmailLogin()           { return dsEmailLogin; }
+    public String getDsSenhaHash()            { return dsSenhaHash; }
+    public Long getIdInviteUsado()            { return idInviteUsado; }
+    public String getDsRefreshTokenHash()     { return dsRefreshTokenHash; }
+    public LocalDateTime getDtRefreshExpira() { return dtRefreshExpira; }
+    public LocalDateTime getDtCriacao()       { return dtCriacao; }
+    public LocalDateTime getDtUltimoLogin()   { return dtUltimoLogin; }
+    public Integer getNrTentativasLogin()     { return nrTentativasLogin; }
+    public LocalDateTime getDtBloqueio()      { return dtBloqueio; }
+    public String getStAtiva()                { return stAtiva; }
+    public String getStEmailVerificado()      { return stEmailVerificado; }
+    public String getDsTokenReset()           { return dsTokenReset; }
+    public LocalDateTime getDtTokenExpira()   { return dtTokenExpira; }
 
-    // Setters
-    public void setIdConta(Long v) { this.idConta = v; }
-    public void setTutor(Tutor v) { this.tutor = v; }
-    public void setDsEmailLogin(String v) { this.dsEmailLogin = v; }
-    public void setDsSenhaHash(String v) { this.dsSenhaHash = v; }
-    public void setDtCriacao(LocalDateTime v) { this.dtCriacao = v; }
-    public void setDtUltimoLogin(LocalDateTime v) { this.dtUltimoLogin = v; }
-    public void setNrTentativasLogin(Integer v) { this.nrTentativasLogin = v; }
-    public void setDtBloqueio(LocalDateTime v) { this.dtBloqueio = v; }
-    public void setStAtiva(String v) { this.stAtiva = v; }
-    public void setStEmailVerificado(String v) { this.stEmailVerificado = v; }
-    public void setDsTokenReset(String v) { this.dsTokenReset = v; }
-    public void setDtTokenExpira(LocalDateTime v) { this.dtTokenExpira = v; }
+    // ── Setters ───────────────────────────────────────────────────────────────
+    public void setIdConta(Long v)               { this.idConta = v; }
+    public void setTutor(Tutor v)                { this.tutor = v; }
+    public void setDsEmailLogin(String v)        { this.dsEmailLogin = v; }
+    public void setDsSenhaHash(String v)         { this.dsSenhaHash = v; }
+    public void setIdInviteUsado(Long v)         { this.idInviteUsado = v; }
+    public void setDsRefreshTokenHash(String v)  { this.dsRefreshTokenHash = v; }
+    public void setDtRefreshExpira(LocalDateTime v) { this.dtRefreshExpira = v; }
+    public void setDtCriacao(LocalDateTime v)    { this.dtCriacao = v; }
+    public void setDtUltimoLogin(LocalDateTime v){ this.dtUltimoLogin = v; }
+    public void setNrTentativasLogin(Integer v)  { this.nrTentativasLogin = v; }
+    public void setDtBloqueio(LocalDateTime v)   { this.dtBloqueio = v; }
+    public void setStAtiva(String v)             { this.stAtiva = v; }
+    public void setStEmailVerificado(String v)   { this.stEmailVerificado = v; }
+    public void setDsTokenReset(String v)        { this.dsTokenReset = v; }
+    public void setDtTokenExpira(LocalDateTime v){ this.dtTokenExpira = v; }
 
-    // Helpers de dominio
-    public boolean isAtiva() { return "S".equals(stAtiva); }
-    public boolean isBloqueada() { return dtBloqueio != null; }
+    // ── Helpers de domínio ────────────────────────────────────────────────────
+    private static final int MAX_TENTATIVAS_LOGIN = 5;
+
+    public boolean isAtiva()           { return "S".equals(stAtiva); }
+    public boolean isBloqueada()       { return dtBloqueio != null; }
     public boolean isEmailVerificado() { return "S".equals(stEmailVerificado); }
 
-    public void incrementarTentativas() {
-        this.nrTentativasLogin = (nrTentativasLogin == null ? 0 : nrTentativasLogin) + 1;
+    /** Registra uma tentativa de login bem-sucedida: reseta contador e desbloqueia. */
+    public void registrarLoginSucesso() {
+        this.nrTentativasLogin = 0;
+        this.dtBloqueio        = null;
+        this.dtUltimoLogin     = LocalDateTime.now();
     }
+
+    /**
+     * Registra uma tentativa de login com falha.
+     * Ao atingir MAX_TENTATIVAS_LOGIN, seta dtBloqueio (423 Locked).
+     */
+    public void registrarLoginFalha() {
+        this.nrTentativasLogin = (nrTentativasLogin == null ? 0 : nrTentativasLogin) + 1;
+        if (this.nrTentativasLogin >= MAX_TENTATIVAS_LOGIN) {
+            this.dtBloqueio = LocalDateTime.now();
+        }
+    }
+
+    /** @deprecated Use {@link #registrarLoginFalha()} — mantido para migração incremental. */
+    @Deprecated
+    public void incrementarTentativas() {
+        registrarLoginFalha();
+    }
+
+    /** @deprecated Use {@link #registrarLoginSucesso()} — mantido para migração incremental. */
+    @Deprecated
     public void resetarTentativas() {
         this.nrTentativasLogin = 0;
         this.dtBloqueio = null;
     }
 
-    // Builder estatico (substitui @Builder do Lombok)
+    /**
+     * Atualiza o refresh token hasheado e sua expiração.
+     * Chamado a cada login/registro para rotacionar o token.
+     */
+    public void rotacionarRefresh(String refreshTokenHash, LocalDateTime expira) {
+        this.dsRefreshTokenHash = refreshTokenHash;
+        this.dtRefreshExpira = expira;
+    }
+
+    // ── Factory methods ───────────────────────────────────────────────────────
+
+    /**
+     * Cria conta a partir de um convite validado.
+     * Email herdado do Tutor (fonte de verdade é o .NET).
+     */
+    public static ContaTutor criarPorInvite(Tutor tutor, String email,
+                                             String senhaHash, Long idInvite) {
+        ContaTutor c = new ContaTutor();
+        c.tutor            = tutor;
+        c.dsEmailLogin     = email;
+        c.dsSenhaHash      = senhaHash;
+        c.idInviteUsado    = idInvite;
+        c.stAtiva          = "S";
+        c.stEmailVerificado = "N";
+        c.nrTentativasLogin = 0;
+        return c;
+    }
+
+    // Builder estático (substitui @Builder do Lombok)
     public static Builder builder() { return new Builder(); }
+
     public static class Builder {
         private final ContaTutor o = new ContaTutor();
-        public Builder tutor(Tutor v) { o.tutor = v; return this; }
-        public Builder dsEmailLogin(String v) { o.dsEmailLogin = v; return this; }
-        public Builder dsSenhaHash(String v) { o.dsSenhaHash = v; return this; }
-        public Builder stAtiva(String v) { o.stAtiva = v; return this; }
-        public Builder stEmailVerificado(String v) { o.stEmailVerificado = v; return this; }
-        public Builder nrTentativasLogin(Integer v) { o.nrTentativasLogin = v; return this; }
-        public ContaTutor build() { return o; }
+        public Builder tutor(Tutor v)              { o.tutor = v;              return this; }
+        public Builder dsEmailLogin(String v)      { o.dsEmailLogin = v;       return this; }
+        public Builder dsSenhaHash(String v)       { o.dsSenhaHash = v;        return this; }
+        public Builder stAtiva(String v)           { o.stAtiva = v;            return this; }
+        public Builder stEmailVerificado(String v) { o.stEmailVerificado = v;  return this; }
+        public Builder nrTentativasLogin(Integer v){ o.nrTentativasLogin = v;  return this; }
+        public ContaTutor build()                  { return o; }
     }
 }

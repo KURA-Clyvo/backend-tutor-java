@@ -38,8 +38,13 @@ public class ValidadorConsentimento {
      * Previne aceite de termos desatualizados que o frontend possa ter em cache.
      */
     public void validarVersaoTermo(ConsentimentoRequest request) {
-        String vigente = TermoVigente.versaoPara(request.tipo());
-        if (!vigente.equals(request.versaoTermo())) {
+        validarVersaoTermo(request.tipo(), request.versaoTermo());
+    }
+
+    /** Overload sem acoplamento a DTO — usado pelo OnboardingService com AceiteRequest. */
+    public void validarVersaoTermo(TipoConsentimento tipo, String versaoTermo) {
+        String vigente = TermoVigente.versaoPara(tipo);
+        if (!vigente.equals(versaoTermo)) {
             throw new RegraDeNegocioException(
                 "Versao do termo desatualizada. Versao vigente: " + vigente +
                 ". Recarregue o aplicativo e tente novamente.");

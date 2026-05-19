@@ -1,5 +1,10 @@
 package br.com.clyvo.kura.tutor.exception;
 
+import br.com.clyvo.kura.tutor.shared.exception.AccountInactiveException;
+import br.com.clyvo.kura.tutor.shared.exception.AccountLockedException;
+import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
+import br.com.clyvo.kura.tutor.shared.exception.GoneException;
+import br.com.clyvo.kura.tutor.shared.exception.NotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,19 +19,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Centraliza o tratamento de excecoes da API.
+ * Centraliza o tratamento de exceções da API.
  *
- * Equivalente ao GerenciadorValidacoes do projeto de aula,
- * mas expandido para cobrir os casos do KURA.
- *
- * DIFERENCA EM RELACAO AO PROJETO AULA:
- * - Aula: so trata MethodArgumentNotValidException (validacao de campos)
- * - KURA: trata tambem 404, 401, 422 e 500 com corpo padronizado
+ * Mapeamento:
+ *   400 — MethodArgumentNotValidException (Bean Validation)
+ *   401 — BadCredentialsException
+ *   404 — NotFoundException (e subclasses, ex: RecursoNaoEncontradoException)
+ *   409 — ConflictException (convite já utilizado, race condition UK)
+ *   410 — GoneException (convite expirado)
+ *   422 — RegraDeNegocioException
+ *   500 — Exception genérica
  */
 @RestControllerAdvice
 public class GerenciadorExcecoes {
 
-    // Validacao de campos @Valid — mesmo padrao do projeto de aula
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> gerenciarValidacoes(
             MethodArgumentNotValidException ex) {
@@ -36,11 +42,25 @@ public class GerenciadorExcecoes {
         return ResponseEntity.badRequest().body(erros);
     }
 
-    @ExceptionHandler(RecursoNaoEncontradoException.class)
+    @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Map<String, Object>> naoEncontrado(
-            RecursoNaoEncontradoException ex, HttpServletRequest req) {
+            NotFoundException ex, HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(montarErro(404, ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> conflito(
+            ConflictException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(montarErro(409, ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(GoneException.class)
+    public ResponseEntity<Map<String, Object>> recursoExpirado(
+            GoneException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(montarErro(410, ex.getMessage(), req.getRequestURI()));
     }
 
     @ExceptionHandler(RegraDeNegocioException.class)
@@ -48,6 +68,20 @@ public class GerenciadorExcecoes {
             RegraDeNegocioException ex, HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(montarErro(422, ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(AccountInactiveException.class)
+    public ResponseEntity<Map<String, Object>> contaDesativada(
+            AccountInactiveException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(montarErro(403, ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<Map<String, Object>> contaBloqueada(
+            AccountLockedException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .body(montarErro(423, ex.getMessage(), req.getRequestURI()));
     }
 
     @ExceptionHandler(BadCredentialsException.class)
@@ -58,8 +92,7 @@ public class GerenciadorExcecoes {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> generico(
-            HttpServletRequest req) {
+    public ResponseEntity<Map<String, Object>> generico(HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(montarErro(500, "Erro interno. Tente novamente.", req.getRequestURI()));
     }

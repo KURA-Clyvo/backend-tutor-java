@@ -1,5 +1,6 @@
 package br.com.clyvo.kura.tutor.entity;
 
+import br.com.clyvo.kura.tutor.lgpd.TipoConsentimento;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -59,28 +60,59 @@ public class Consentimento {
 
     public Consentimento() {}
 
-    public Long getIdConsentimento() { return idConsentimento; }
-    public Tutor getTutor() { return tutor; }
-    public String getDsTipo() { return dsTipo; }
-    public String getDsVersaoTermo() { return dsVersaoTermo; }
-    public String getDsTextoTermo() { return dsTextoTermo; }
-    public String getStAceito() { return stAceito; }
-    public LocalDateTime getDtAceite() { return dtAceite; }
-    public String getDsIpAceite() { return dsIpAceite; }
-    public LocalDateTime getDtRevogacao() { return dtRevogacao; }
-    public String getDsIpRevogacao() { return dsIpRevogacao; }
+    public Long getIdConsentimento()        { return idConsentimento; }
+    public Tutor getTutor()                 { return tutor; }
+    public String getDsTipo()               { return dsTipo; }
+    public String getDsVersaoTermo()        { return dsVersaoTermo; }
+    public String getDsTextoTermo()         { return dsTextoTermo; }
+    public String getStAceito()             { return stAceito; }
+    public LocalDateTime getDtAceite()      { return dtAceite; }
+    public String getDsIpAceite()           { return dsIpAceite; }
+    public LocalDateTime getDtRevogacao()   { return dtRevogacao; }
+    public String getDsIpRevogacao()        { return dsIpRevogacao; }
 
-    public void setTutor(Tutor v) { this.tutor = v; }
-    public void setDsTipo(String v) { this.dsTipo = v; }
-    public void setDsVersaoTermo(String v) { this.dsVersaoTermo = v; }
-    public void setDsTextoTermo(String v) { this.dsTextoTermo = v; }
-    public void setStAceito(String v) { this.stAceito = v; }
-    public void setDtAceite(LocalDateTime v) { this.dtAceite = v; }
-    public void setDsIpAceite(String v) { this.dsIpAceite = v; }
+    public void setTutor(Tutor v)               { this.tutor = v; }
+    public void setDsTipo(String v)             { this.dsTipo = v; }
+    public void setDsVersaoTermo(String v)      { this.dsVersaoTermo = v; }
+    public void setDsTextoTermo(String v)       { this.dsTextoTermo = v; }
+    public void setStAceito(String v)           { this.stAceito = v; }
+    public void setDtAceite(LocalDateTime v)    { this.dtAceite = v; }
+    public void setDsIpAceite(String v)         { this.dsIpAceite = v; }
     public void setDtRevogacao(LocalDateTime v) { this.dtRevogacao = v; }
-    public void setDsIpRevogacao(String v) { this.dsIpRevogacao = v; }
+    public void setDsIpRevogacao(String v)      { this.dsIpRevogacao = v; }
 
-    public boolean isAceito() { return "S".equals(stAceito); }
-    public boolean isRevogado() { return dtRevogacao != null; }
-    public boolean isAtivo() { return isAceito() && !isRevogado(); }
+    public boolean isAceito()  { return "S".equals(stAceito); }
+    public boolean isRevogado(){ return dtRevogacao != null; }
+    public boolean isAtivo()   { return isAceito() && !isRevogado(); }
+
+    // ── Factory methods (sempre INSERT — nunca UPDATE) ────────────────────────
+
+    /** Registra aceite de consentimento com snapshot do texto para evidência ANPD. */
+    public static Consentimento novoAceite(Tutor tutor, TipoConsentimento tipo,
+                                            String versaoTermo, String textoTermo, String ip) {
+        Consentimento c = new Consentimento();
+        c.tutor        = tutor;
+        c.dsTipo       = tipo.toDbValue();
+        c.dsVersaoTermo = versaoTermo;
+        c.dsTextoTermo = textoTermo;
+        c.stAceito     = "S";
+        c.dtAceite     = LocalDateTime.now();
+        c.dsIpAceite   = ip;
+        return c;
+    }
+
+    /** Registra revogação de consentimento. Preenche dtRevogacao no mesmo INSERT. */
+    public static Consentimento revogacao(Tutor tutor, TipoConsentimento tipo,
+                                           String versaoTermo, String ip) {
+        Consentimento c = new Consentimento();
+        c.tutor         = tutor;
+        c.dsTipo        = tipo.toDbValue();
+        c.dsVersaoTermo = versaoTermo;
+        c.stAceito      = "N";
+        c.dtAceite      = LocalDateTime.now();
+        c.dsIpAceite    = ip;
+        c.dtRevogacao   = LocalDateTime.now();
+        c.dsIpRevogacao = ip;
+        return c;
+    }
 }
