@@ -1,5 +1,6 @@
 package br.com.clyvo.kura.tutor.security;
 
+import br.com.clyvo.kura.tutor.entity.ContaTutor;
 import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -8,18 +9,13 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 /**
- * Implementação de {@link UserDetailsService} que carrega a conta do tutor
- * a partir da tabela {@code CONTA_TUTOR} usando o e-mail como username.
+ * Carrega os dados do tutor para o Spring Security.
  *
- * <p><strong>Por que construtor explícito?</strong>
- * O Eclipse/STS não processa {@code @RequiredArgsConstructor} do Lombok sem o
- * plugin instalado. Construtor explícito resolve os erros "field não inicializado"
- * sem precisar do plugin, e o Spring injeta normalmente.
+ * Equivalente ao UserDetailsService definido em UsuarioConfig.java
+ * do projeto de aula, mas usando ContaTutor (CONTA_TUTOR) em vez de Usuario.
  *
- * <p><strong>Sobre os getters do Lombok:</strong> getDsEmailLogin(), getDsSenhaHash(),
- * getDtBloqueio() e getStAtiva() são gerados pelo @Getter na entidade ContaTutor.
- * Se o Eclipse continuar reclamando desses métodos, instale o plugin Lombok:
- * Help → Eclipse Marketplace → pesquise "Lombok" → Install.
+ * Aula buscava por RM: repU.findByRm(rm)
+ * KURA busca por e-mail: contaTutorRepository.findByDsEmailLogin(email)
  */
 @Service
 public class ContaTutorUserDetailsService implements UserDetailsService {
@@ -32,16 +28,16 @@ public class ContaTutorUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        var conta = contaTutorRepository.findByDsEmailLogin(email)
+        ContaTutor conta = contaTutorRepository.findByDsEmailLogin(email)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "Conta não encontrada para o e-mail: " + email));
+                        "Conta nao encontrada para o e-mail: " + email));
 
         return User.builder()
                 .username(conta.getDsEmailLogin())
                 .password(conta.getDsSenhaHash())
                 .roles("TUTOR")
-                .accountLocked(conta.getDtBloqueio() != null)
-                .disabled(!"S".equals(conta.getStAtiva()))
+                .accountLocked(conta.isBloqueada())
+                .disabled(!conta.isAtiva())
                 .build();
     }
 }

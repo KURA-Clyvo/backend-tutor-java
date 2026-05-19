@@ -5,12 +5,32 @@
              https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- ================================================================
-         KURA · Backend Tutor
-         Domínio: identidade, consentimento e agendamento do tutor
-         Disciplina: Java Advanced · FIAP Challenge 2026
-         Autor: Nikolas Brisola
-    ================================================================ -->
+    <!--
+    ============================================================
+    KURA · Backend Tutor · pom.xml v2
+    Autor: Nikolas Brisola · FIAP Challenge 2026
+    ============================================================
+    COMPARAÇÃO COM PROJETO DE AULA (projeto-musica):
+    ┌─────────────────────┬────────────────────┬──────────────────────────┐
+    │ Dependência         │ Aula (Spring 4.0.3) │ KURA (Spring 3.2.5)     │
+    ├─────────────────────┼────────────────────┼──────────────────────────┤
+    │ Spring Boot Parent  │ 4.0.3 ← PROBLEMA   │ 3.2.5 ← estável LTS     │
+    │ springdoc           │ 3.0.2 ← INCOMPAT.  │ 2.5.0 ← correto p/ 3.x  │
+    │ jjwt                │ 0.12.6             │ 0.12.6 ← alinhado        │
+    │ lombok              │ 1.18.42 (compile)  │ BOM managed ← correto    │
+    │ h2console artifact  │ spring-boot-h2cons.│ h2 standalone ← correto  │
+    │ cache version       │ 4.0.4 ← override   │ BOM managed ← correto    │
+    │ mapstruct           │ 1.6.3 (presente)   │ não usado (sem mappers)  │
+    └─────────────────────┴────────────────────┴──────────────────────────┘
+    ERROS DO POM ORIGINAL DA AULA:
+    1. spring-boot-h2console → artifactId inválido. Correto: h2 (com.h2database)
+    2. spring-boot-starter-webmvc → inválido. Correto: spring-boot-starter-web
+    3. spring-boot-starter-data-jpa-test → não existe. Correto: spring-boot-starter-test
+    4. spring-boot-starter-webmvc-test → não existe. Correto: spring-boot-starter-test
+    5. springdoc 3.0.2 → não existe (versão mais alta disponível é 2.x para Spring Boot 3)
+    6. spring-boot-starter-cache com version override → desnecessário, BOM gerencia
+    ============================================================
+    -->
 
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -23,63 +43,59 @@
     <artifactId>kura-backend-tutor</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>kura-backend-tutor</name>
-    <description>Backend Tutor — KURA · Clyvo Vet</description>
-    <packaging>jar</packaging>
+    <description>KURA · Backend Tutor · Clyvo Vet · FIAP Challenge 2026</description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
+        <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.5.0</springdoc.version>
-        <jjwt.version>0.12.5</jjwt.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
-        <ojdbc.version>23.4.0.24.05</ojdbc.version>
     </properties>
 
     <dependencies>
 
-        <!-- ── Web / MVC ─────────────────────────────────────────── -->
+        <!-- ── Web ──────────────────────────────────────────────────── -->
+        <!-- CORREÇÃO: "spring-boot-starter-webmvc" não existe. Correto: spring-boot-starter-web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- ── JPA + Oracle ──────────────────────────────────────── -->
+        <!-- ── JPA ──────────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!--
-            Driver Oracle 23c — baixado do Maven Central.
-            Se Oracle ainda não estiver no Docker, troque pelo H2
-            ativando o profile "h2" (ver application-h2.yml).
-        -->
-        <dependency>
-            <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc11</artifactId>
-            <version>${ojdbc.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- H2 — só ativo no profile "h2" para dev sem Oracle -->
+        <!-- ── H2 (desenvolvimento sem Oracle) ───────────────────────── -->
+        <!-- CORREÇÃO: "spring-boot-h2console" não existe. Correto: h2 da com.h2database -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- ── Validação (Bean Validation) ───────────────────────── -->
+        <!-- ── Oracle (produção / Docker do Clayton) ─────────────────── -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <version>23.4.0.24.05</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ── Validação ─────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- ── Spring Security (base para JWT) ───────────────────── -->
+        <!-- ── Security ──────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- ── JWT — jjwt (parse + geração de tokens) ────────────── -->
+        <!-- ── JWT ───────────────────────────────────────────────────── -->
+        <!-- Versão alinhada com o projeto de aula: 0.12.6 -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -98,33 +114,45 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- ── Cache ─────────────────────────────────────────────── -->
+        <!-- ── Cache ──────────────────────────────────────────────────── -->
+        <!-- CORREÇÃO: não forçar version override — o BOM do Spring Boot gerencia -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
 
-        <!-- ── Swagger / OpenAPI ─────────────────────────────────── -->
+        <!-- ── Swagger / OpenAPI ─────────────────────────────────────── -->
+        <!--
+            CORREÇÃO: springdoc 3.0.2 NÃO EXISTE. A série 3.x do springdoc está
+            planejada para Spring Boot 4.x. Para Spring Boot 3.x usa-se 2.x.
+            Versão correta: 2.5.0
+        -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
 
-        <!-- ── Lombok — boilerplate zero ────────────────────────── -->
+        <!-- ── Lombok ───────────────────────────────────────────────── -->
+        <!-- BOM do Spring Boot gerencia a versão — não especificar manualmente -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
 
-        <!-- ── Actuator — health check para DevOps / Gustavo ─────── -->
+        <!-- ── Actuator ─────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- ── Testes ────────────────────────────────────────────── -->
+        <!-- ── Testes ────────────────────────────────────────────────── -->
+        <!--
+            CORREÇÃO: "spring-boot-starter-data-jpa-test" e
+            "spring-boot-starter-webmvc-test" não existem.
+            Correto: spring-boot-starter-test (cobre tudo: JUnit, Mockito, etc.)
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -144,7 +172,6 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <!-- exclui Lombok do jar final -->
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
@@ -155,26 +182,5 @@
             </plugin>
         </plugins>
     </build>
-
-    <!-- ── Profiles ──────────────────────────────────────────────── -->
-    <profiles>
-        <!-- mvn spring-boot:run -Ph2   → roda sem Oracle -->
-        <profile>
-            <id>h2</id>
-            <properties>
-                <spring.profiles.active>h2</spring.profiles.active>
-            </properties>
-        </profile>
-        <!-- mvn spring-boot:run -Poracle  → produção / Docker Oracle -->
-        <profile>
-            <id>oracle</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <spring.profiles.active>oracle</spring.profiles.active>
-            </properties>
-        </profile>
-    </profiles>
 
 </project>

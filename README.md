@@ -53,7 +53,7 @@ mvn spring-boot:run -Dspring.profiles.active=h2
 
 Acesse:
 - API: http://localhost:8081/api
-- Swagger: http://localhost:8081/api/swagger-ui.html
+- Swagger: http://localhost:8081/api/swagger-ui/index.html
 - H2 Console: http://localhost:8081/api/h2-console
 
 ### Opção B — com Oracle (Docker do Clayton/Gustavo)

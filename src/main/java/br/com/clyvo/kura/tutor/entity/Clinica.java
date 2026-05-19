@@ -4,55 +4,32 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * Clínica veterinária.
- * Escrita pelo .NET (Felipe). Java apenas lê.
+ * Clinica veterinaria.
+ * Escrita pelo .NET (Felipe). Java apenas le via EntityManager.getReference.
+ * CORRECAO: classe deve ser public para EntityManager funcionar corretamente.
  */
 @Entity
-@Table(name = "CLINICA")
+@Table(name = "clinica")
 public class Clinica {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_clinica")
-    @SequenceGenerator(name = "seq_clinica", sequenceName = "SEQ_CLINICA", allocationSize = 1)
-    @Column(name = "ID_CLINICA")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_clinica")
     private Long idClinica;
 
-    @Column(name = "NM_CLINICA", nullable = false, length = 120)
-    private String nmClinica;
-
-    @Column(name = "NR_CNPJ", nullable = false, unique = true, length = 18)
-    private String nrCnpj;
-
-    @Column(name = "NM_RAZAO_SOCIAL", length = 150)
-    private String nmRazaoSocial;
-
-    @Column(name = "DS_ENDERECO", nullable = false, length = 200)
-    private String dsEndereco;
-
-    @Column(name = "NM_CIDADE", nullable = false, length = 80)
-    private String nmCidade;
-
-    @Column(name = "SG_UF", nullable = false, length = 2)
-    private String sgUf;
-
-    @Column(name = "NR_CEP", nullable = false, length = 9)
-    private String nrCep;
-
-    @Column(name = "DS_TELEFONE", length = 20)
-    private String dsTelefone;
-
-    @Column(name = "DS_EMAIL", length = 120)
-    private String dsEmail;
-
-    @Column(name = "DT_CADASTRO", nullable = false, updatable = false)
-    private LocalDateTime dtCadastro;
-
-    @Column(name = "ST_ATIVA", nullable = false, length = 1)
-    private String stAtiva = "S";
+    @Column(name = "nm_clinica", nullable = false, length = 120) private String nmClinica;
+    @Column(name = "nr_cnpj", nullable = false, unique = true, length = 18) private String nrCnpj;
+    @Column(name = "ds_endereco", nullable = false, length = 200) private String dsEndereco;
+    @Column(name = "nm_cidade", nullable = false, length = 80) private String nmCidade;
+    @Column(name = "sg_uf", nullable = false, length = 2) private String sgUf;
+    @Column(name = "nr_cep", nullable = false, length = 9) private String nrCep;
+    @Column(name = "ds_telefone", length = 20) private String dsTelefone;
+    @Column(name = "ds_email", length = 120) private String dsEmail;
+    @Column(name = "dt_cadastro", nullable = false, updatable = false) private LocalDateTime dtCadastro;
+    @Column(name = "st_ativa", nullable = false, length = 1) private String stAtiva = "S";
 
     public Clinica() {}
 
-    // Getters essenciais para o backend Java
     public Long getIdClinica() { return idClinica; }
     public String getNmClinica() { return nmClinica; }
     public String getNrCnpj() { return nrCnpj; }

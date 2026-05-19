@@ -1,84 +1,86 @@
 package br.com.clyvo.kura.tutor.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.time.LocalDateTime;
 
 /**
  * Registro LGPD de consentimento do tutor.
  *
- * <p>Cada aceite ou revogação gera uma nova linha — o histórico é imutável.
- * Nunca delete ou atualize registros desta tabela.
+ * REGRA FUNDAMENTAL: nunca fazer UPDATE nesta tabela.
+ * Cada aceite ou revogacao = novo INSERT.
+ * O estado atual e sempre o registro mais recente por DS_TIPO.
  *
- * <p>Design Pattern: <em>Strategy</em> — as regras de validação de cada tipo
- * de consentimento são implementadas em {@code ConsentimentoStrategy}.
+ * Tipos validos (CHECK constraint no Oracle):
+ * TELEORIENTACAO, LEMBRETES, DADOS_ANONIMOS, COMPARTILHAR_SEGURADORA, MARKETING
  */
 @Entity
-@Table(name = "CONSENTIMENTO")
+@Table(name = "consentimento")
 @EntityListeners(AuditingEntityListener.class)
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Consentimento {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_consentimento")
-    @SequenceGenerator(name = "seq_consentimento", sequenceName = "SEQ_CONSENTIMENTO",
-            allocationSize = 1)
-    @Column(name = "ID_CONSENTIMENTO")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_consentimento")
     private Long idConsentimento;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ID_TUTOR", nullable = false)
+    @JoinColumn(name = "id_tutor", nullable = false)
     private Tutor tutor;
 
-    /**
-     * Tipo de consentimento.
-     * Valores válidos (CHECK constraint no Oracle):
-     * TELEORIENTACAO, LEMBRETES, DADOS_ANONIMOS, COMPARTILHAR_SEGURADORA, MARKETING
-     */
-    @Column(name = "DS_TIPO", nullable = false, length = 40)
+    @Column(name = "ds_tipo", nullable = false, length = 40)
     private String dsTipo;
 
-    /** Versão do termo aceito — permite rastrear alterações no texto. */
-    @Column(name = "DS_VERSAO_TERMO", nullable = false, length = 20)
+    @Column(name = "ds_versao_termo", nullable = false, length = 20)
     private String dsVersaoTermo;
 
-    /** Texto completo do termo (CLOB). Salvo no momento do aceite para imutabilidade. */
     @Lob
-    @Column(name = "DS_TEXTO_TERMO")
+    @Column(name = "ds_texto_termo")
     private String dsTextoTermo;
 
-    /** S = aceite, N = recusado. */
-    @Column(name = "ST_ACEITO", nullable = false, length = 1)
+    // S = aceite, N = revogacao
+    @Column(name = "st_aceito", nullable = false, length = 1)
     private String stAceito;
 
     @CreatedDate
-    @Column(name = "DT_ACEITE", nullable = false, updatable = false)
+    @Column(name = "dt_aceite", nullable = false, updatable = false)
     private LocalDateTime dtAceite;
 
-    @Column(name = "DS_IP_ACEITE", length = 45)
+    // IP do cliente — evidencia legal LGPD (art. 7o, I)
+    @Column(name = "ds_ip_aceite", length = 45)
     private String dsIpAceite;
 
-    /** Preenchido quando o tutor revoga este consentimento. */
-    @Column(name = "DT_REVOGACAO")
+    @Column(name = "dt_revogacao")
     private LocalDateTime dtRevogacao;
 
-    @Column(name = "DS_IP_REVOGACAO", length = 45)
+    @Column(name = "ds_ip_revogacao", length = 45)
     private String dsIpRevogacao;
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+    public Consentimento() {}
 
-    public boolean isAceito() {
-        return "S".equals(stAceito);
-    }
+    public Long getIdConsentimento() { return idConsentimento; }
+    public Tutor getTutor() { return tutor; }
+    public String getDsTipo() { return dsTipo; }
+    public String getDsVersaoTermo() { return dsVersaoTermo; }
+    public String getDsTextoTermo() { return dsTextoTermo; }
+    public String getStAceito() { return stAceito; }
+    public LocalDateTime getDtAceite() { return dtAceite; }
+    public String getDsIpAceite() { return dsIpAceite; }
+    public LocalDateTime getDtRevogacao() { return dtRevogacao; }
+    public String getDsIpRevogacao() { return dsIpRevogacao; }
 
-    public boolean isRevogado() {
-        return dtRevogacao != null;
-    }
+    public void setTutor(Tutor v) { this.tutor = v; }
+    public void setDsTipo(String v) { this.dsTipo = v; }
+    public void setDsVersaoTermo(String v) { this.dsVersaoTermo = v; }
+    public void setDsTextoTermo(String v) { this.dsTextoTermo = v; }
+    public void setStAceito(String v) { this.stAceito = v; }
+    public void setDtAceite(LocalDateTime v) { this.dtAceite = v; }
+    public void setDsIpAceite(String v) { this.dsIpAceite = v; }
+    public void setDtRevogacao(LocalDateTime v) { this.dtRevogacao = v; }
+    public void setDsIpRevogacao(String v) { this.dsIpRevogacao = v; }
 
-    public boolean isAtivo() {
-        return isAceito() && !isRevogado();
-    }
+    public boolean isAceito() { return "S".equals(stAceito); }
+    public boolean isRevogado() { return dtRevogacao != null; }
+    public boolean isAtivo() { return isAceito() && !isRevogado(); }
 }

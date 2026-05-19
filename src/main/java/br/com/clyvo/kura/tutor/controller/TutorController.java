@@ -2,9 +2,8 @@ package br.com.clyvo.kura.tutor.controller;
 
 import br.com.clyvo.kura.tutor.dto.response.PetResponse;
 import br.com.clyvo.kura.tutor.dto.response.TutorResponse;
-import br.com.clyvo.kura.tutor.service.impl.TutorService;
+import br.com.clyvo.kura.tutor.service.TutorService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -14,15 +13,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Endpoints de leitura do tutor e seus pets.
- *
- * <p><strong>Lembra:</strong> este controller só lê — o backend .NET é quem
- * cria tutores e pets. Qualquer POST/PUT aqui viria via integração, não direto.
- */
 @RestController
 @RequestMapping("/tutores")
-@Tag(name = "2. Tutores", description = "Consulta de tutores e seus pets (leitura — dados criados pelo .NET)")
+@Tag(name = "Tutores", description = "Consulta de dados do tutor e seus pets")
 @SecurityRequirement(name = "bearerAuth")
 public class TutorController {
 
@@ -32,49 +25,28 @@ public class TutorController {
         this.tutorService = tutorService;
     }
 
-    @GetMapping
-    @Operation(
-            summary = "Listar tutores com filtros e paginação",
-            description = """
-                    Retorna lista paginada de tutores ativos.
-                    Todos os filtros são opcionais — sem filtro retorna todos.
-                    Paginação: ?page=0&size=10&sort=nmTutor,asc
-                    """
-    )
-    public ResponseEntity<Page<TutorResponse>> listar(
-            @Parameter(description = "Filtro por nome (parcial, case-insensitive)")
-            @RequestParam(required = false) String nome,
-            @Parameter(description = "Filtro por cidade")
-            @RequestParam(required = false) String cidade,
-            @Parameter(description = "Filtro por UF (2 letras)", example = "SP")
-            @RequestParam(required = false) String uf,
-            @Parameter(description = "Filtro por espécie do pet", example = "Cão")
-            @RequestParam(required = false) String especie,
-            @PageableDefault(size = 10, sort = "nmTutor", direction = Sort.Direction.ASC)
-            Pageable pageable
-    ) {
-        return ResponseEntity.ok(
-                tutorService.listarComFiltros(nome, cidade, uf, especie, pageable));
-    }
-
     @GetMapping("/{id}")
-    @Operation(summary = "Buscar tutor pelo ID")
-    public ResponseEntity<TutorResponse> buscarPorId(
-            @Parameter(description = "ID do tutor", example = "1")
-            @PathVariable Long id) {
+    @Operation(summary = "Busca tutor por ID")
+    public ResponseEntity<TutorResponse> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(tutorService.buscarPorId(id));
     }
 
+    @GetMapping
+    @Operation(summary = "Lista tutores com filtros opcionais",
+               description = "Filtros: nome, cidade, uf. Paginado. Ex: ?nome=Felipe&uf=SP&page=0&size=10")
+    public ResponseEntity<Page<TutorResponse>> listar(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String cidade,
+            @RequestParam(required = false) String uf,
+            @PageableDefault(size = 10, sort = "nmTutor", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(tutorService.buscarComFiltros(nome, cidade, uf, pageable));
+    }
+
     @GetMapping("/{id}/pets")
-    @Operation(
-            summary = "Listar pets do tutor",
-            description = "Retorna os pets ativos vinculados ao tutor via TUTOR_PET."
-    )
+    @Operation(summary = "Lista pets ativos do tutor (resultado cacheado)")
     public ResponseEntity<Page<PetResponse>> listarPets(
-            @Parameter(description = "ID do tutor", example = "1")
             @PathVariable Long id,
-            @PageableDefault(size = 10, sort = "nmPet") Pageable pageable
-    ) {
-        return ResponseEntity.ok(tutorService.listarPetsDeTutor(id, pageable));
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(tutorService.listarPets(id, pageable));
     }
 }

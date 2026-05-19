@@ -1,120 +1,101 @@
 package br.com.clyvo.kura.tutor.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Dados pessoais do tutor (responsável pelo pet).
+ * Dados pessoais do tutor.
+ * Cadastrado pela clinica via .NET. Java apenas le esta tabela.
  *
- * <p><strong>Atenção:</strong> Esta entidade é <em>compartilhada</em>.
- * O cadastro é feito pelo backend .NET (Felipe). O backend Java (Nikolas) apenas
- * lê esta tabela — nunca faz INSERT ou UPDATE diretamente.
- *
- * <p>Credenciais de acesso ficam em {@link ContaTutor} (1:1, opcional).
+ * Equivalente ao model/Usuario.java do projeto de aula — ambos sao entidades JPA
+ * com relacionamentos e campos de auditoria.
  */
 @Entity
-@Table(name = "TUTOR")
-@Getter @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(name = "tutor")
 public class Tutor {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_tutor")
-    @SequenceGenerator(name = "seq_tutor", sequenceName = "SEQ_TUTOR", allocationSize = 1)
-    @Column(name = "ID_TUTOR")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_tutor")
     private Long idTutor;
 
-    // ── Clínica de origem ─────────────────────────────────────────────────
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ID_CLINICA", nullable = false)
+    @JoinColumn(name = "id_clinica", nullable = false)
     private Clinica clinica;
 
-    // ── Dados pessoais ────────────────────────────────────────────────────
-
-    @Column(name = "NM_TUTOR", nullable = false, length = 120)
+    @Column(name = "nm_tutor", nullable = false, length = 120)
     private String nmTutor;
 
-    @Column(name = "NR_CPF", nullable = false, unique = true, length = 14)
+    @Column(name = "nr_cpf", nullable = false, unique = true, length = 14)
     private String nrCpf;
 
-    @Column(name = "DT_NASCIMENTO")
+    @Column(name = "dt_nascimento")
     private LocalDate dtNascimento;
 
-    @Column(name = "DS_EMAIL", nullable = false, unique = true, length = 120)
+    @Column(name = "ds_email", nullable = false, unique = true, length = 120)
     private String dsEmail;
 
-    @Column(name = "DS_TELEFONE", nullable = false, length = 20)
+    @Column(name = "ds_telefone", nullable = false, length = 20)
     private String dsTelefone;
 
-    @Column(name = "DS_WHATSAPP", length = 20)
+    @Column(name = "ds_whatsapp", length = 20)
     private String dsWhatsapp;
 
-    // ── Endereço ──────────────────────────────────────────────────────────
-
-    @Column(name = "DS_ENDERECO", length = 200)
+    @Column(name = "ds_endereco", length = 200)
     private String dsEndereco;
 
-    @Column(name = "NM_CIDADE", length = 80)
+    @Column(name = "nm_cidade", length = 80)
     private String nmCidade;
 
-    @Column(name = "SG_UF", length = 2)
+    @Column(name = "sg_uf", length = 2)
     private String sgUf;
 
-    @Column(name = "NR_CEP", length = 9)
-    private String nrCep;
-
-    // ── LGPD ─────────────────────────────────────────────────────────────
-
-    @Column(name = "ST_AVISO_PRIVACIDADE", nullable = false, length = 1)
-    @Builder.Default
-    private String stAvisoPrivacidade = "N";
-
-    @Column(name = "DT_AVISO_PRIVACIDADE")
-    private LocalDateTime dtAvisoPrivacidade;
-
-    @Column(name = "DS_VERSAO_AVISO", length = 20)
-    private String dsVersaoAviso;
-
-    // ── Status ────────────────────────────────────────────────────────────
-
-    @Column(name = "DT_CADASTRO", nullable = false, updatable = false)
+    @Column(name = "dt_cadastro", nullable = false, updatable = false)
     private LocalDateTime dtCadastro;
 
-    @Column(name = "ST_ATIVO", nullable = false, length = 1)
-    @Builder.Default
+    @Column(name = "st_ativo", nullable = false, length = 1)
     private String stAtivo = "S";
 
-    // ── Relacionamentos (leitura) ─────────────────────────────────────────
+    // LGPD — transparencia do aviso de privacidade (preenchido no balcao pelo .NET)
+    @Column(name = "st_aviso_privacidade", nullable = false, length = 1)
+    private String stAvisoPrivacidade = "N";
 
-    /**
-     * Pets vinculados via tabela associativa {@code TUTOR_PET}.
-     * Carregado via LAZY — use com cuidado dentro de transações.
-     */
+    @Column(name = "dt_aviso_privacidade")
+    private LocalDateTime dtAvisoPrivacidade;
+
+    @Column(name = "ds_versao_aviso", length = 20)
+    private String dsVersaoAviso;
+
     @OneToMany(mappedBy = "tutor", fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<TutorPet> tutorPets = new ArrayList<>();
-
-    /** Consentimentos LGPD — gerenciados pelo backend Java. */
-    @OneToMany(mappedBy = "tutor", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @Builder.Default
     private List<Consentimento> consentimentos = new ArrayList<>();
 
-    /** Agendamentos — gerenciados pelo backend Java. */
-    @OneToMany(mappedBy = "tutor", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @Builder.Default
+    @OneToMany(mappedBy = "tutor", fetch = FetchType.LAZY)
     private List<Agendamento> agendamentos = new ArrayList<>();
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+    public Tutor() {}
 
-    public boolean isAtivo() {
-        return "S".equals(stAtivo);
-    }
+    public Long getIdTutor() { return idTutor; }
+    public Clinica getClinica() { return clinica; }
+    public String getNmTutor() { return nmTutor; }
+    public String getNrCpf() { return nrCpf; }
+    public LocalDate getDtNascimento() { return dtNascimento; }
+    public String getDsEmail() { return dsEmail; }
+    public String getDsTelefone() { return dsTelefone; }
+    public String getDsWhatsapp() { return dsWhatsapp; }
+    public String getDsEndereco() { return dsEndereco; }
+    public String getNmCidade() { return nmCidade; }
+    public String getSgUf() { return sgUf; }
+    public LocalDateTime getDtCadastro() { return dtCadastro; }
+    public String getStAtivo() { return stAtivo; }
+    public String getStAvisoPrivacidade() { return stAvisoPrivacidade; }
+    public LocalDateTime getDtAvisoPrivacidade() { return dtAvisoPrivacidade; }
+    public String getDsVersaoAviso() { return dsVersaoAviso; }
+    public List<Consentimento> getConsentimentos() { return consentimentos; }
+    public List<Agendamento> getAgendamentos() { return agendamentos; }
+
+    public boolean isAtivo() { return "S".equals(stAtivo); }
+    public boolean temAvisoPrivacidade() { return "S".equals(stAvisoPrivacidade); }
 }

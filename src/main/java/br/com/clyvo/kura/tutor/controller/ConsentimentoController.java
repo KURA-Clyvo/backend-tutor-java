@@ -2,7 +2,7 @@ package br.com.clyvo.kura.tutor.controller;
 
 import br.com.clyvo.kura.tutor.dto.request.ConsentimentoRequest;
 import br.com.clyvo.kura.tutor.dto.response.ConsentimentoResponse;
-import br.com.clyvo.kura.tutor.service.impl.ConsentimentoService;
+import br.com.clyvo.kura.tutor.service.ConsentimentoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -12,18 +12,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
-/**
- * Endpoints de gestão de consentimentos LGPD.
- *
- * <p>Regra de ouro: sempre INSERT, nunca UPDATE.
- * O histórico de consentimentos é imutável por exigência legal.
- */
 @RestController
 @RequestMapping("/tutores/{idTutor}/consentimentos")
-@Tag(name = "3. Consentimentos LGPD", description = "Gestão de consentimentos do tutor — histórico imutável")
+@Tag(name = "Consentimentos LGPD", description = "Gerenciamento de consentimentos do tutor (LGPD)")
 @SecurityRequirement(name = "bearerAuth")
 public class ConsentimentoController {
 
@@ -34,46 +27,40 @@ public class ConsentimentoController {
     }
 
     @GetMapping
-    @Operation(
-            summary = "Histórico completo de consentimentos",
-            description = "Retorna todos os registros de aceite/revogação, do mais recente ao mais antigo."
-    )
-    public ResponseEntity<List<ConsentimentoResponse>> listar(
-            @Parameter(description = "ID do tutor", example = "1")
-            @PathVariable Long idTutor) {
-        return ResponseEntity.ok(consentimentoService.listarPorTutor(idTutor));
+    @Operation(summary = "Historico completo de consentimentos (mais recente primeiro)")
+    public ResponseEntity<List<ConsentimentoResponse>> listar(@PathVariable Long idTutor) {
+        return ResponseEntity.ok(consentimentoService.listar(idTutor));
     }
 
-    @GetMapping("/ativo/{tipo}")
-    @Operation(
-            summary = "Status atual de um tipo de consentimento",
-            description = """
-                    Retorna o consentimento ativo mais recente para o tipo informado.
-                    Tipos válidos: TELEORIENTACAO, LEMBRETES, DADOS_ANONIMOS,
-                    COMPARTILHAR_SEGURADORA, MARKETING
-                    """
-    )
+    @GetMapping("/{tipo}/ativo")
+    @Operation(summary = "Estado atual de um tipo de consentimento",
+               description = "Tipos validos: TELEORIENTACAO, LEMBRETES, DADOS_ANONIMOS, COMPARTILHAR_SEGURADORA, MARKETING")
     public ResponseEntity<ConsentimentoResponse> buscarAtivo(
             @PathVariable Long idTutor,
-            @Parameter(example = "LEMBRETES") @PathVariable String tipo) {
-        return ResponseEntity.ok(consentimentoService.buscarAtivoPorTipo(idTutor, tipo));
+            @PathVariable String tipo) {
+        return consentimentoService.buscarAtivo(idTutor, tipo)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    @Operation(
-            summary = "Registrar aceite ou revogação",
-            description = """
-                    Registra um aceite (ST_ACEITO=S) ou revogação (ST_ACEITO=N) de consentimento.
-                    SEMPRE cria uma nova linha — não atualiza registros existentes.
-                    O IP do tutor é capturado automaticamente como evidência legal (LGPD).
-                    """
-    )
+    @Operation(summary = "Registra aceite ou revogacao de consentimento",
+               description = "LGPD: cada chamada gera novo registro. Nunca atualiza. Header Idempotency-Key recomendado.")
     public ResponseEntity<ConsentimentoResponse> registrar(
             @PathVariable Long idTutor,
+            @Parameter(description = "UUID unico por operacao — previne registro duplicado em retry")
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody ConsentimentoRequest request,
             HttpServletRequest httpRequest) {
+        String ip = extrairIp(httpRequest);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(consentimentoService.registrar(idTutor, request, ip));
+    }
 
-        var response = consentimentoService.registrar(idTutor, request, httpRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    private String extrairIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        return (forwarded != null && !forwarded.isBlank())
+                ? forwarded.split(",")[0].trim()
+                : request.getRemoteAddr();
     }
 }

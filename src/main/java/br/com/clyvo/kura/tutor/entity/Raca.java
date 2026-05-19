@@ -1,30 +1,39 @@
 package br.com.clyvo.kura.tutor.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.*;
 
-/**
- * Raça de um animal, vinculada a uma {@link Especie}.
- * Tabela de domínio — lida por ambos os backends.
- */
-@Entity
-@Table(name = "RACA")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Entity 
+@Table(name = "raca")
 public class Raca {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_raca")
-    @SequenceGenerator(name = "seq_raca", sequenceName = "SEQ_RACA", allocationSize = 1)
-    @Column(name = "ID_RACA")
+    @Id 
+    @GeneratedValue(strategy = GenerationType.IDENTITY) 
+    @Column(name = "id_raca") 
     private Long idRaca;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ID_ESPECIE", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY) 
+    @JoinColumn(name = "id_especie", nullable = false) 
+    @JsonBackReference 
     private Especie especie;
 
-    @Column(name = "NM_RACA", nullable = false, length = 80)
+    @Column(name = "nm_raca", nullable = false, length = 80) 
     private String nmRaca;
 
-    @Column(name = "DS_PREDISPOSICAO", length = 500)
+    @Column(name = "ds_predisposicao", length = 500) 
     private String dsPredisposicao;
+
+    public Raca() {}
+
+    public Long getIdRaca() { return idRaca; }
+    public void setIdRaca(Long idRaca) { this.idRaca = idRaca; }
+
+    public Especie getEspecie() { return especie; }
+    public void setEspecie(Especie especie) { this.especie = especie; }
+
+    public String getNmRaca() { return nmRaca; }
+    public void setNmRaca(String nmRaca) { this.nmRaca = nmRaca; }
+
+    public String getDsPredisposicao() { return dsPredisposicao; }
+    public void setDsPredisposicao(String dsPredisposicao) { this.dsPredisposicao = dsPredisposicao; }
 }
