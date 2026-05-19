@@ -1,0 +1,303 @@
+@startuml KURA_DER_Barker
+' =============================================================================
+' KURA · DER em Notação Barker — todas as tabelas lidas/escritas pelo Java
+' Gerado para: FIAP Challenge 2026 · backend-tutor-java
+'
+' Notação Barker (simulada em PlantUML):
+'   #* = PK — identificador mandatório
+'   *  = NOT NULL — atributo mandatório
+'   o  = nullable — atributo opcional
+'   <<UK>>        = UNIQUE constraint
+'   <<FK→X>>      = FOREIGN KEY referenciando tabela X
+'   <<CHK ...>>   = CHECK constraint
+'   <<@Version>>  = Optimistic locking JPA
+'
+' Cor das entidades (legenda abaixo):
+'   Cinza  (#E0E0E0) = .NET owns; Java lê via @Immutable / read-only
+'   Amarelo(#FFF9C4) = .NET cria; Java lê UMA VEZ no fluxo register-invite
+'   Ciano  (#B2EBF2) = Java owns; .NET não escreve
+'   Verde  (#C8E6C9) = Shared-write; ambos escrevem (NR_VERSION sincroniza)
+' =============================================================================
+
+!theme plain
+hide circle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 80
+skinparam BackgroundColor #FAFAFA
+skinparam EntityFontSize 11
+skinparam EntityFontName "Courier New"
+skinparam EntityBorderColor #607D8B
+skinparam EntityBorderThickness 1
+skinparam ArrowColor #455A64
+skinparam ArrowFontSize 9
+skinparam ArrowFontColor #546E7A
+skinparam LegendFontSize 10
+skinparam LegendBorderColor #90A4AE
+
+' =============================================================================
+' GRUPO 1 — .NET OWNS (Java read-only)
+' =============================================================================
+
+entity "CLINICA" as CLINICA #E0E0E0 {
+    #* ID_CLINICA : NUMBER(10)
+    --
+    * NM_CLINICA : VARCHAR2(120)
+    * NR_CNPJ : VARCHAR2(18)  <<UK>>
+    o DS_ENDERECO : VARCHAR2(200)
+    o NM_CIDADE : VARCHAR2(80)
+    o SG_UF : CHAR(2)
+    o NR_CEP : VARCHAR2(9)
+    o DS_TELEFONE : VARCHAR2(20)
+    o DS_EMAIL : VARCHAR2(120)
+    o DS_EMAIL_ACESSO : VARCHAR2(120)  <<UK>>
+    o DS_SENHA_HASH : VARCHAR2(256)
+    * DT_CADASTRO : TIMESTAMP
+    * ST_ATIVA : CHAR(1)  <<CHK S|N>>
+}
+
+entity "ESPECIE" as ESPECIE #E0E0E0 {
+    #* ID_ESPECIE : NUMBER(10)
+    --
+    * NM_ESPECIE : VARCHAR2(50)  <<UK>>
+}
+
+entity "TIPO_EVENTO" as TIPO_EVENTO #E0E0E0 {
+    #* ID_TIPO_EVENTO : NUMBER(10)
+    --
+    * NM_TIPO : VARCHAR2(60)  <<UK>>
+    o DS_TIPO : VARCHAR2(200)
+    * ST_ATIVO : CHAR(1)  <<CHK S|N>>
+}
+
+entity "RACA" as RACA #E0E0E0 {
+    #* ID_RACA : NUMBER(10)
+    --
+    * ID_ESPECIE : NUMBER(10)  <<FK→ESPECIE>>
+    * NM_RACA : VARCHAR2(80)
+    o DS_PREDISPOSICAO : VARCHAR2(500)
+}
+
+entity "VETERINARIO" as VETERINARIO #E0E0E0 {
+    #* ID_VETERINARIO : NUMBER(10)
+    --
+    * ID_CLINICA : NUMBER(10)  <<FK→CLINICA>>
+    * NM_VETERINARIO : VARCHAR2(150)
+    o NR_CRMV : VARCHAR2(20)  <<UK>>
+    o DS_EMAIL : VARCHAR2(150)
+    o NR_TELEFONE : VARCHAR2(20)
+    * ST_ATIVO : CHAR(1)  <<CHK S|N>>
+    * DT_CRIACAO : TIMESTAMP
+}
+
+entity "TUTOR" as TUTOR #E0E0E0 {
+    #* ID_TUTOR : NUMBER(10)
+    --
+    * ID_CLINICA : NUMBER(10)  <<FK→CLINICA>>
+    * NM_TUTOR : VARCHAR2(200)
+    * NR_CPF : VARCHAR2(11)  <<UK>>
+    * DS_EMAIL : VARCHAR2(150)  <<UK>>
+    * DS_TELEFONE : VARCHAR2(20)
+    o DS_WHATSAPP : VARCHAR2(20)
+    o DT_NASCIMENTO : DATE
+    o DS_ENDERECO : VARCHAR2(200)
+    o NM_CIDADE : VARCHAR2(80)
+    o SG_UF : CHAR(2)
+    o NR_CEP : VARCHAR2(9)
+    * DT_CADASTRO : TIMESTAMP
+    o DT_ATUALIZACAO : TIMESTAMP
+    * ST_AVISO_PRIVACIDADE : CHAR(1)  <<CHK S|N>>
+    o DT_AVISO_PRIVACIDADE : TIMESTAMP
+    o DS_VERSAO_AVISO : VARCHAR2(20)
+    * ST_ATIVO : CHAR(1)  <<CHK S|N>>
+}
+
+entity "PET" as PET #E0E0E0 {
+    #* ID_PET : NUMBER(10)
+    --
+    * ID_CLINICA : NUMBER(10)  <<FK→CLINICA>>
+    * ID_ESPECIE : NUMBER(10)  <<FK→ESPECIE>>
+    o ID_RACA : NUMBER(10)  <<FK→RACA>>
+    o ID_VETERINARIO_RESP : NUMBER(10)  <<FK→VETERINARIO>>
+    * NM_PET : VARCHAR2(80)
+    o DT_NASCIMENTO : DATE
+    o SG_SEXO : CHAR(1)  <<CHK M|F>>
+    o SG_PORTE : CHAR(1)  <<CHK P|M|G>>
+    o NR_PESO_KG : NUMBER(5,2)
+    * ST_CASTRADO : CHAR(1)  <<CHK S|N>>
+    o DS_ALERGIAS : VARCHAR2(500)
+    o DS_OBSERVACOES : VARCHAR2(1000)
+    * DT_CADASTRO : TIMESTAMP
+    * ST_ATIVO : CHAR(1)  <<CHK S|N>>
+    o DT_CRIACAO : TIMESTAMP
+    o DT_ATUALIZACAO : TIMESTAMP
+}
+
+entity "TUTOR_PET" as TUTOR_PET #E0E0E0 {
+    #* ID_TUTOR : NUMBER(10)  <<FK→TUTOR>>
+    #* ID_PET : NUMBER(10)  <<FK→PET>>
+    --
+    * DS_VINCULO : VARCHAR2(40)
+    * DT_VINCULO : TIMESTAMP
+    * ST_PRINCIPAL : CHAR(1)  <<CHK S|N>>
+}
+
+entity "EVENTO_CLINICO" as EVENTO_CLINICO #E0E0E0 {
+    #* ID_EVENTO : NUMBER(10)
+    --
+    o ID_PET : NUMBER(10)  <<FK→PET>>
+    o DS_DESCRICAO : VARCHAR2(500)
+    o DT_EVENTO : TIMESTAMP
+}
+
+' =============================================================================
+' GRUPO 2 — .NET CRIA, JAVA LÊ UMA VEZ (register-invite flow)
+' =============================================================================
+
+entity "INVITE_TUTOR" as INVITE_TUTOR #FFF9C4 {
+    #* ID_INVITE : NUMBER(10)
+    --
+    * ID_TUTOR : NUMBER(10)  <<FK→TUTOR>>
+    * NR_TOKEN : VARCHAR2(36)  <<UK>>
+    * DT_EXPIRACAO : TIMESTAMP
+    * DS_CANAL : VARCHAR2(20)  <<CHK WHATSAPP|EMAIL|SMS>>
+    * ST_UTILIZADO : CHAR(1)  <<CHK S|N>>
+    * ST_ATIVO : CHAR(1)  <<CHK S|N>>
+}
+
+' =============================================================================
+' GRUPO 3 — JAVA OWNS
+' =============================================================================
+
+entity "CONTA_TUTOR" as CONTA_TUTOR #B2EBF2 {
+    #* ID_CONTA : NUMBER(10)
+    --
+    * ID_TUTOR : NUMBER(10)  <<FK→TUTOR, UK>>
+    * DS_EMAIL_LOGIN : VARCHAR2(200)  <<UK>>
+    * DS_SENHA_HASH : VARCHAR2(256)
+    o DS_REFRESH_TOKEN_HASH : VARCHAR2(256)
+    o DT_REFRESH_EXPIRA : TIMESTAMP
+    o ID_INVITE_USADO : NUMBER(10)  <<FK→INVITE_TUTOR>> <<UK_CONTA_INVITE_USED (V3)>>
+    * DT_CRIACAO : TIMESTAMP
+    o DT_ULTIMO_LOGIN : TIMESTAMP
+    * NR_TENTATIVAS_LOGIN : NUMBER(2)
+    o DT_BLOQUEIO : TIMESTAMP
+    * ST_ATIVA : CHAR(1)  <<CHK S|N>>
+    * ST_EMAIL_VERIFICADO : CHAR(1)  <<CHK S|N>>
+    o DS_TOKEN_RESET : VARCHAR2(256)
+    o DT_TOKEN_EXPIRA : TIMESTAMP
+}
+
+entity "CONSENTIMENTO" as CONSENTIMENTO #B2EBF2 {
+    #* ID_CONSENTIMENTO : NUMBER(10)
+    --
+    * ID_TUTOR : NUMBER(10)  <<FK→TUTOR>>
+    * DS_TIPO : VARCHAR2(100)  <<CHK TELEORIENTACAO|LEMBRETES|...>>
+    * DS_VERSAO_TERMO : VARCHAR2(20)
+    * ST_ACEITO : CHAR(1)  <<CHK S|N>>
+    * DT_ACEITE : TIMESTAMP
+    o DS_TEXTO_TERMO : CLOB
+    o DS_IP_ACEITE : VARCHAR2(45)
+    o DT_REVOGACAO : TIMESTAMP
+    o DS_IP_REVOGACAO : VARCHAR2(45)
+}
+
+entity "IDEMPOTENCY_KEY" as IDEMPOTENCY_KEY #B2EBF2 {
+    #* ID_IDEMPOTENCY : NUMBER(10)
+    --
+    * DS_KEY : VARCHAR2(64)  <<UK(DS_KEY, NM_RESOURCE)>>
+    * NM_RESOURCE : VARCHAR2(60)
+    * ID_RESOURCE_CRIADO : NUMBER(10)
+    * DT_CRIACAO : TIMESTAMP
+    * DT_EXPIRACAO : TIMESTAMP
+}
+
+' =============================================================================
+' GRUPO 4 — SHARED-WRITE (Java cria/edita; .NET atualiza ST_STATUS)
+' =============================================================================
+
+entity "AGENDAMENTO" as AGENDAMENTO #C8E6C9 {
+    #* ID_AGENDAMENTO : NUMBER(10)
+    --
+    * ID_CLINICA : NUMBER(10)  <<FK→CLINICA>>
+    o ID_TUTOR : NUMBER(10)  <<FK→TUTOR>>
+    o ID_PET : NUMBER(10)  <<FK→PET>>
+    o ID_VETERINARIO : NUMBER(10)  <<FK→VETERINARIO>>
+    * DT_AGENDAMENTO : TIMESTAMP
+    o NR_DURACAO_MINUTOS : NUMBER(4)
+    o DS_TIPO : VARCHAR2(30)
+    * ST_STATUS : VARCHAR2(20)  <<CHK INTENCAO|AGENDADO|CONFIRMADO|...>>
+    * DS_ORIGEM : VARCHAR2(20)
+    * NR_VERSION : NUMBER(10)  <<@Version — optimistic lock>>
+    o DS_OBSERVACOES : VARCHAR2(1000)  [V5]
+    o DT_CRIACAO : TIMESTAMP  [V5]
+    o DT_CONFIRMACAO : TIMESTAMP  [V5]
+    o DT_CANCELAMENTO : TIMESTAMP  [V5]
+    o DS_MOTIVO_CANCEL : VARCHAR2(500)  [V5]
+    o ID_EVENTO_GERADO : NUMBER(10)  <<FK→EVENTO_CLINICO>> [V5]
+}
+
+' =============================================================================
+' RELACIONAMENTOS (Notação Barker: linha sólida = participação mandatória)
+' PlantUML ERD: ||--|{ = um-para-muitos mandatório
+'               ||--o{ = um-para-muitos opcional
+'               ||--o| = um-para-zero-ou-um
+'               ||--|| = um-para-um mandatório
+' =============================================================================
+
+' -- Referência: ESPECIE
+ESPECIE ||--|{ RACA           : "1..* raças"
+ESPECIE ||--|{ PET            : "classificação"
+
+' -- CLINICA hub
+CLINICA ||--|{ VETERINARIO    : "vinculados"
+CLINICA ||--|{ TUTOR          : "cadastrados"
+CLINICA ||--|{ PET            : "atendidos"
+CLINICA ||--|{ AGENDAMENTO    : "realizados"
+
+' -- RACA / VETERINARIO → PET (opcionais)
+RACA    ||--o{ PET            : "0..* pets"
+VETERINARIO ||--o{ PET        : "responsável"
+
+' -- TUTOR → associações
+TUTOR ||--|{ TUTOR_PET        : "possui"
+TUTOR ||--|{ INVITE_TUTOR     : "recebe"
+TUTOR ||--|| CONTA_TUTOR      : "1 conta <<UK>>"
+TUTOR ||--|{ CONSENTIMENTO    : "registra"
+TUTOR ||--o{ AGENDAMENTO      : "solicita"
+
+' -- PET → associações
+PET   ||--|{ TUTOR_PET        : "pertence"
+PET   ||--o{ AGENDAMENTO      : "é agendado"
+PET   ||--o{ EVENTO_CLINICO   : "gera evento"
+
+' -- INVITE_TUTOR → CONTA_TUTOR (um invite gera no máx. uma conta)
+INVITE_TUTOR ||--o| CONTA_TUTOR : "usado 1x <<UK>>"
+
+' -- VETERINARIO → AGENDAMENTO
+VETERINARIO ||--o{ AGENDAMENTO : "atende"
+
+' -- EVENTO_CLINICO → AGENDAMENTO (V5: .NET preenche quando REALIZADO)
+EVENTO_CLINICO ||--o{ AGENDAMENTO : "gerado de [V5]"
+
+' =============================================================================
+' LEGENDA
+' =============================================================================
+legend bottom
+  |= Cor       |= Proprietário              |= Acesso Java           |
+  | <#E0E0E0>  | .NET owns                  | @Immutable / read-only |
+  | <#FFF9C4>  | .NET cria (INVITE_TUTOR)   | lê 1x em register-invite |
+  | <#B2EBF2>  | Java owns                  | lê + escreve           |
+  | <#C8E6C9>  | Shared-write               | cria/edita; .NET atualiza ST_STATUS |
+  |= Símbolo   |= Significado                                        ||
+  |  #*        | PK — identificador mandatório (Barker solid bar)    ||
+  |  *         | NOT NULL — atributo mandatório                       ||
+  |  o         | nullable — atributo opcional                         ||
+  |  [V5]      | Coluna adicionada por V5__agendamento_observacoes    ||
+  |  <<UK>>    | UNIQUE constraint                                    ||
+  |  <<FK→X>>  | FOREIGN KEY referenciando tabela X                  ||
+  |  <<CHK>>   | CHECK constraint                                     ||
+  | @Version   | Optimistic locking JPA — sincroniza Java/.NET via 409 ||
+endlegend
+
+@enduml

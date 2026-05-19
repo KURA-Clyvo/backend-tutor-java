@@ -1,0 +1,350 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!--
+  KURA · Diagrama Entidade-Relacionamento — Oracle SQL Developer Data Modeler
+  Notação: Barker (exigência FIAP Challenge 2026)
+  Schema:  kura_schema_v4 (compatível Oracle 19c + H2 Oracle mode)
+  Versão:  1.0 · gerado para T06
+
+  Como abrir:
+    1. Oracle SQL Developer Data Modeler ≥ 21.x
+    2. File → Open → selecione este arquivo .dmd
+    3. View → Logical → aplicar diagrama salvo
+    4. Para Barker: Tools → Preferences → Data Modeler → Notation → Barker
+
+  Renderização rápida (sem Data Modeler):
+    Renderize docs/diagrams/der.puml com PlantUML:
+      java -jar plantuml.jar docs/diagrams/der.puml
+    Ou: https://www.plantuml.com/plantuml/uml/
+-->
+<PhysicalModel version="21.4.0.0" id="KURA_DER_v1" name="KURA_DER_Barker">
+  <createdBy>backend-tutor-java T06</createdBy>
+  <updatedBy>backend-tutor-java T06</updatedBy>
+  <notation>BARKER</notation>
+  <rdbms>Oracle Database 19c</rdbms>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       TABELAS — ordem de dependência FK
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <entities>
+
+    <entity id="ENT_CLINICA" name="CLINICA" owner=".NET" javaAccess="READ_ONLY">
+      <columns>
+        <column id="C1_1"  name="ID_CLINICA"       type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C1_2"  name="NM_CLINICA"        type="VARCHAR2(120)" pk="false" nullable="false"/>
+        <column id="C1_3"  name="NR_CNPJ"           type="VARCHAR2(18)"  pk="false" nullable="false" unique="true"/>
+        <column id="C1_4"  name="DS_ENDERECO"       type="VARCHAR2(200)" pk="false" nullable="true"/>
+        <column id="C1_5"  name="NM_CIDADE"         type="VARCHAR2(80)"  pk="false" nullable="true"/>
+        <column id="C1_6"  name="SG_UF"             type="CHAR(2)"       pk="false" nullable="true"/>
+        <column id="C1_7"  name="NR_CEP"            type="VARCHAR2(9)"   pk="false" nullable="true"/>
+        <column id="C1_8"  name="DS_TELEFONE"       type="VARCHAR2(20)"  pk="false" nullable="true"/>
+        <column id="C1_9"  name="DS_EMAIL"          type="VARCHAR2(120)" pk="false" nullable="true"/>
+        <column id="C1_10" name="DS_EMAIL_ACESSO"   type="VARCHAR2(120)" pk="false" nullable="true"  unique="true"/>
+        <column id="C1_11" name="DS_SENHA_HASH"     type="VARCHAR2(256)" pk="false" nullable="true"/>
+        <column id="C1_12" name="DT_CADASTRO"       type="TIMESTAMP"     pk="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <column id="C1_13" name="ST_ATIVA"          type="CHAR(1)"       pk="false" nullable="false" default="'S'" check="ST_ATIVA IN ('S','N')"/>
+      </columns>
+      <constraints>
+        <uniqueKey name="UK_CLINICA_CNPJ"         columns="NR_CNPJ"/>
+        <uniqueKey name="UK_CLINICA_EMAIL_ACESSO" columns="DS_EMAIL_ACESSO"/>
+        <checkConstraint name="CHK_CLINICA_ATIVA"  expression="ST_ATIVA IN ('S','N')"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_ESPECIE" name="ESPECIE" owner=".NET" javaAccess="READ_ONLY_CACHED">
+      <columns>
+        <column id="C2_1" name="ID_ESPECIE" type="NUMBER(10)"   pk="true"  nullable="false" identity="true"/>
+        <column id="C2_2" name="NM_ESPECIE" type="VARCHAR2(50)" pk="false" nullable="false" unique="true"/>
+      </columns>
+      <constraints>
+        <uniqueKey name="UK_ESPECIE_NOME" columns="NM_ESPECIE"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_TIPO_EVENTO" name="TIPO_EVENTO" owner=".NET" javaAccess="READ_ONLY_CACHED">
+      <columns>
+        <column id="C3_1" name="ID_TIPO_EVENTO" type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C3_2" name="NM_TIPO"         type="VARCHAR2(60)"  pk="false" nullable="false" unique="true"/>
+        <column id="C3_3" name="DS_TIPO"         type="VARCHAR2(200)" pk="false" nullable="true"/>
+        <column id="C3_4" name="ST_ATIVO"        type="CHAR(1)"       pk="false" nullable="false" default="'S'" check="ST_ATIVO IN ('S','N')"/>
+      </columns>
+      <constraints>
+        <uniqueKey name="UK_TIPO_EVENTO_NM" columns="NM_TIPO"/>
+        <checkConstraint name="CHK_TIPO_EVENTO_ST" expression="ST_ATIVO IN ('S','N')"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_RACA" name="RACA" owner=".NET" javaAccess="READ_ONLY_CACHED">
+      <columns>
+        <column id="C4_1" name="ID_RACA"          type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C4_2" name="ID_ESPECIE"        type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_ESPECIE.C2_1"/>
+        <column id="C4_3" name="NM_RACA"           type="VARCHAR2(80)"  pk="false" nullable="false"/>
+        <column id="C4_4" name="DS_PREDISPOSICAO"  type="VARCHAR2(500)" pk="false" nullable="true"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_RACA_ESPECIE" columns="ID_ESPECIE" references="ENT_ESPECIE" refColumns="ID_ESPECIE"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_VETERINARIO" name="VETERINARIO" owner=".NET" javaAccess="READ_ONLY">
+      <columns>
+        <column id="C5_1" name="ID_VETERINARIO"  type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C5_2" name="ID_CLINICA"       type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_CLINICA.C1_1"/>
+        <column id="C5_3" name="NM_VETERINARIO"  type="VARCHAR2(150)" pk="false" nullable="false"/>
+        <column id="C5_4" name="NR_CRMV"          type="VARCHAR2(20)"  pk="false" nullable="true"  unique="true"/>
+        <column id="C5_5" name="DS_EMAIL"         type="VARCHAR2(150)" pk="false" nullable="true"/>
+        <column id="C5_6" name="NR_TELEFONE"      type="VARCHAR2(20)"  pk="false" nullable="true"/>
+        <column id="C5_7" name="ST_ATIVO"         type="CHAR(1)"       pk="false" nullable="false" default="'S'" check="ST_ATIVO IN ('S','N')"/>
+        <column id="C5_8" name="DT_CRIACAO"       type="TIMESTAMP"     pk="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_VET_CLINICA" columns="ID_CLINICA" references="ENT_CLINICA" refColumns="ID_CLINICA"/>
+        <uniqueKey name="UK_VET_CRMV" columns="NR_CRMV"/>
+        <checkConstraint name="CHK_VET_ATIVO" expression="ST_ATIVO IN ('S','N')"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_TUTOR" name="TUTOR" owner=".NET" javaAccess="READ_ONLY">
+      <columns>
+        <column id="C6_1"  name="ID_TUTOR"              type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C6_2"  name="ID_CLINICA"             type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_CLINICA.C1_1"/>
+        <column id="C6_3"  name="NM_TUTOR"               type="VARCHAR2(200)" pk="false" nullable="false"/>
+        <column id="C6_4"  name="NR_CPF"                 type="VARCHAR2(11)"  pk="false" nullable="false" unique="true"/>
+        <column id="C6_5"  name="DS_EMAIL"               type="VARCHAR2(150)" pk="false" nullable="false" unique="true"/>
+        <column id="C6_6"  name="DS_TELEFONE"            type="VARCHAR2(20)"  pk="false" nullable="false"/>
+        <column id="C6_7"  name="DS_WHATSAPP"            type="VARCHAR2(20)"  pk="false" nullable="true"/>
+        <column id="C6_8"  name="DT_NASCIMENTO"          type="DATE"          pk="false" nullable="true"/>
+        <column id="C6_9"  name="DS_ENDERECO"            type="VARCHAR2(200)" pk="false" nullable="true"/>
+        <column id="C6_10" name="NM_CIDADE"              type="VARCHAR2(80)"  pk="false" nullable="true"/>
+        <column id="C6_11" name="SG_UF"                  type="CHAR(2)"       pk="false" nullable="true"/>
+        <column id="C6_12" name="NR_CEP"                 type="VARCHAR2(9)"   pk="false" nullable="true"/>
+        <column id="C6_13" name="DT_CADASTRO"            type="TIMESTAMP"     pk="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <column id="C6_14" name="DT_ATUALIZACAO"         type="TIMESTAMP"     pk="false" nullable="true"/>
+        <column id="C6_15" name="ST_AVISO_PRIVACIDADE"   type="CHAR(1)"       pk="false" nullable="false" default="'N'" check="ST_AVISO_PRIVACIDADE IN ('S','N')"/>
+        <column id="C6_16" name="DT_AVISO_PRIVACIDADE"   type="TIMESTAMP"     pk="false" nullable="true"/>
+        <column id="C6_17" name="DS_VERSAO_AVISO"        type="VARCHAR2(20)"  pk="false" nullable="true"/>
+        <column id="C6_18" name="ST_ATIVO"               type="CHAR(1)"       pk="false" nullable="false" default="'S'" check="ST_ATIVO IN ('S','N')"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_TUTOR_CLINICA" columns="ID_CLINICA" references="ENT_CLINICA" refColumns="ID_CLINICA"/>
+        <uniqueKey name="UK_TUTOR_CPF"   columns="NR_CPF"/>
+        <uniqueKey name="UK_TUTOR_EMAIL" columns="DS_EMAIL"/>
+        <checkConstraint name="CHK_TUTOR_AVISO_PRIVACIDADE" expression="ST_AVISO_PRIVACIDADE IN ('S','N')"/>
+        <checkConstraint name="CHK_TUTOR_ATIVO" expression="ST_ATIVO IN ('S','N')"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_PET" name="PET" owner=".NET" javaAccess="READ_ONLY">
+      <columns>
+        <column id="C7_1"  name="ID_PET"               type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C7_2"  name="ID_CLINICA"            type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_CLINICA.C1_1"/>
+        <column id="C7_3"  name="ID_ESPECIE"            type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_ESPECIE.C2_1"/>
+        <column id="C7_4"  name="ID_RACA"               type="NUMBER(10)"    pk="false" nullable="true"  fk="true" references="ENT_RACA.C4_1"/>
+        <column id="C7_5"  name="ID_VETERINARIO_RESP"   type="NUMBER(10)"    pk="false" nullable="true"  fk="true" references="ENT_VETERINARIO.C5_1"/>
+        <column id="C7_6"  name="NM_PET"                type="VARCHAR2(80)"  pk="false" nullable="false"/>
+        <column id="C7_7"  name="DT_NASCIMENTO"         type="DATE"          pk="false" nullable="true"/>
+        <column id="C7_8"  name="SG_SEXO"               type="CHAR(1)"       pk="false" nullable="true"  check="SG_SEXO IN ('M','F')"/>
+        <column id="C7_9"  name="SG_PORTE"              type="CHAR(1)"       pk="false" nullable="true"  check="SG_PORTE IN ('P','M','G')"/>
+        <column id="C7_10" name="NR_PESO_KG"            type="NUMBER(5,2)"   pk="false" nullable="true"/>
+        <column id="C7_11" name="ST_CASTRADO"           type="CHAR(1)"       pk="false" nullable="false" default="'N'" check="ST_CASTRADO IN ('S','N')"/>
+        <column id="C7_12" name="DS_ALERGIAS"           type="VARCHAR2(500)" pk="false" nullable="true"/>
+        <column id="C7_13" name="DS_OBSERVACOES"        type="VARCHAR2(1000)"pk="false" nullable="true"/>
+        <column id="C7_14" name="DT_CADASTRO"           type="TIMESTAMP"     pk="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <column id="C7_15" name="ST_ATIVO"              type="CHAR(1)"       pk="false" nullable="false" default="'S'" check="ST_ATIVO IN ('S','N')"/>
+        <column id="C7_16" name="DT_CRIACAO"            type="TIMESTAMP"     pk="false" nullable="true"/>
+        <column id="C7_17" name="DT_ATUALIZACAO"        type="TIMESTAMP"     pk="false" nullable="true"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_PET_CLINICA"   columns="ID_CLINICA"          references="ENT_CLINICA"     refColumns="ID_CLINICA"/>
+        <foreignKey name="FK_PET_ESPECIE"   columns="ID_ESPECIE"          references="ENT_ESPECIE"     refColumns="ID_ESPECIE"/>
+        <foreignKey name="FK_PET_RACA"      columns="ID_RACA"             references="ENT_RACA"        refColumns="ID_RACA"/>
+        <foreignKey name="FK_PET_VET_RESP"  columns="ID_VETERINARIO_RESP" references="ENT_VETERINARIO" refColumns="ID_VETERINARIO"/>
+        <checkConstraint name="CHK_PET_SEXO"     expression="SG_SEXO IN ('M','F')"/>
+        <checkConstraint name="CHK_PET_PORTE"    expression="SG_PORTE IN ('P','M','G')"/>
+        <checkConstraint name="CHK_PET_CASTRADO" expression="ST_CASTRADO IN ('S','N')"/>
+        <checkConstraint name="CHK_PET_ATIVO"    expression="ST_ATIVO IN ('S','N')"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_TUTOR_PET" name="TUTOR_PET" owner=".NET" javaAccess="READ_ONLY">
+      <columns>
+        <column id="C8_1" name="ID_TUTOR"     type="NUMBER(10)"   pk="true"  nullable="false" fk="true" references="ENT_TUTOR.C6_1"/>
+        <column id="C8_2" name="ID_PET"       type="NUMBER(10)"   pk="true"  nullable="false" fk="true" references="ENT_PET.C7_1"/>
+        <column id="C8_3" name="DS_VINCULO"   type="VARCHAR2(40)" pk="false" nullable="false" default="'PROPRIETARIO'"/>
+        <column id="C8_4" name="DT_VINCULO"   type="TIMESTAMP"    pk="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <column id="C8_5" name="ST_PRINCIPAL" type="CHAR(1)"      pk="false" nullable="false" default="'S'" check="ST_PRINCIPAL IN ('S','N')"/>
+      </columns>
+      <constraints>
+        <primaryKey name="PK_TUTOR_PET" columns="ID_TUTOR,ID_PET"/>
+        <foreignKey name="FK_TP_TUTOR" columns="ID_TUTOR" references="ENT_TUTOR" refColumns="ID_TUTOR"/>
+        <foreignKey name="FK_TP_PET"   columns="ID_PET"   references="ENT_PET"   refColumns="ID_PET"/>
+        <checkConstraint name="CHK_TP_PRINCIPAL" expression="ST_PRINCIPAL IN ('S','N')"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_INVITE_TUTOR" name="INVITE_TUTOR" owner=".NET" javaAccess="READ_ONCE">
+      <comment>.NET gera o invite; Java lê 1x em POST /auth/register-invite e marca ST_UTILIZADO via .NET</comment>
+      <columns>
+        <column id="C9_1" name="ID_INVITE"    type="NUMBER(10)"   pk="true"  nullable="false" identity="true"/>
+        <column id="C9_2" name="ID_TUTOR"     type="NUMBER(10)"   pk="false" nullable="false" fk="true" references="ENT_TUTOR.C6_1"/>
+        <column id="C9_3" name="NR_TOKEN"     type="VARCHAR2(36)" pk="false" nullable="false" unique="true"/>
+        <column id="C9_4" name="DT_EXPIRACAO" type="TIMESTAMP"    pk="false" nullable="false"/>
+        <column id="C9_5" name="DS_CANAL"     type="VARCHAR2(20)" pk="false" nullable="false" check="DS_CANAL IN ('WHATSAPP','EMAIL','SMS')"/>
+        <column id="C9_6" name="ST_UTILIZADO" type="CHAR(1)"      pk="false" nullable="false" default="'N'" check="ST_UTILIZADO IN ('S','N')"/>
+        <column id="C9_7" name="ST_ATIVO"     type="CHAR(1)"      pk="false" nullable="false" default="'S'" check="ST_ATIVO IN ('S','N')"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_INVITE_TUTOR"      columns="ID_TUTOR"  references="ENT_TUTOR" refColumns="ID_TUTOR"/>
+        <uniqueKey  name="UK_INVITE_TOKEN"       columns="NR_TOKEN"/>
+        <checkConstraint name="CHK_INVITE_CANAL"     expression="DS_CANAL IN ('WHATSAPP','EMAIL','SMS')"/>
+        <checkConstraint name="CHK_INVITE_UTILIZADO" expression="ST_UTILIZADO IN ('S','N')"/>
+        <checkConstraint name="CHK_INVITE_ATIVO"     expression="ST_ATIVO IN ('S','N')"/>
+        <index name="IDX_INVITE_TOKEN_ATIVO" columns="NR_TOKEN,ST_UTILIZADO,ST_ATIVO" addedBy="V3"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_CONTA_TUTOR" name="CONTA_TUTOR" owner="Java" javaAccess="READ_WRITE">
+      <comment>Java owns. Criada no fluxo register-invite. UK_CONTA_INVITE_USED adicionado em V3.</comment>
+      <columns>
+        <column id="C10_1"  name="ID_CONTA"               type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C10_2"  name="ID_TUTOR"               type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_TUTOR.C6_1"   unique="true"/>
+        <column id="C10_3"  name="DS_EMAIL_LOGIN"         type="VARCHAR2(200)" pk="false" nullable="false" unique="true"/>
+        <column id="C10_4"  name="DS_SENHA_HASH"          type="VARCHAR2(256)" pk="false" nullable="false"/>
+        <column id="C10_5"  name="DS_REFRESH_TOKEN_HASH"  type="VARCHAR2(256)" pk="false" nullable="true"/>
+        <column id="C10_6"  name="DT_REFRESH_EXPIRA"      type="TIMESTAMP"     pk="false" nullable="true"/>
+        <column id="C10_7"  name="ID_INVITE_USADO"        type="NUMBER(10)"    pk="false" nullable="true"  fk="true" references="ENT_INVITE_TUTOR.C9_1" unique="true" addedBy="V3_UK"/>
+        <column id="C10_8"  name="DT_CRIACAO"             type="TIMESTAMP"     pk="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <column id="C10_9"  name="DT_ULTIMO_LOGIN"        type="TIMESTAMP"     pk="false" nullable="true"/>
+        <column id="C10_10" name="NR_TENTATIVAS_LOGIN"    type="NUMBER(2)"     pk="false" nullable="false" default="0"/>
+        <column id="C10_11" name="DT_BLOQUEIO"            type="TIMESTAMP"     pk="false" nullable="true"/>
+        <column id="C10_12" name="ST_ATIVA"               type="CHAR(1)"       pk="false" nullable="false" default="'S'" check="ST_ATIVA IN ('S','N')"/>
+        <column id="C10_13" name="ST_EMAIL_VERIFICADO"    type="CHAR(1)"       pk="false" nullable="false" default="'N'" check="ST_EMAIL_VERIFICADO IN ('S','N')"/>
+        <column id="C10_14" name="DS_TOKEN_RESET"         type="VARCHAR2(256)" pk="false" nullable="true"/>
+        <column id="C10_15" name="DT_TOKEN_EXPIRA"        type="TIMESTAMP"     pk="false" nullable="true"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_CONTA_TUTOR_TUTOR"  columns="ID_TUTOR"        references="ENT_TUTOR"         refColumns="ID_TUTOR"/>
+        <foreignKey name="FK_CONTA_INVITE"        columns="ID_INVITE_USADO" references="ENT_INVITE_TUTOR"  refColumns="ID_INVITE"/>
+        <uniqueKey  name="UK_CONTA_TUTOR_EMAIL"   columns="DS_EMAIL_LOGIN"/>
+        <uniqueKey  name="UK_CONTA_TUTOR_TUTOR"   columns="ID_TUTOR"/>
+        <uniqueKey  name="UK_CONTA_INVITE_USED"   columns="ID_INVITE_USADO" addedBy="V3"/>
+        <checkConstraint name="CHK_CONTA_ATIVA"     expression="ST_ATIVA IN ('S','N')"/>
+        <checkConstraint name="CHK_CONTA_EMAIL_VER" expression="ST_EMAIL_VERIFICADO IN ('S','N')"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_CONSENTIMENTO" name="CONSENTIMENTO" owner="Java" javaAccess="READ_WRITE">
+      <comment>Somente INSERT — nunca UPDATE. Histórico LGPD de consentimentos.</comment>
+      <columns>
+        <column id="C11_1"  name="ID_CONSENTIMENTO"  type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C11_2"  name="ID_TUTOR"          type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_TUTOR.C6_1"/>
+        <column id="C11_3"  name="DS_TIPO"           type="VARCHAR2(100)" pk="false" nullable="false" check="DS_TIPO IN ('TELEORIENTACAO','LEMBRETES','DADOS_ANONIMOS','COMPARTILHAR_SEGURADORA','MARKETING')"/>
+        <column id="C11_4"  name="DS_VERSAO_TERMO"   type="VARCHAR2(20)"  pk="false" nullable="false"/>
+        <column id="C11_5"  name="ST_ACEITO"         type="CHAR(1)"       pk="false" nullable="false" check="ST_ACEITO IN ('S','N')"/>
+        <column id="C11_6"  name="DT_ACEITE"         type="TIMESTAMP"     pk="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <column id="C11_7"  name="DS_TEXTO_TERMO"    type="CLOB"          pk="false" nullable="true"/>
+        <column id="C11_8"  name="DS_IP_ACEITE"      type="VARCHAR2(45)"  pk="false" nullable="true"/>
+        <column id="C11_9"  name="DT_REVOGACAO"      type="TIMESTAMP"     pk="false" nullable="true"/>
+        <column id="C11_10" name="DS_IP_REVOGACAO"   type="VARCHAR2(45)"  pk="false" nullable="true"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_CONSENT_TUTOR"  columns="ID_TUTOR"  references="ENT_TUTOR" refColumns="ID_TUTOR"/>
+        <checkConstraint name="CHK_CONSENT_TIPO"   expression="DS_TIPO IN ('TELEORIENTACAO','LEMBRETES','DADOS_ANONIMOS','COMPARTILHAR_SEGURADORA','MARKETING')"/>
+        <checkConstraint name="CHK_CONSENT_ACEITO" expression="ST_ACEITO IN ('S','N')"/>
+        <index name="IDX_CONSENT_TUTOR" columns="ID_TUTOR,DS_TIPO"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_EVENTO_CLINICO" name="EVENTO_CLINICO" owner=".NET" javaAccess="STUB_FK_ONLY">
+      <comment>Owned pelo .NET. Stub criado pelo Java apenas para suportar FK de AGENDAMENTO.ID_EVENTO_GERADO (V5).</comment>
+      <columns>
+        <column id="C12_1" name="ID_EVENTO"    type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C12_2" name="ID_PET"       type="NUMBER(10)"    pk="false" nullable="true"  fk="true" references="ENT_PET.C7_1"/>
+        <column id="C12_3" name="DS_DESCRICAO" type="VARCHAR2(500)" pk="false" nullable="true"/>
+        <column id="C12_4" name="DT_EVENTO"    type="TIMESTAMP"     pk="false" nullable="true"  default="CURRENT_TIMESTAMP"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_EVENTO_PET" columns="ID_PET" references="ENT_PET" refColumns="ID_PET"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_AGENDAMENTO" name="AGENDAMENTO" owner="SHARED" javaAccess="READ_WRITE">
+      <comment>Shared-write: Java cria/edita/cancela; .NET atualiza ST_STATUS. NR_VERSION = optimistic lock @Version.</comment>
+      <columns>
+        <column id="C13_1"  name="ID_AGENDAMENTO"    type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
+        <column id="C13_2"  name="ID_CLINICA"         type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_CLINICA.C1_1"/>
+        <column id="C13_3"  name="ID_TUTOR"           type="NUMBER(10)"    pk="false" nullable="true"  fk="true" references="ENT_TUTOR.C6_1"/>
+        <column id="C13_4"  name="ID_PET"             type="NUMBER(10)"    pk="false" nullable="true"  fk="true" references="ENT_PET.C7_1"/>
+        <column id="C13_5"  name="ID_VETERINARIO"     type="NUMBER(10)"    pk="false" nullable="true"  fk="true" references="ENT_VETERINARIO.C5_1"/>
+        <column id="C13_6"  name="DT_AGENDAMENTO"     type="TIMESTAMP"     pk="false" nullable="false"/>
+        <column id="C13_7"  name="NR_DURACAO_MINUTOS" type="NUMBER(4)"     pk="false" nullable="true"  default="30"/>
+        <column id="C13_8"  name="DS_TIPO"            type="VARCHAR2(30)"  pk="false" nullable="true"/>
+        <column id="C13_9"  name="ST_STATUS"          type="VARCHAR2(20)"  pk="false" nullable="false" default="'AGENDADO'" check="ST_STATUS IN ('INTENCAO','AGENDADO','CONFIRMADO','REALIZADO','CANCELADO','NAO_COMPARECEU')"/>
+        <column id="C13_10" name="DS_ORIGEM"          type="VARCHAR2(20)"  pk="false" nullable="false" default="'PORTAL'"/>
+        <column id="C13_11" name="NR_VERSION"         type="NUMBER(10)"    pk="false" nullable="false" default="0" jpaAnnotation="@Version"/>
+        <!-- V5 columns -->
+        <column id="C13_12" name="DS_OBSERVACOES"     type="VARCHAR2(1000)"pk="false" nullable="true"  addedBy="V5"/>
+        <column id="C13_13" name="DT_CRIACAO"         type="TIMESTAMP"     pk="false" nullable="false" default="CURRENT_TIMESTAMP" addedBy="V5"/>
+        <column id="C13_14" name="DT_CONFIRMACAO"     type="TIMESTAMP"     pk="false" nullable="true"  addedBy="V5"/>
+        <column id="C13_15" name="DT_CANCELAMENTO"    type="TIMESTAMP"     pk="false" nullable="true"  addedBy="V5"/>
+        <column id="C13_16" name="DS_MOTIVO_CANCEL"   type="VARCHAR2(500)" pk="false" nullable="true"  addedBy="V5"/>
+        <column id="C13_17" name="ID_EVENTO_GERADO"   type="NUMBER(10)"    pk="false" nullable="true"  fk="true" references="ENT_EVENTO_CLINICO.C12_1" addedBy="V5"/>
+      </columns>
+      <constraints>
+        <foreignKey name="FK_AGEND_CLINICA"  columns="ID_CLINICA"       references="ENT_CLINICA"       refColumns="ID_CLINICA"/>
+        <foreignKey name="FK_AGEND_TUTOR"    columns="ID_TUTOR"         references="ENT_TUTOR"         refColumns="ID_TUTOR"/>
+        <foreignKey name="FK_AGEND_PET"      columns="ID_PET"           references="ENT_PET"           refColumns="ID_PET"/>
+        <foreignKey name="FK_AGEND_VET"      columns="ID_VETERINARIO"   references="ENT_VETERINARIO"   refColumns="ID_VETERINARIO"/>
+        <foreignKey name="FK_AGEND_EVENTO"   columns="ID_EVENTO_GERADO" references="ENT_EVENTO_CLINICO" refColumns="ID_EVENTO" addedBy="V5"/>
+        <checkConstraint name="CHK_AGEND_STATUS" expression="ST_STATUS IN ('INTENCAO','AGENDADO','CONFIRMADO','REALIZADO','CANCELADO','NAO_COMPARECEU')"/>
+        <index name="IDX_AGEND_TUTOR"  columns="ID_TUTOR"/>
+        <index name="IDX_AGEND_PET"    columns="ID_PET"/>
+        <index name="IDX_AGEND_DT"     columns="DT_AGENDAMENTO"/>
+        <index name="IDX_AGEND_EVENTO" columns="ID_EVENTO_GERADO" addedBy="V5"/>
+      </constraints>
+    </entity>
+
+    <entity id="ENT_IDEMPOTENCY_KEY" name="IDEMPOTENCY_KEY" owner="Java" javaAccess="READ_WRITE">
+      <comment>Exactly-once para POSTs sensíveis (CONSENTIMENTO). TTL 24h. Limpeza via job agendado.</comment>
+      <columns>
+        <column id="C14_1" name="ID_IDEMPOTENCY"     type="NUMBER(10)"   pk="true"  nullable="false" identity="true"/>
+        <column id="C14_2" name="DS_KEY"             type="VARCHAR2(64)" pk="false" nullable="false"/>
+        <column id="C14_3" name="NM_RESOURCE"        type="VARCHAR2(60)" pk="false" nullable="false"/>
+        <column id="C14_4" name="ID_RESOURCE_CRIADO" type="NUMBER(10)"   pk="false" nullable="false"/>
+        <column id="C14_5" name="DT_CRIACAO"         type="TIMESTAMP"    pk="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <column id="C14_6" name="DT_EXPIRACAO"       type="TIMESTAMP"    pk="false" nullable="false"/>
+      </columns>
+      <constraints>
+        <uniqueKey name="UK_IDEM_KEY_RESOURCE" columns="DS_KEY,NM_RESOURCE"/>
+        <index name="IDX_IDEMPOT_CRIACAO" columns="DT_CRIACAO" addedBy="V2"/>
+      </constraints>
+    </entity>
+
+  </entities>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       RELACIONAMENTOS
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <relationships>
+    <relationship id="R01" name="ESPECIE_RACA"         source="ENT_ESPECIE"       target="ENT_RACA"           cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R02" name="ESPECIE_PET"          source="ENT_ESPECIE"       target="ENT_PET"            cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R03" name="CLINICA_VETERINARIO"  source="ENT_CLINICA"       target="ENT_VETERINARIO"    cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R04" name="CLINICA_TUTOR"        source="ENT_CLINICA"       target="ENT_TUTOR"          cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R05" name="CLINICA_PET"          source="ENT_CLINICA"       target="ENT_PET"            cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R06" name="CLINICA_AGENDAMENTO"  source="ENT_CLINICA"       target="ENT_AGENDAMENTO"    cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R07" name="RACA_PET"             source="ENT_RACA"          target="ENT_PET"            cardinality="ONE_TO_MANY"   sourceRequired="false" targetRequired="false"/>
+    <relationship id="R08" name="VET_PET_RESP"         source="ENT_VETERINARIO"   target="ENT_PET"            cardinality="ONE_TO_MANY"   sourceRequired="false" targetRequired="false"/>
+    <relationship id="R09" name="TUTOR_TUTOR_PET"      source="ENT_TUTOR"         target="ENT_TUTOR_PET"      cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R10" name="PET_TUTOR_PET"        source="ENT_PET"           target="ENT_TUTOR_PET"      cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R11" name="TUTOR_INVITE"         source="ENT_TUTOR"         target="ENT_INVITE_TUTOR"   cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R12" name="TUTOR_CONTA"          source="ENT_TUTOR"         target="ENT_CONTA_TUTOR"    cardinality="ONE_TO_ONE"    sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R13" name="INVITE_CONTA"         source="ENT_INVITE_TUTOR"  target="ENT_CONTA_TUTOR"    cardinality="ONE_TO_ZERO_OR_ONE" sourceRequired="false" targetRequired="false"/>
+    <relationship id="R14" name="TUTOR_CONSENTIMENTO"  source="ENT_TUTOR"         target="ENT_CONSENTIMENTO"  cardinality="ONE_TO_MANY"   sourceRequired="true"  targetRequired="true"/>
+    <relationship id="R15" name="PET_EVENTO"           source="ENT_PET"           target="ENT_EVENTO_CLINICO" cardinality="ONE_TO_MANY"   sourceRequired="false" targetRequired="false"/>
+    <relationship id="R16" name="TUTOR_AGENDAMENTO"    source="ENT_TUTOR"         target="ENT_AGENDAMENTO"    cardinality="ONE_TO_MANY"   sourceRequired="false" targetRequired="false"/>
+    <relationship id="R17" name="PET_AGENDAMENTO"      source="ENT_PET"           target="ENT_AGENDAMENTO"    cardinality="ONE_TO_MANY"   sourceRequired="false" targetRequired="false"/>
+    <relationship id="R18" name="VET_AGENDAMENTO"      source="ENT_VETERINARIO"   target="ENT_AGENDAMENTO"    cardinality="ONE_TO_MANY"   sourceRequired="false" targetRequired="false"/>
+    <relationship id="R19" name="EVENTO_AGENDAMENTO"   source="ENT_EVENTO_CLINICO" target="ENT_AGENDAMENTO"   cardinality="ONE_TO_MANY"   sourceRequired="false" targetRequired="false" addedBy="V5"/>
+  </relationships>
+
+</PhysicalModel>
