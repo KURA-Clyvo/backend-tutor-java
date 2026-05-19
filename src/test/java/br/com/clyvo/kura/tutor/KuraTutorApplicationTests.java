@@ -1,6 +1,6 @@
 package br.com.clyvo.kura.tutor;
 
-import br.com.clyvo.kura.tutor.security.JWTUtil;
+import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,14 +14,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Testes de integracao basicos — equivalente ao ProjetoMusicaApplicationTests da aula.
+ * Testes de integração da aplicação — contexto completo com H2.
  *
- * Cobre os cenarios criticos identificados na analise de QA:
- * - Contexto sobe sem erro
- * - Rotas protegidas exigem JWT
- * - Rotas publicas funcionam sem JWT
- * - Token invalido retorna 403
- * - Payload invalido retorna 400 com mapa de erros
+ * Mudanças em relação à versão anterior:
+ *   - JWTUtil substituído por JwtTokenProvider (T08)
+ *   - 403 → 401 (JwtAuthenticationEntryPoint corrige o comportamento default)
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -31,13 +28,13 @@ class KuraTutorApplicationTests {
     private MockMvc mockMvc;
 
     @Autowired
-    private JWTUtil jwtUtil;
+    private JwtTokenProvider jwtTokenProvider;
 
     @Test
     @DisplayName("Contexto Spring deve subir sem erros")
     void contextLoads() {
         assertThat(mockMvc).isNotNull();
-        assertThat(jwtUtil).isNotNull();
+        assertThat(jwtTokenProvider).isNotNull();
     }
 
     @Test
@@ -48,10 +45,11 @@ class KuraTutorApplicationTests {
     }
 
     @Test
-    @DisplayName("GET /api/tutores sem token deve retornar 403")
-    void tutoresSemToken() throws Exception {
-        mockMvc.perform(get("/api/tutores"))
-                .andExpect(status().isForbidden());
+    @DisplayName("GET /api/agendamentos sem token deve retornar 401 (não 403)")
+    void agendamentosSemToken() throws Exception {
+        mockMvc.perform(get("/api/agendamentos")
+                .param("tutorId", "1"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -66,24 +64,18 @@ class KuraTutorApplicationTests {
     }
 
     @Test
-    @DisplayName("GET /api/tutores com token invalido deve retornar 403")
-    void tutoresTokenInvalido() throws Exception {
-        mockMvc.perform(get("/api/tutores")
+    @DisplayName("GET /api/agendamentos com token invalido deve retornar 401 (não 403)")
+    void agendamentosTokenInvalido() throws Exception {
+        mockMvc.perform(get("/api/agendamentos")
+                .param("tutorId", "1")
                 .header("Authorization", "Bearer token.invalido.aqui"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("JWTUtil deve gerar e validar token corretamente")
-    void jwtGerarEValidar() {
-        String token = jwtUtil.gerarToken("teste@clyvo.vet");
-        assertThat(jwtUtil.validarToken(token)).isTrue();
-        assertThat(jwtUtil.extrairUsername(token)).isEqualTo("teste@clyvo.vet");
-    }
-
-    @Test
-    @DisplayName("JWTUtil deve rejeitar token malformado")
-    void jwtTokenMalformado() {
-        assertThat(jwtUtil.validarToken("isso.nao.e.um.jwt")).isFalse();
+    @DisplayName("GET /api/actuator/health deve retornar 200 sem autenticacao")
+    void actuatorHealthPublico() throws Exception {
+        mockMvc.perform(get("/api/actuator/health"))
+                .andExpect(status().isOk());
     }
 }

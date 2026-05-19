@@ -9,7 +9,7 @@ import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
 import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
 import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
-import br.com.clyvo.kura.tutor.security.JWTUtil;
+import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,21 +30,21 @@ import java.time.LocalDateTime;
 public class AuthService {
 
     private static final int MAX_TENTATIVAS = 5;
-    private static final long TOKEN_EXPIRES_SECONDS = 86_400L;
+    private static final long ACCESS_EXPIRES_SECONDS = 900L; // 15 minutos
 
     private final ContaTutorRepository contaTutorRepository;
     private final TutorRepository tutorRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JWTUtil jwtUtil;
+    private final JwtTokenProvider jwtTokenProvider;
 
     public AuthService(ContaTutorRepository contaTutorRepository,
                        TutorRepository tutorRepository,
                        PasswordEncoder passwordEncoder,
-                       JWTUtil jwtUtil) {
+                       JwtTokenProvider jwtTokenProvider) {
         this.contaTutorRepository = contaTutorRepository;
         this.tutorRepository = tutorRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtUtil = jwtUtil;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @Transactional
@@ -70,8 +70,8 @@ public class AuthService {
         conta.setDtUltimoLogin(LocalDateTime.now());
         contaTutorRepository.save(conta);
 
-        String token = jwtUtil.gerarToken(conta.getDsEmailLogin());
-        return TokenResponse.of(token, TOKEN_EXPIRES_SECONDS,
+        String accessToken = jwtTokenProvider.gerarAccess(conta);
+        return TokenResponse.of(accessToken, ACCESS_EXPIRES_SECONDS,
                 conta.getIdConta(), conta.getTutor().getNmTutor());
     }
 
@@ -99,8 +99,8 @@ public class AuthService {
 
         conta = contaTutorRepository.save(conta);
 
-        String token = jwtUtil.gerarToken(conta.getDsEmailLogin());
-        return TokenResponse.of(token, TOKEN_EXPIRES_SECONDS,
+        String accessToken = jwtTokenProvider.gerarAccess(conta);
+        return TokenResponse.of(accessToken, ACCESS_EXPIRES_SECONDS,
                 conta.getIdConta(), tutor.getNmTutor());
     }
 }

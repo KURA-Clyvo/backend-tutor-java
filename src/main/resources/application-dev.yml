@@ -38,9 +38,8 @@ management:
 
 kura:
   jwt:
-    # Fallback local — NÃO usar em produção. Mínimo 64 bytes em prod.
+    # Fallback local — NÃO usar em produção. Mínimo 64 bytes em prod (exigência HS512).
     secret: ${JWT_SECRET:dev-secret-trocar-em-prod-com-no-minimo-64-bytes-gerado-localmente-aqui}
-    expiration-ms: 900000
 
 logging:
   level:
