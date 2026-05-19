@@ -1,14 +1,11 @@
 package br.com.clyvo.kura.tutor.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * Vinculo N:N entre Tutor e Pet.
- * Um pet pode ter multiplos tutores (casal compartilhando guarda).
- * ST_PRINCIPAL='S' indica quem recebe notificacoes da Luna.
- */
+@Immutable
 @Entity
 @Table(name = "tutor_pet")
 public class TutorPet {
@@ -27,15 +24,15 @@ public class TutorPet {
     private Pet pet;
 
     @Column(name = "ds_vinculo", nullable = false, length = 40)
-    private String dsVinculo = "PROPRIETARIO";
+    private String dsVinculo;
 
     @Column(name = "dt_vinculo", nullable = false)
     private LocalDateTime dtVinculo;
 
     @Column(name = "st_principal", nullable = false, length = 1)
-    private String stPrincipal = "S";
+    private String stPrincipal;
 
-    public TutorPet() {}
+    protected TutorPet() {}
 
     public TutorPetId getId() { return id; }
     public Tutor getTutor() { return tutor; }
@@ -49,7 +46,7 @@ public class TutorPet {
     public static class TutorPetId implements Serializable {
         @Column(name = "id_tutor") private Long idTutor;
         @Column(name = "id_pet")   private Long idPet;
-        public TutorPetId() {}
+        protected TutorPetId() {}
         public TutorPetId(Long idTutor, Long idPet) { this.idTutor = idTutor; this.idPet = idPet; }
         public Long getIdTutor() { return idTutor; }
         public Long getIdPet()   { return idPet; }

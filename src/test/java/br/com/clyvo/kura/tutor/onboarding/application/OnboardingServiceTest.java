@@ -60,7 +60,7 @@ class OnboardingServiceTest {
     @BeforeEach
     void setUp() {
         inviteValido  = stubInvite(TOKEN_VALIDO, false, true, LocalDateTime.now().plusDays(7));
-        tutorAtivo    = stubTutor(1L, true, true);
+        tutorAtivo    = stubTutor(1L, true);
         requestValido = new RegisterInviteRequest(TOKEN_VALIDO, "Senha@123", List.of());
     }
 
@@ -71,7 +71,7 @@ class OnboardingServiceTest {
     void deveCriarContaEConsentimentosComInviteValido() {
         ContaTutor contaSalva = contaComId(10L);
         when(inviteRepo.findByNrToken(TOKEN_VALIDO)).thenReturn(Optional.of(inviteValido));
-        when(tutorRepo.findById(1L)).thenReturn(Optional.of(tutorAtivo));
+        when(tutorRepo.findByIdTutorAndStAtivo(1L, "S")).thenReturn(Optional.of(tutorAtivo));
         when(encoder.encode(anyString())).thenReturn("$2a$hash");
         when(contaRepo.save(any())).thenReturn(contaSalva);
         when(jwt.gerarAccess(any())).thenReturn("access.token.ok");
@@ -102,7 +102,7 @@ class OnboardingServiceTest {
         ContaTutor contaSalva = contaComId(10L);
 
         when(inviteRepo.findByNrToken(TOKEN_VALIDO)).thenReturn(Optional.of(inviteValido));
-        when(tutorRepo.findById(1L)).thenReturn(Optional.of(tutorAtivo));
+        when(tutorRepo.findByIdTutorAndStAtivo(1L, "S")).thenReturn(Optional.of(tutorAtivo));
         when(encoder.encode(anyString())).thenReturn("$2a$hash");
         when(contaRepo.save(any())).thenReturn(contaSalva);
         when(jwt.gerarAccess(any())).thenReturn("access");
@@ -166,7 +166,7 @@ class OnboardingServiceTest {
     @DisplayName("deveLancar409SeUKDispararNoSave — race condition simulada")
     void deveLancar409SeUKDispararNoSave() {
         when(inviteRepo.findByNrToken(TOKEN_VALIDO)).thenReturn(Optional.of(inviteValido));
-        when(tutorRepo.findById(1L)).thenReturn(Optional.of(tutorAtivo));
+        when(tutorRepo.findByIdTutorAndStAtivo(1L, "S")).thenReturn(Optional.of(tutorAtivo));
         when(encoder.encode(anyString())).thenReturn("$2a$hash");
         when(contaRepo.save(any())).thenThrow(new DataIntegrityViolationException("UK_CONTA_INVITE_USED"));
         when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
@@ -187,7 +187,7 @@ class OnboardingServiceTest {
         ContaTutor contaSalva = contaComId(10L);
 
         when(inviteRepo.findByNrToken(TOKEN_VALIDO)).thenReturn(Optional.of(inviteValido));
-        when(tutorRepo.findById(1L)).thenReturn(Optional.of(tutorAtivo));
+        when(tutorRepo.findByIdTutorAndStAtivo(1L, "S")).thenReturn(Optional.of(tutorAtivo));
         when(encoder.encode(anyString())).thenReturn("$2a$hash");
         when(contaRepo.save(any())).thenReturn(contaSalva);
         when(consentRepo.save(any())).thenThrow(new RuntimeException("DB indisponível"));
@@ -221,12 +221,11 @@ class OnboardingServiceTest {
         return invite;
     }
 
-    private Tutor stubTutor(Long id, boolean ativo, boolean avisoPrivacidade) {
+    private Tutor stubTutor(Long id, boolean avisoPrivacidade) {
         Tutor t = mock(Tutor.class);
         when(t.getIdTutor()).thenReturn(id);
         when(t.getNmTutor()).thenReturn("Tutor Teste");
         when(t.getDsEmail()).thenReturn("tutor@test.com");
-        when(t.isAtivo()).thenReturn(ativo);
         when(t.temAvisoPrivacidade()).thenReturn(avisoPrivacidade);
         return t;
     }

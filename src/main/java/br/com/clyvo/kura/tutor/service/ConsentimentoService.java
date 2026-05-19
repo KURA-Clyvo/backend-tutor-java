@@ -93,7 +93,7 @@ public class ConsentimentoService {
     }
 
     private Tutor validarTutor(Long idTutor) {
-        return tutorRepository.findById(idTutor)
+        return tutorRepository.findByIdTutorAndStAtivo(idTutor, "S")
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Tutor", idTutor));
     }
 }

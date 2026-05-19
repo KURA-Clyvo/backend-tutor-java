@@ -39,7 +39,7 @@ public class RelatorioLgpdService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> gerarRelatorio(Long idTutor) {
-        Tutor tutor = tutorRepository.findById(idTutor)
+        Tutor tutor = tutorRepository.findByIdTutorAndStAtivo(idTutor, "S")
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Tutor", idTutor));
 
         List<Consentimento> consentimentos =
@@ -58,12 +58,12 @@ public class RelatorioLgpdService {
         identificacao.put("nome", tutor.getNmTutor());
         identificacao.put("cpf", mascararCpf(tutor.getNrCpf()));
         identificacao.put("email", tutor.getDsEmail());
-        identificacao.put("telefone", tutor.getDsTelefone());
+        identificacao.put("telefone", tutor.getNrTelefone());
         identificacao.put("whatsapp", tutor.getDsWhatsapp());
         identificacao.put("dataNascimento", tutor.getDtNascimento());
         identificacao.put("cidade", tutor.getNmCidade());
         identificacao.put("uf", tutor.getSgUf());
-        identificacao.put("cadastradoEm", tutor.getDtCadastro());
+        identificacao.put("cadastradoEm", tutor.getDtCriacao());
         relatorio.put("dadosPessoais", identificacao);
 
         // Aviso de privacidade (transparencia LGPD)

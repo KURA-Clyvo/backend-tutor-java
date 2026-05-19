@@ -84,16 +84,11 @@ public class OnboardingService {
             throw new GoneException("Convite expirado.");
         }
 
-        // 5. Tutor associado ao convite deve existir
-        Tutor tutor = tutorRepo.findById(invite.getIdTutor())
+        // 5. Tutor ativo associado ao convite deve existir (ST_ATIVO='S')
+        Tutor tutor = tutorRepo.findByIdTutorAndStAtivo(invite.getIdTutor(), "S")
                 .orElseThrow(() -> new NotFoundException("Tutor", invite.getIdTutor()));
 
-        // 6. Tutor deve estar ativo
-        if (!tutor.isAtivo()) {
-            throw new RegraDeNegocioException("Tutor inativo não pode criar conta no portal.");
-        }
-
-        // 7. Tutor deve ter recebido o aviso de privacidade (LGPD art. 6, VI)
+        // 6. Tutor deve ter recebido o aviso de privacidade (LGPD art. 6, VI)
         if (!tutor.temAvisoPrivacidade()) {
             throw new RegraDeNegocioException(
                     "Tutor não recebeu o aviso de privacidade. Entre em contato com a clínica.");

@@ -39,7 +39,7 @@ public class CatalogoController {
             @RequestParam(required = false) Long especieId,
             @PageableDefault(size = 20) Pageable pageable) {
         Page<Raca> resultado = (especieId != null)
-                ? racaRepository.findByEspecieId(especieId, pageable)
+                ? racaRepository.findByEspecie_IdEspecie(especieId, pageable)
                 : racaRepository.findAll(pageable);
         return ResponseEntity.ok(resultado);
     }

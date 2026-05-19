@@ -1,16 +1,20 @@
 package br.com.clyvo.kura.tutor.repository;
+
 import br.com.clyvo.kura.tutor.entity.Tutor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.PagingAndSortingRepository;
+import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+
 import java.util.Optional;
-@Repository
-public interface TutorRepository extends JpaRepository<Tutor, Long> {
-    Optional<Tutor> findByNrCpf(String nrCpf);
+
+public interface TutorRepository extends Repository<Tutor, Long>, PagingAndSortingRepository<Tutor, Long> {
+
+    Optional<Tutor> findByIdTutorAndStAtivo(Long idTutor, String stAtivo);
     Optional<Tutor> findByDsEmailAndStAtivo(String dsEmail, String stAtivo);
+    Optional<Tutor> findByNrCpfAndStAtivo(String nrCpf, String stAtivo);
 
     @Query("""
         SELECT DISTINCT t FROM Tutor t

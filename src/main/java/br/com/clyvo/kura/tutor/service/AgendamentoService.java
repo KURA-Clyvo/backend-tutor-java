@@ -49,10 +49,10 @@ public class AgendamentoService {
 
     @Transactional
     public AgendamentoResponse criar(Long idTutor, AgendamentoRequest request) {
-        Tutor tutor = tutorRepository.findById(idTutor)
+        Tutor tutor = tutorRepository.findByIdTutorAndStAtivo(idTutor, "S")
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Tutor", idTutor));
 
-        Pet pet = petRepository.findById(request.idPet())
+        Pet pet = petRepository.findByIdPetAndStAtivo(request.idPet(), "S")
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pet", request.idPet()));
 
         // Prevencao de IDOR: pet deve pertencer ao tutor autenticado

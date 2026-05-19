@@ -24,7 +24,7 @@ public class TutorService {
 
     @Transactional(readOnly = true)
     public TutorResponse buscarPorId(Long idTutor) {
-        return tutorRepository.findById(idTutor)
+        return tutorRepository.findByIdTutorAndStAtivo(idTutor, "S")
                 .map(TutorResponse::fromEntity)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Tutor", idTutor));
     }
@@ -39,9 +39,9 @@ public class TutorService {
     @Transactional(readOnly = true)
     @Cacheable(value = "petsPorTutor", key = "#idTutor + '-' + #pageable.pageNumber")
     public Page<PetResponse> listarPets(Long idTutor, Pageable pageable) {
-        tutorRepository.findById(idTutor)
+        tutorRepository.findByIdTutorAndStAtivo(idTutor, "S")
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Tutor", idTutor));
-        return petRepository.findPetsByTutorId(idTutor, pageable)
+        return petRepository.findAtivosByIdTutor(idTutor, pageable)
                 .map(PetResponse::fromEntity);
     }
 }
