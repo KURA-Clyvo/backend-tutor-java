@@ -1,0 +1,22 @@
+# Build output — never send to Docker daemon
+target/
+
+# Version control
+.git
+.gitignore
+
+# IDE metadata
+.idea
+.settings
+.classpath
+.project
+
+# Docker files themselves (avoid cache invalidation on compose changes)
+docker-compose*.yml
+Dockerfile
+
+# Secrets and docs
+.env*
+*.md
+plano.md
+README.md

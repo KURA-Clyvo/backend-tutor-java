@@ -2,6 +2,9 @@
 .env
 *.env
 
+# ── Docker overrides com credenciais locais ────────────────────────────────────
+docker-compose.override.yml
+
 # ── Build ──────────────────────────────────────────────────────────────────────
 target/
 *.class

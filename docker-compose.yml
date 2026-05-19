@@ -1,0 +1,29 @@
+# KURA · Backend Tutor · docker-compose.yml
+# Dev rápido: sem Oracle local — usa Oracle FIAP via variáveis de ambiente.
+# Copie docker-compose.override.yml.example → docker-compose.override.yml e
+# preencha as credenciais antes de rodar "docker compose up".
+
+services:
+  kura-tutor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kura-backend-tutor:latest
+    container_name: kura-tutor
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_EXPIRATION_MINUTES: ${JWT_ACCESS_EXPIRATION_MINUTES:-15}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
+    networks:
+      - kura-net
+    restart: unless-stopped
+
+networks:
+  kura-net:
+    driver: bridge
