@@ -1,6 +1,7 @@
 package br.com.clyvo.kura.tutor.auth.application;
 
 import br.com.clyvo.kura.tutor.auth.api.dto.LoginRequest;
+import br.com.clyvo.kura.tutor.auth.api.dto.RefreshRequest;
 import br.com.clyvo.kura.tutor.auth.api.dto.TokenResponse;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
 import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
@@ -83,5 +84,55 @@ public class AuthService {
                 ACCESS_EXPIRES_SECONDS,
                 conta.getIdConta(),
                 conta.getTutor().getNmTutor());
+    }
+
+    /**
+     * Renova o par de tokens a partir de um refresh token válido.
+     *
+     * ROTATION: o refresh anterior é imediatamente invalidado — o cliente
+     * deve persistir e usar apenas o refresh retornado nesta resposta.
+     *
+     * Ordem de verificação (fail-fast, mais barata primeiro):
+     *   1. Assinatura/expiração JWT  → 401
+     *   2. Conta existente           → 401 (mensagem genérica, anti-enumeração)
+     *   3. Conta inativa             → 403
+     *   4. Conta bloqueada           → 423
+     *   5. Hash nulo/expirado/errado → 401
+     *   6. OK → rotaciona e retorna novo par
+     */
+    @Transactional
+    public TokenResponse refresh(RefreshRequest request) {
+
+        // 1. Valida assinatura e expiração do JWT
+        Long idConta = jwt.validar(request.refreshToken())
+                .map(claims -> Long.parseLong(claims.getSubject()))
+                .orElseThrow(() -> new BadCredentialsException("Token de refresh invalido ou expirado."));
+
+        // 2. Busca conta — mensagem genérica evita enumeração de ids
+        ContaTutor conta = contaRepo.findById(idConta)
+                .orElseThrow(() -> new BadCredentialsException("Token de refresh invalido ou expirado."));
+
+        // 3-4. Estado da conta (antes do BCrypt — evita CPU desnecessário)
+        if (!conta.isAtiva())    throw new AccountInactiveException();
+        if (conta.isBloqueada()) throw new AccountLockedException();
+
+        // 5. Valida hash armazenado — cobre: hash nulo, expiração DB e token rotacionado
+        if (conta.getDsRefreshTokenHash() == null
+                || conta.getDtRefreshExpira() == null
+                || LocalDateTime.now().isAfter(conta.getDtRefreshExpira())
+                || !encoder.matches(request.refreshToken(), conta.getDsRefreshTokenHash())) {
+            throw new BadCredentialsException("Token de refresh invalido ou expirado.");
+        }
+
+        // 6. Gera novo par e rotaciona hash
+        String accessToken  = jwt.gerarAccess(conta);
+        String refreshToken = jwt.gerarRefresh(conta);
+        conta.rotacionarRefresh(
+                encoder.encode(refreshToken),
+                LocalDateTime.now().plusDays(REFRESH_EXPIRATION_DAYS));
+        contaRepo.save(conta);
+
+        return TokenResponse.of(accessToken, refreshToken, ACCESS_EXPIRES_SECONDS,
+                conta.getIdConta(), conta.getTutor().getNmTutor());
     }
 }

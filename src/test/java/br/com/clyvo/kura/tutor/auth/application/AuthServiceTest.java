@@ -1,12 +1,14 @@
 package br.com.clyvo.kura.tutor.auth.application;
 
 import br.com.clyvo.kura.tutor.auth.api.dto.LoginRequest;
+import br.com.clyvo.kura.tutor.auth.api.dto.RefreshRequest;
 import br.com.clyvo.kura.tutor.auth.api.dto.TokenResponse;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
 import br.com.clyvo.kura.tutor.entity.Tutor;
 import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.AccountInactiveException;
 import br.com.clyvo.kura.tutor.shared.exception.AccountLockedException;
+import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -169,6 +172,77 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service.login(loginRequest))
                 .isInstanceOf(AccountInactiveException.class);
+    }
+
+    // ─── T11: Refresh token rotation ─────────────────────────────────────────
+
+    @Test
+    @DisplayName("refreshValidoDeveRotacionarERetornarNovoPar")
+    void refreshValidoDeveRotacionarERetornarNovoPar() {
+        ContaTutor conta = contaAtiva(0);
+        conta.setDsRefreshTokenHash("$2a$12$oldRefreshHash");
+        conta.setDtRefreshExpira(LocalDateTime.now().plusDays(7));
+
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("10");
+        when(jwt.validar("old.refresh.jwt")).thenReturn(Optional.of(claims));
+        when(contaRepo.findById(10L)).thenReturn(Optional.of(conta));
+        when(encoder.matches("old.refresh.jwt", "$2a$12$oldRefreshHash")).thenReturn(true);
+        when(jwt.gerarAccess(conta)).thenReturn("new.access.jwt");
+        when(jwt.gerarRefresh(conta)).thenReturn("new.refresh.jwt");
+        when(encoder.encode("new.refresh.jwt")).thenReturn("$2a$12$newRefreshHash");
+        when(contaRepo.save(any())).thenReturn(conta);
+
+        TokenResponse resp = service.refresh(new RefreshRequest("old.refresh.jwt"));
+
+        assertThat(resp.accessToken()).isEqualTo("new.access.jwt");
+        assertThat(resp.refreshToken()).isEqualTo("new.refresh.jwt");
+        assertThat(resp.tokenType()).isEqualTo("Bearer");
+        assertThat(resp.expiresIn()).isEqualTo(900L);
+        // hash rotacionado para o novo refresh
+        assertThat(conta.getDsRefreshTokenHash()).isEqualTo("$2a$12$newRefreshHash");
+        assertThat(conta.getDtRefreshExpira()).isAfter(LocalDateTime.now());
+        verify(contaRepo).save(conta);
+    }
+
+    @Test
+    @DisplayName("refreshComTokenAntigoAposRotacaoDeveRetornar401 — token rotacionado invalida o anterior")
+    void refreshComTokenAntigoAposRotacaoDeveRetornar401() {
+        // DB já tem hash do novo token; o antigo chega aqui com BCrypt mismatch
+        ContaTutor conta = contaAtiva(0);
+        conta.setDsRefreshTokenHash("$2a$12$hashDoNovoToken");
+        conta.setDtRefreshExpira(LocalDateTime.now().plusDays(7));
+
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("10");
+        when(jwt.validar("stale.refresh.jwt")).thenReturn(Optional.of(claims));
+        when(contaRepo.findById(10L)).thenReturn(Optional.of(conta));
+        when(encoder.matches("stale.refresh.jwt", "$2a$12$hashDoNovoToken")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.refresh(new RefreshRequest("stale.refresh.jwt")))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessageContaining("invalido");
+
+        verify(jwt, never()).gerarAccess(any());
+        verify(jwt, never()).gerarRefresh(any());
+        verify(contaRepo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("refreshContaInativaDeveRetornar403 — BCrypt não é invocado para conta inativa")
+    void refreshContaInativaDeveRetornar403() {
+        ContaTutor conta = contaInativa();
+
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("10");
+        when(jwt.validar("refresh.jwt")).thenReturn(Optional.of(claims));
+        when(contaRepo.findById(10L)).thenReturn(Optional.of(conta));
+
+        assertThatThrownBy(() -> service.refresh(new RefreshRequest("refresh.jwt")))
+                .isInstanceOf(AccountInactiveException.class);
+
+        verifyNoInteractions(encoder);
+        verify(contaRepo, never()).save(any());
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

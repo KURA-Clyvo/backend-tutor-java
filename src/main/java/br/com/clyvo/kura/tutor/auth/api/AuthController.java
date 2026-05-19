@@ -1,6 +1,7 @@
 package br.com.clyvo.kura.tutor.auth.api;
 
 import br.com.clyvo.kura.tutor.auth.api.dto.LoginRequest;
+import br.com.clyvo.kura.tutor.auth.api.dto.RefreshRequest;
 import br.com.clyvo.kura.tutor.auth.api.dto.TokenResponse;
 import br.com.clyvo.kura.tutor.auth.application.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")
-@Tag(name = "Autenticação", description = "Login de conta do tutor")
+@Tag(name = "Autenticação", description = "Login e renovação de tokens do tutor")
 public class AuthController {
 
     private final AuthService authService;
@@ -42,5 +43,26 @@ public class AuthController {
     })
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    @Operation(
+            summary = "Renovar tokens via refresh token",
+            description = """
+                    Troca um refresh token válido por um novo par access + refresh.
+                    **ROTATION**: cada chamada invalida o refresh anterior — o cliente
+                    DEVE persistir e usar apenas o último refresh recebido.
+                    Tokens emitidos antes da última rotação são rejeitados (401).
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Novo par de tokens emitido"),
+            @ApiResponse(responseCode = "400", description = "Payload inválido"),
+            @ApiResponse(responseCode = "401", description = "Refresh token inválido, expirado ou já rotacionado"),
+            @ApiResponse(responseCode = "403", description = "Conta desativada"),
+            @ApiResponse(responseCode = "423", description = "Conta bloqueada por excesso de tentativas")
+    })
+    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
     }
 }
