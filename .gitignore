@@ -16,6 +16,9 @@ target/
 *.iml
 .vscode/
 *.swp
+.classpath
+.project
+.settings/
 
 # ── OS ─────────────────────────────────────────────────────────────────────────
 .DS_Store
