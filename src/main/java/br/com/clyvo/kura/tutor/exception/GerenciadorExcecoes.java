@@ -3,6 +3,7 @@ package br.com.clyvo.kura.tutor.exception;
 import br.com.clyvo.kura.tutor.shared.exception.AccountInactiveException;
 import br.com.clyvo.kura.tutor.shared.exception.AccountLockedException;
 import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
+import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import br.com.clyvo.kura.tutor.shared.exception.GoneException;
 import br.com.clyvo.kura.tutor.shared.exception.NotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,6 +69,13 @@ public class GerenciadorExcecoes {
             RegraDeNegocioException ex, HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(montarErro(422, ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> acessoNegado(
+            ForbiddenException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(montarErro(403, ex.getMessage(), req.getRequestURI()));
     }
 
     @ExceptionHandler(AccountInactiveException.class)

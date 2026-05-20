@@ -1,12 +1,14 @@
-package br.com.clyvo.kura.tutor.service;
+package br.com.clyvo.kura.tutor.tutor.application;
 
-import br.com.clyvo.kura.tutor.dto.response.PetResponse;
 import br.com.clyvo.kura.tutor.dto.response.TutorResponse;
 import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
+import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
-import org.springframework.cache.annotation.Cacheable;
+import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
+import br.com.clyvo.kura.tutor.tutor.api.dto.PetResponse;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,12 +16,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TutorService {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final TutorRepository tutorRepository;
     private final PetRepository petRepository;
+    private final ContaTutorRepository contaTutorRepository;
 
-    public TutorService(TutorRepository tutorRepository, PetRepository petRepository) {
+    public TutorService(TutorRepository tutorRepository,
+                        PetRepository petRepository,
+                        ContaTutorRepository contaTutorRepository) {
         this.tutorRepository = tutorRepository;
         this.petRepository = petRepository;
+        this.contaTutorRepository = contaTutorRepository;
     }
 
     @Transactional(readOnly = true)
@@ -31,17 +39,28 @@ public class TutorService {
 
     @Transactional(readOnly = true)
     public Page<TutorResponse> buscarComFiltros(String nome, String cidade,
-                                                 String uf, Pageable pageable) {
+                                                String uf, Pageable pageable) {
         return tutorRepository.buscarComFiltros(nome, cidade, uf, pageable)
                 .map(TutorResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "petsPorTutor", key = "#idTutor + '-' + #pageable.pageNumber")
-    public Page<PetResponse> listarPets(Long idTutor, Pageable pageable) {
+    public Page<PetResponse> listarPets(Long idTutor, String emailAutenticado, Pageable pageable) {
+        Long idTutorAutenticado = contaTutorRepository.findIdTutorByEmail(emailAutenticado)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Conta", emailAutenticado));
+
+        if (!idTutorAutenticado.equals(idTutor)) {
+            throw new ForbiddenException("Acesso negado: você só pode visualizar seus próprios pets.");
+        }
+
         tutorRepository.findByIdTutorAndStAtivo(idTutor, "S")
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Tutor", idTutor));
-        return petRepository.findAtivosByIdTutor(idTutor, pageable)
+
+        Pageable efetivo = pageable.getPageSize() > MAX_PAGE_SIZE
+                ? PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort())
+                : pageable;
+
+        return petRepository.findAtivosByIdTutor(idTutor, efetivo)
                 .map(PetResponse::fromEntity);
     }
 }
