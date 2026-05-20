@@ -175,7 +175,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> erroInterno(Exception ex, HttpServletRequest req) {
-        log.error("Erro interno não tratado em {}: {}", req.getRequestURI(), ex.getMessage(), ex);
+        log.error("Unhandled exception on [{}] {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiError.of(500, "ERRO_INTERNO", "Erro interno. Tente novamente.",
                         req.getRequestURI()));

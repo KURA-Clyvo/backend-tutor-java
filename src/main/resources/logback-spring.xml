@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ── CONSOLE appender (all profiles) ───────────────────────────────── -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%level] [%X{correlationId:-no-corr-id}] [%logger{36}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ── FILE appender (dev profile only) ──────────────────────────────── -->
+    <springProfile name="dev">
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/kura-tutor.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>logs/kura-tutor.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>7</maxHistory>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%level] [%X{correlationId:-no-corr-id}] [%logger{36}] - %msg%n</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- ── Logger levels (dev) ───────────────────────────────────────────── -->
+    <springProfile name="dev">
+        <logger name="br.com.clyvo.kura" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+    </springProfile>
+
+    <!-- ── Logger levels (prod) ──────────────────────────────────────────── -->
+    <springProfile name="prod">
+        <logger name="br.com.clyvo.kura" level="INFO"/>
+        <logger name="org.hibernate.SQL" level="WARN"/>
+    </springProfile>
+
+    <!-- ── Root logger — CONSOLE by default; FILE added only in dev ─────── -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+</configuration>

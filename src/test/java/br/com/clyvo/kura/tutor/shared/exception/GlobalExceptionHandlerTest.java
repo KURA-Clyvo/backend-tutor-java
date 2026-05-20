@@ -1,9 +1,15 @@
 package br.com.clyvo.kura.tutor.shared.exception;
 
 import br.com.clyvo.kura.tutor.agendamento.application.AgendamentoService;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +19,9 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -38,9 +47,22 @@ class GlobalExceptionHandlerTest {
     @MockBean
     AgendamentoService agendamentoService;
 
+    private ListAppender<ILoggingEvent> logAppender;
+    private Logger handlerLogger;
+
     @BeforeEach
-    void resetMocks() {
+    void setUp() {
         org.mockito.Mockito.reset(agendamentoService);
+
+        handlerLogger = (Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        handlerLogger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        handlerLogger.detachAppender(logAppender);
     }
 
     // ─── notFoundDeveRetornar404 ──────────────────────────────────────────────
@@ -127,5 +149,55 @@ class GlobalExceptionHandlerTest {
                 // Stack trace never leaked to the response body
                 .andExpect(jsonPath("$.stackTrace").doesNotExist())
                 .andExpect(jsonPath("$.cause").doesNotExist());
+    }
+
+    // ─── erro500DeveLogarStackTraceComCorrelationId ───────────────────────────
+
+    @Test
+    @DisplayName("erro500DeveLogarStackTraceComCorrelationId — log.error com método HTTP, URI e exceção completa")
+    @WithMockUser(username = EMAIL)
+    void erro500DeveLogarStackTraceComCorrelationId() throws Exception {
+        when(agendamentoService.listar(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Falha simulada de infra"));
+
+        mockMvc.perform(get("/agendamentos"))
+                .andExpect(status().isInternalServerError());
+
+        List<ILoggingEvent> erros = logAppender.list.stream()
+                .filter(e -> e.getLevel() == Level.ERROR)
+                .toList();
+
+        assertThat(erros).isNotEmpty();
+
+        ILoggingEvent evento = erros.get(0);
+        // Formato: "Unhandled exception on [GET] /agendamentos: Falha simulada de infra"
+        assertThat(evento.getFormattedMessage())
+                .contains("Unhandled exception on")
+                .contains("GET")
+                .contains("/agendamentos");
+
+        // ThrowableProxy presente → stack trace foi capturado pelo logger
+        assertThat(evento.getThrowableProxy()).isNotNull();
+        assertThat(evento.getThrowableProxy().getMessage())
+                .isEqualTo("Falha simulada de infra");
+    }
+
+    // ─── erro404NaoDeveLogarStackTrace ────────────────────────────────────────
+
+    @Test
+    @DisplayName("erro404NaoDeveLogarStackTrace — NotFoundException não gera log.error")
+    @WithMockUser(username = EMAIL)
+    void erro404NaoDeveLogarStackTrace() throws Exception {
+        when(agendamentoService.listar(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new NotFoundException("Recurso não encontrado."));
+
+        mockMvc.perform(get("/agendamentos"))
+                .andExpect(status().isNotFound());
+
+        List<ILoggingEvent> erros = logAppender.list.stream()
+                .filter(e -> e.getLevel() == Level.ERROR)
+                .toList();
+
+        assertThat(erros).isEmpty();
     }
 }

@@ -2,6 +2,7 @@ package br.com.clyvo.kura.tutor.shared.config;
 
 import br.com.clyvo.kura.tutor.auth.security.JwtAuthenticationEntryPoint;
 import br.com.clyvo.kura.tutor.auth.security.JwtAuthenticationFilter;
+import br.com.clyvo.kura.tutor.shared.audit.CorrelationIdFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,11 +42,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final CorrelationIdFilter correlationIdFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
+                          JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                          CorrelationIdFilter correlationIdFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.correlationIdFilter = correlationIdFilter;
     }
 
     @Bean
@@ -62,6 +66,7 @@ public class SecurityConfig {
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint))
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(correlationIdFilter, JwtAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
