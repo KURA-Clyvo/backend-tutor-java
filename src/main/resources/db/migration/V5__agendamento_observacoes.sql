@@ -10,6 +10,8 @@
 -- =============================================================================
 
 ALTER TABLE AGENDAMENTO ADD (
+    NM_PACIENTE         VARCHAR2(200),
+    DS_SERVICO          VARCHAR2(200),
     DS_OBSERVACOES      VARCHAR2(1000),
     DT_CRIACAO          TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     DT_CONFIRMACAO      TIMESTAMP,
@@ -24,6 +26,8 @@ ALTER TABLE AGENDAMENTO
 
 CREATE INDEX IDX_AGEND_EVENTO ON AGENDAMENTO(ID_EVENTO_GERADO);
 
+COMMENT ON COLUMN AGENDAMENTO.NM_PACIENTE      IS 'Nome do pet snapshot ao criar agendamento — denormalizado.';
+COMMENT ON COLUMN AGENDAMENTO.DS_SERVICO       IS 'Descrição livre do serviço solicitado pelo tutor.';
 COMMENT ON COLUMN AGENDAMENTO.DS_OBSERVACOES   IS 'Observações do tutor ao criar/reagendar.';
 COMMENT ON COLUMN AGENDAMENTO.DT_CRIACAO       IS 'Preenchido pelo @CreatedDate JPA Auditing.';
 COMMENT ON COLUMN AGENDAMENTO.DT_CANCELAMENTO  IS 'Preenchido por Agendamento.cancelar(motivo).';
