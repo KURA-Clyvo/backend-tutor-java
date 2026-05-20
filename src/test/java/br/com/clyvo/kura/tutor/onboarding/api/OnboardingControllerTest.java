@@ -22,6 +22,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -89,7 +91,7 @@ class OnboardingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.senha").exists());
+                .andExpect(jsonPath("$.detalhes[*]", hasItem(containsString("senha"))));
     }
 
     @Test
@@ -102,7 +104,7 @@ class OnboardingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.senha").exists());
+                .andExpect(jsonPath("$.detalhes[*]", hasItem(containsString("senha"))));
     }
 
     @Test
@@ -114,7 +116,7 @@ class OnboardingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.token").exists());
+                .andExpect(jsonPath("$.detalhes[*]", hasItem(containsString("token"))));
     }
 
     @Test
@@ -127,7 +129,7 @@ class OnboardingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.aceites").exists());
+                .andExpect(jsonPath("$.detalhes[*]", hasItem(containsString("aceites"))));
     }
 
     // ─── Erro de negócio mapeado para HTTP ────────────────────────────────────
