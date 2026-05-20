@@ -4,6 +4,7 @@ import br.com.clyvo.kura.tutor.dto.response.TutorResponse;
 import br.com.clyvo.kura.tutor.tutor.api.dto.PetResponse;
 import br.com.clyvo.kura.tutor.tutor.application.TutorService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -29,8 +30,15 @@ public class TutorController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Busca tutor por ID")
-    public ResponseEntity<TutorResponse> buscarPorId(@PathVariable Long id) {
+    @Operation(summary = "Busca tutor por ID",
+               description = "Retorna dados públicos do tutor. Requer autenticação.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Tutor encontrado"),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+            @ApiResponse(responseCode = "404", description = "Tutor não encontrado")
+    })
+    public ResponseEntity<TutorResponse> buscarPorId(
+            @Parameter(description = "ID do tutor", example = "1") @PathVariable Long id) {
         return ResponseEntity.ok(tutorService.buscarPorId(id));
     }
 
@@ -39,6 +47,10 @@ public class TutorController {
             summary = "Lista tutores com filtros opcionais",
             description = "Filtros: nome, cidade, uf. Paginado. Ex: ?nome=Felipe&uf=SP&page=0&size=10"
     )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista paginada de tutores"),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
+    })
     public ResponseEntity<Page<TutorResponse>> listar(
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) String cidade,

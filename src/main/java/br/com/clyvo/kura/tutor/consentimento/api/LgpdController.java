@@ -6,6 +6,9 @@ import br.com.clyvo.kura.tutor.consentimento.application.ConsentimentoService;
 import br.com.clyvo.kura.tutor.consentimento.application.RelatorioLgpdService;
 import br.com.clyvo.kura.tutor.consentimento.lgpd.AuditoriaSessao;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,26 +42,52 @@ public class LgpdController {
     }
 
     @GetMapping("/relatorio")
-    @Operation(summary = "Relatório completo de dados pessoais (art. 18, I e V)")
+    @Operation(
+        summary = "Relatório completo de dados pessoais (art. 18, I e V)",
+        description = "Agrega todos os dados pessoais do tutor armazenados pela plataforma. " +
+                      "Direito de acesso LGPD art. 18, I."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Relatório gerado"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "{idTutor} difere do tutor autenticado")
+    })
     public ResponseEntity<Map<String, Object>> relatorio(
-            @PathVariable Long idTutor,
+            @Parameter(description = "ID do tutor", example = "1") @PathVariable Long idTutor,
             Authentication auth) {
         return ResponseEntity.ok(relatorioLgpdService.gerarRelatorio(idTutor, auth.getName()));
     }
 
     @GetMapping("/consentimentos")
-    @Operation(summary = "Histórico completo de consentimentos — evidência de auditoria ANPD")
+    @Operation(
+        summary = "Histórico completo de consentimentos — evidência de auditoria ANPD",
+        description = "Retorna TODOS os registros (incluindo revogações), não só o mais recente por tipo."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Histórico de consentimentos"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "{idTutor} difere do tutor autenticado")
+    })
     public ResponseEntity<List<ConsentimentoResponse>> listarConsentimentos(
-            @PathVariable Long idTutor,
+            @Parameter(description = "ID do tutor", example = "1") @PathVariable Long idTutor,
             Authentication auth) {
         return ResponseEntity.ok(consentimentoService.listar(idTutor, auth.getName()));
     }
 
     @GetMapping("/consentimentos/{tipo}/ativo")
-    @Operation(summary = "Estado atual de um tipo de consentimento")
+    @Operation(
+        summary = "Estado atual de um tipo de consentimento",
+        description = "Retorna o consentimento ativo mais recente do tipo informado. 404 se não existe ou foi revogado."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Consentimento ativo encontrado"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "{idTutor} difere do tutor autenticado"),
+        @ApiResponse(responseCode = "404", description = "Consentimento não encontrado ou revogado")
+    })
     public ResponseEntity<ConsentimentoResponse> estadoAtual(
-            @PathVariable Long idTutor,
-            @PathVariable String tipo,
+            @Parameter(description = "ID do tutor", example = "1") @PathVariable Long idTutor,
+            @Parameter(description = "Tipo do consentimento", example = "LEMBRETES") @PathVariable String tipo,
             Authentication auth) {
         return consentimentoService.buscarAtivo(idTutor, tipo, auth.getName())
                 .map(ResponseEntity::ok)
@@ -66,9 +95,18 @@ public class LgpdController {
     }
 
     @PostMapping("/consentimentos")
-    @Operation(summary = "Registra aceite ou revogação (Idempotency-Key opcional para auditoria LGPD)")
+    @Operation(
+        summary = "Registra aceite ou revogação (Idempotency-Key opcional para auditoria LGPD)",
+        description = "Cada POST = novo INSERT imutável. Idempotency-Key opcional — sem garantia de deduplicação."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Consentimento registrado"),
+        @ApiResponse(responseCode = "400", description = "Payload inválido"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "{idTutor} difere do tutor autenticado")
+    })
     public ResponseEntity<ConsentimentoResponse> registrar(
-            @PathVariable Long idTutor,
+            @Parameter(description = "ID do tutor", example = "1") @PathVariable Long idTutor,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody ConsentimentoRequest request,
             HttpServletRequest httpRequest,

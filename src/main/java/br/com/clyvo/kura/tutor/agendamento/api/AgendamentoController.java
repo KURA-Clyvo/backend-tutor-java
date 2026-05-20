@@ -5,7 +5,9 @@ import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoUpdateRequest;
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoResponse;
 import br.com.clyvo.kura.tutor.agendamento.application.AgendamentoService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -46,6 +48,10 @@ public class AgendamentoController {
         description = "tutorId vem do token JWT — não é aceito como query param. " +
                       "Filtros opcionais: status, dataInicio, dataFim, tipo."
     )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista paginada de agendamentos"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
+    })
     public ResponseEntity<Page<AgendamentoResponse>> listar(
             Authentication auth,
             @RequestParam(required = false) String status,
@@ -138,6 +144,12 @@ public class AgendamentoController {
         summary = "Cancela agendamento",
         description = "Só cancela se status for AGENDADO, CONFIRMADO ou INTENCAO. Motivo obrigatório."
     )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Agendamento cancelado"),
+        @ApiResponse(responseCode = "400", description = "Motivo em branco"),
+        @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor"),
+        @ApiResponse(responseCode = "409", description = "Status não permite cancelamento (REALIZADO ou CANCELADO)")
+    })
     public ResponseEntity<AgendamentoResponse> cancelar(
             Authentication auth,
             @PathVariable Long id,

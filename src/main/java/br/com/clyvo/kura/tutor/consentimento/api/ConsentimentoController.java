@@ -6,6 +6,9 @@ import br.com.clyvo.kura.tutor.consentimento.application.ConsentimentoService;
 import br.com.clyvo.kura.tutor.consentimento.application.ConsentimentoService.RegistroResult;
 import br.com.clyvo.kura.tutor.consentimento.lgpd.AuditoriaSessao;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,9 +38,18 @@ public class ConsentimentoController {
      * Autorização: tutor autenticado só acessa seus próprios dados.
      */
     @GetMapping
-    @Operation(summary = "Estado atual de cada tipo de consentimento (último registro por tipo)")
+    @Operation(
+        summary = "Estado atual de cada tipo de consentimento",
+        description = "Retorna o último registro por tipo — representa o estado vigente. " +
+                      "Para o histórico completo use GET /lgpd/consentimentos."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista de consentimentos vigentes"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "{idTutor} difere do tutor autenticado")
+    })
     public ResponseEntity<List<ConsentimentoResponse>> listarUltimosPorTipo(
-            @PathVariable Long idTutor,
+            @Parameter(description = "ID do tutor", example = "1") @PathVariable Long idTutor,
             Authentication auth) {
         return ResponseEntity.ok(
                 consentimentoService.listarUltimosPorTipo(idTutor, auth.getName()));
@@ -52,11 +64,21 @@ public class ConsentimentoController {
      *   - Nova key: 201 com o novo registro criado
      */
     @PostMapping
-    @Operation(summary = "Registra aceite ou revogação com idempotência obrigatória",
-               description = "Header 'Idempotency-Key' (UUID v4) é obrigatório. " +
-                             "Reenviar a mesma key dentro de 24h retorna 200 sem duplicar o registro.")
+    @Operation(
+        summary = "Registra aceite ou revogação com idempotência obrigatória",
+        description = "Header `Idempotency-Key` (UUID v4) é obrigatório. " +
+                      "Reenviar a mesma key dentro de 24h retorna 200 sem duplicar o registro. " +
+                      "Nova key → 201 com novo registro."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Consentimento registrado"),
+        @ApiResponse(responseCode = "200", description = "Idempotência — registro original retornado"),
+        @ApiResponse(responseCode = "400", description = "Payload inválido ou Idempotency-Key ausente"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "{idTutor} difere do tutor autenticado")
+    })
     public ResponseEntity<ConsentimentoResponse> registrar(
-            @PathVariable Long idTutor,
+            @Parameter(description = "ID do tutor", example = "1") @PathVariable Long idTutor,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody ConsentimentoRequest request,
             HttpServletRequest httpRequest,

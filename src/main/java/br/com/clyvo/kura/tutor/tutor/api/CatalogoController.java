@@ -5,6 +5,8 @@ import br.com.clyvo.kura.tutor.entity.Raca;
 import br.com.clyvo.kura.tutor.tutor.application.EspecieService;
 import br.com.clyvo.kura.tutor.tutor.application.RacaService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -30,14 +32,22 @@ public class CatalogoController {
     }
 
     @GetMapping("/especies")
-    @Operation(summary = "Lista todas as espécies (cacheado 6h, público)")
+    @Operation(
+        summary = "Lista todas as espécies (cacheado 6h, público)",
+        description = "Resultado cacheado em memória (Caffeine). Não requer autenticação."
+    )
+    @ApiResponse(responseCode = "200", description = "Lista de espécies")
     public ResponseEntity<List<Especie>> listarEspecies() {
         return ResponseEntity.ok(especieService.listarTodas());
     }
 
     @GetMapping("/racas")
-    @Operation(summary = "Lista raças, opcionalmente filtradas por especieId (público)",
-               description = "Com especieId: resultado cacheado 6h, paginação em memória. Sem filtro: consulta paginada ao banco.")
+    @Operation(
+        summary = "Lista raças (público, opcionalmente filtradas por especieId)",
+        description = "Com `especieId`: resultado cacheado 6h, paginação em memória. " +
+                      "Sem filtro: consulta paginada ao banco. Não requer autenticação."
+    )
+    @ApiResponse(responseCode = "200", description = "Lista paginada de raças")
     public ResponseEntity<Page<Raca>> listarRacas(
             @RequestParam(required = false) Long especieId,
             @PageableDefault(size = 20) Pageable pageable) {

@@ -7,6 +7,7 @@ import br.com.clyvo.kura.tutor.auth.application.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -72,6 +73,7 @@ public class AuthController {
             summary = "Logout do tutor",
             description = "Invalida o refresh token armazenado. Requer Bearer token válido no header Authorization."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Logout realizado — refresh token invalidado"),
             @ApiResponse(responseCode = "401", description = "Não autenticado")
