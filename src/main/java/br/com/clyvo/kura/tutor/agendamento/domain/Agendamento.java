@@ -51,7 +51,7 @@ public class Agendamento {
     @Column(name = "ST_STATUS", length = 50)
     private StatusAgendamento stStatus = StatusAgendamento.AGENDADO;
 
-    @Column(name = "DS_TIPO_CONSULTA", length = 200)
+    @Column(name = "DS_TIPO", length = 30)
     private String dsTipoConsulta;
 
     @Column(name = "DS_ORIGEM", length = 100)

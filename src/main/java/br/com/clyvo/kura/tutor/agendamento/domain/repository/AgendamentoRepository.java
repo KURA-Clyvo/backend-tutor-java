@@ -20,6 +20,26 @@ public interface AgendamentoRepository
     Page<Agendamento> findByTutor_IdTutorAndStStatus(Long idTutor, StatusAgendamento stStatus,
                                                       Pageable pageable);
 
+    /**
+     * Returns future appointments (date >= now) for the given tutor, optionally
+     * filtered by status. Ordered ascending by appointment date — used for the
+     * "upcoming appointments" view on the tutor dashboard.
+     *
+     * @param idTutor  owner of the appointments
+     * @param status   optional status filter; null returns all active statuses
+     * @param pageable pagination and sort parameters
+     */
+    @Query("""
+        SELECT a FROM Agendamento a
+        WHERE a.tutor.idTutor = :idTutor
+          AND a.dtAgendamento >= CURRENT_TIMESTAMP
+          AND (:status IS NULL OR a.stStatus = :status)
+        ORDER BY a.dtAgendamento ASC
+    """)
+    Page<Agendamento> findFuturosByTutorEStatus(@Param("idTutor") Long idTutor,
+                                                @Param("status") StatusAgendamento status,
+                                                Pageable pageable);
+
     List<Agendamento> findByPet_IdPetAndDtAgendamentoAfterOrderByDtAgendamentoAsc(
             Long idPet, LocalDateTime apartirDe);
 
