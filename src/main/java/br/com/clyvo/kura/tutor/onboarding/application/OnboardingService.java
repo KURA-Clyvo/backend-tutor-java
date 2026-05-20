@@ -1,18 +1,18 @@
 package br.com.clyvo.kura.tutor.onboarding.application;
 
 import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
-import br.com.clyvo.kura.tutor.entity.Consentimento;
+import br.com.clyvo.kura.tutor.consentimento.domain.Consentimento;
+import br.com.clyvo.kura.tutor.consentimento.lgpd.ValidadorConsentimento;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
 import br.com.clyvo.kura.tutor.entity.Tutor;
 import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
-import br.com.clyvo.kura.tutor.lgpd.ValidadorConsentimento;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.AceiteRequest;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.RegisterInviteRequest;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.TokenResponse;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.TutorResumoResponse;
 import br.com.clyvo.kura.tutor.onboarding.domain.InviteTutor;
 import br.com.clyvo.kura.tutor.onboarding.domain.repository.InviteTutorRepository;
-import br.com.clyvo.kura.tutor.repository.ConsentimentoRepository;
+import br.com.clyvo.kura.tutor.consentimento.domain.repository.ConsentimentoRepository;
 import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ConflictException;

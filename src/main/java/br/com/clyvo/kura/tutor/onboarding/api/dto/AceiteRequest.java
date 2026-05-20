@@ -1,6 +1,6 @@
 package br.com.clyvo.kura.tutor.onboarding.api.dto;
 
-import br.com.clyvo.kura.tutor.lgpd.TipoConsentimento;
+import br.com.clyvo.kura.tutor.consentimento.lgpd.TipoConsentimento;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

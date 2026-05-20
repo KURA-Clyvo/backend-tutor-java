@@ -3,14 +3,14 @@ package br.com.clyvo.kura.tutor.onboarding.application;
 import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
 import br.com.clyvo.kura.tutor.entity.Tutor;
-import br.com.clyvo.kura.tutor.lgpd.TipoConsentimento;
-import br.com.clyvo.kura.tutor.lgpd.ValidadorConsentimento;
+import br.com.clyvo.kura.tutor.consentimento.domain.repository.ConsentimentoRepository;
+import br.com.clyvo.kura.tutor.consentimento.lgpd.TipoConsentimento;
+import br.com.clyvo.kura.tutor.consentimento.lgpd.ValidadorConsentimento;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.AceiteRequest;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.RegisterInviteRequest;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.TokenResponse;
 import br.com.clyvo.kura.tutor.onboarding.domain.InviteTutor;
 import br.com.clyvo.kura.tutor.onboarding.domain.repository.InviteTutorRepository;
-import br.com.clyvo.kura.tutor.repository.ConsentimentoRepository;
 import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
@@ -108,7 +108,7 @@ class OnboardingServiceTest {
         when(jwt.gerarAccess(any())).thenReturn("access");
         when(jwt.gerarRefresh(any())).thenReturn("refresh");
         when(httpRequest.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1, 10.0.0.1");
-        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        lenient().when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
 
         service.registrarPorInvite(reqComAceites, httpRequest);
 
@@ -169,8 +169,8 @@ class OnboardingServiceTest {
         when(tutorRepo.findByIdTutorAndStAtivo(1L, "S")).thenReturn(Optional.of(tutorAtivo));
         when(encoder.encode(anyString())).thenReturn("$2a$hash");
         when(contaRepo.save(any())).thenThrow(new DataIntegrityViolationException("UK_CONTA_INVITE_USED"));
-        when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        lenient().when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
+        lenient().when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
 
         assertThatThrownBy(() -> service.registrarPorInvite(requestValido, httpRequest))
                 .isInstanceOf(ConflictException.class)
@@ -223,10 +223,10 @@ class OnboardingServiceTest {
 
     private Tutor stubTutor(Long id, boolean avisoPrivacidade) {
         Tutor t = mock(Tutor.class);
-        when(t.getIdTutor()).thenReturn(id);
-        when(t.getNmTutor()).thenReturn("Tutor Teste");
-        when(t.getDsEmail()).thenReturn("tutor@test.com");
-        when(t.temAvisoPrivacidade()).thenReturn(avisoPrivacidade);
+        lenient().when(t.getIdTutor()).thenReturn(id);
+        lenient().when(t.getNmTutor()).thenReturn("Tutor Teste");
+        lenient().when(t.getDsEmail()).thenReturn("tutor@test.com");
+        lenient().when(t.temAvisoPrivacidade()).thenReturn(avisoPrivacidade);
         return t;
     }
 

@@ -1,5 +1,8 @@
 package br.com.clyvo.kura.tutor.tutor.api;
 
+import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
+import br.com.clyvo.kura.tutor.auth.security.JwtAuthenticationEntryPoint;
+import br.com.clyvo.kura.tutor.shared.config.SecurityConfig;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import br.com.clyvo.kura.tutor.tutor.api.dto.PetResponse;
 import br.com.clyvo.kura.tutor.tutor.application.TutorService;
@@ -9,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -37,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * UserDetailsService é mockado para satisfazer o JwtAuthenticationFilter no contexto slim.
  */
 @WebMvcTest(TutorController.class)
+@Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class})
 @TestPropertySource(properties = {
         "kura.jwt.secret=dev-secret-trocar-em-prod-com-no-minimo-64-bytes-aqui-para-test-kura",
         "kura.jwt.access-expiration-minutes=15",
@@ -51,6 +56,7 @@ class TutorControllerTest {
     @Autowired MockMvc        mockMvc;
     @MockBean  TutorService   tutorService;
     @MockBean  UserDetailsService userDetailsService;
+    @MockBean  JwtTokenProvider   jwtTokenProvider;
 
     // ─── Happy path ───────────────────────────────────────────────────────────
 

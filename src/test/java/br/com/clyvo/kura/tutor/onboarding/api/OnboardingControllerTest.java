@@ -1,6 +1,9 @@
 package br.com.clyvo.kura.tutor.onboarding.api;
 
+import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
+import br.com.clyvo.kura.tutor.auth.security.JwtAuthenticationEntryPoint;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.RegisterInviteRequest;
+import br.com.clyvo.kura.tutor.shared.config.SecurityConfig;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.TokenResponse;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.TutorResumoResponse;
 import br.com.clyvo.kura.tutor.onboarding.application.OnboardingService;
@@ -11,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.TestPropertySource;
@@ -30,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * sem instanciar repositórios JPA (que não existem no contexto @WebMvcTest).
  */
 @WebMvcTest(OnboardingController.class)
+@Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class})
 @TestPropertySource(properties = {
         "kura.jwt.secret=dev-secret-trocar-em-prod-com-no-minimo-64-bytes-aqui-para-test-kura",
         "kura.jwt.access-expiration-minutes=15",
@@ -46,6 +51,7 @@ class OnboardingControllerTest {
 
     @MockBean OnboardingService  onboardingService;
     @MockBean UserDetailsService userDetailsService;  // satisfaz JwtAuthenticationFilter
+    @MockBean JwtTokenProvider   jwtTokenProvider;
 
     // ─── Caminho feliz ────────────────────────────────────────────────────────
 

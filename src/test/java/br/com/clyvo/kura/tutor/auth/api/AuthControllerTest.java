@@ -1,7 +1,10 @@
 package br.com.clyvo.kura.tutor.auth.api;
 
 import br.com.clyvo.kura.tutor.auth.application.AuthService;
+import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
+import br.com.clyvo.kura.tutor.auth.security.JwtAuthenticationEntryPoint;
 import br.com.clyvo.kura.tutor.shared.config.CorsConfig;
+import br.com.clyvo.kura.tutor.shared.config.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * esteja disponível no contexto @WebMvcTest e o CORS filter funcione corretamente.
  */
 @WebMvcTest(AuthController.class)
-@Import(CorsConfig.class)
+@Import({CorsConfig.class, SecurityConfig.class, JwtAuthenticationEntryPoint.class})
 @TestPropertySource(properties = {
         "kura.jwt.secret=dev-secret-trocar-em-prod-com-no-minimo-64-bytes-aqui-para-test-kura",
         "kura.jwt.access-expiration-minutes=15",
@@ -39,6 +42,7 @@ class AuthControllerTest {
 
     @MockBean AuthService        authService;
     @MockBean UserDetailsService userDetailsService;
+    @MockBean JwtTokenProvider   jwtTokenProvider;
 
     // ─── Logout ───────────────────────────────────────────────────────────────
 
