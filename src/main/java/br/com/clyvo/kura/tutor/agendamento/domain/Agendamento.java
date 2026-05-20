@@ -128,6 +128,24 @@ public class Agendamento {
         this.dtConfirmacao = LocalDateTime.now();
     }
 
+    public void atualizar(LocalDateTime novaData, String novoTipo, String novasObs, Long novoVet) {
+        if (novaData != null) {
+            if (novaData.isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("Data de reagendamento deve ser no futuro.");
+            }
+            this.dtAgendamento = novaData;
+        }
+        if (novoTipo != null && !novoTipo.isBlank()) {
+            this.dsTipoConsulta = novoTipo;
+        }
+        if (novasObs != null) {
+            this.dsObservacoes = novasObs;
+        }
+        if (novoVet != null) {
+            this.idVeterinario = novoVet;
+        }
+    }
+
     public boolean isAtivo() {
         return stStatus != StatusAgendamento.CANCELADO && stStatus != StatusAgendamento.REALIZADO;
     }
