@@ -9,6 +9,7 @@ import br.com.clyvo.kura.tutor.shared.exception.NotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -63,6 +64,14 @@ public class GerenciadorExcecoes {
             ConflictException ex, HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(montarErro(409, ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, Object>> versaoDesatualizada(
+            ObjectOptimisticLockingFailureException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(montarErro(409, "Versão desatualizada. Recarregue o recurso e tente novamente.",
+                        req.getRequestURI()));
     }
 
     @ExceptionHandler(GoneException.class)
