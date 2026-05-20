@@ -21,4 +21,11 @@ public interface PetRepository extends Repository<Pet, Long>, PagingAndSortingRe
           AND p.stAtivo = 'S'
     """)
     Page<Pet> findAtivosByIdTutor(@Param("idTutor") Long idTutor, Pageable pageable);
+
+    @Query("""
+        SELECT COUNT(p) FROM Pet p
+        JOIN p.tutorPets tp
+        WHERE p.idPet = :idPet AND tp.tutor.idTutor = :idTutor
+    """)
+    long countVinculo(@Param("idPet") Long idPet, @Param("idTutor") Long idTutor);
 }

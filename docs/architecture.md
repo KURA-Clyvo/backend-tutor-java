@@ -493,9 +493,29 @@ bash tests/test_architecture.sh
 
 ---
 
+## 11. Dívida Técnica — Views Oracle (T16)
+
+### 11.1 Risco de performance: VW_TIMELINE_PET e VW_VACINAS_VENCENDO
+
+As duas views são lidas pelo `TimelineService` sem índices específicos além dos já existentes (`IDX_AGEND_PET`, `IDX_AGEND_TUTOR`, `IDX_AGEND_DT`). Em produção com alto volume de agendamentos, as seguintes situações podem degradar:
+
+| Cenário | Risco | Mitigação sugerida |
+|---|---|---|
+| `VW_TIMELINE_PET` com muitos agendamentos por pet | Full-scan de `AGENDAMENTO` filtrado por `ID_PET` — `IDX_AGEND_PET` ameniza, mas sem paginação server-side a view retorna tudo | Avaliar índice composto `(ID_PET, DT_AGENDAMENTO DESC)` no Oracle |
+| `VW_VACINAS_VENCENDO` com janela de 30 dias grande | `CURRENT_TIMESTAMP + INTERVAL '30' DAY` impede uso de índice se range scan não for possível | Testar `EXPLAIN PLAN` no Oracle FIAP antes do go-live |
+| H2 em dev não reflete plano real Oracle | H2 não possui o otimizador Oracle — testes de repositório validam corretude, não performance | Executar testes de carga com Oracle FIAP em staging |
+
+**Decisão atual:** aceitar o risco para o MVP FIAP. Antes do go-live em produção real:
+1. Executar `EXPLAIN PLAN` nas duas views no Oracle 19c com dados representativos.
+2. Adicionar índice composto `IDX_AGEND_PET_DT ON AGENDAMENTO(ID_PET, DT_AGENDAMENTO)` se necessário (via V7 migration).
+3. Avaliar materialização das views se o volume de pets/agendamentos justificar (Oracle Materialized View com refresh periódico).
+
+---
+
 ## Decisões Pendentes
 
 | Decisão | Responsável | Impacto |
 |---|---|---|
 | **V4 LGPD:** adicionar `DS_TEXTO_TERMO`, `DS_IP_ACEITE`, `DT_REVOGACAO`, `DS_IP_REVOGACAO` em `CONSENTIMENTO` | Felipe Ferrete | Se aprovado: substituir placeholder em V4; se rejeitado: documentar risco ANPD art. 7º, I neste arquivo |
 | **Schema versionado compartilhado:** quem é dono das migrations de tabelas comuns (V1) no Oracle FIAP quando .NET também usa EF Migrations | Felipe + Nikolas | Combinar antes do deploy em prod: sugestão = Java só migra tabelas Java-owned, .NET migra o restante |
+| **Performance views T16:** índice composto `(ID_PET, DT_AGENDAMENTO)` em AGENDAMENTO | Felipe + Nikolas | Avaliar após testes de carga com dados Oracle FIAP reais (ver seção 11.1) |
