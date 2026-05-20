@@ -1,0 +1,709 @@
+{
+  "info": {
+    "_postman_id": "kura-tutor-collection-v1",
+    "name": "KURA — Backend Tutor",
+    "description": "Fluxo completo do Backend Tutor (Java/Spring Boot 3.2).\n\nPré-condição: importar também o environment `kura-tutor-dev.postman_environment.json`.\n\nFluxo mínimo de validação:\n1. **Onboarding → POST /auth/register-invite** (captura accessToken + refreshToken)\n2. **Auth → POST /auth/login** (captura tokens)\n3. **Agendamentos → POST** (cria, captura idAgendamento)\n4. **Agendamentos → GET** (lista)\n5. **Agendamentos → DELETE /{id}** (cancela)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",        "value": "http://localhost:8081/api", "type": "string" },
+    { "key": "accessToken",    "value": "",                          "type": "string" },
+    { "key": "refreshToken",   "value": "",                          "type": "string" },
+    { "key": "idempotencyKey", "value": "",                          "type": "string" },
+    { "key": "inviteToken",    "value": "550e8400-e29b-41d4-a716-446655440000", "type": "string" },
+    { "key": "idTutor",        "value": "1",                         "type": "string" },
+    { "key": "idPet",          "value": "1",                         "type": "string" },
+    { "key": "idAgendamento",  "value": "",                          "type": "string" },
+    { "key": "nrVersion",      "value": "0",                         "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "1 — Onboarding",
+      "description": "Cria conta do tutor a partir de um convite gerado pelo .NET. O token seed `550e8400-e29b-41d4-a716-446655440000` é inserido pelos seeds Flyway no perfil dev.",
+      "item": [
+        {
+          "name": "POST /auth/register-invite",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken',  body.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "    pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "    pm.test('accessToken presente',  () => pm.expect(body.accessToken).to.be.a('string').and.not.empty);",
+                  "    pm.test('refreshToken presente', () => pm.expect(body.refreshToken).to.be.a('string').and.not.empty);",
+                  "    pm.test('tutor presente', () => pm.expect(body.tutor).to.exist);",
+                  "} else {",
+                  "    pm.test('Status inesperado: ' + pm.response.code, () => false);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{inviteToken}}\",\n  \"senha\": \"MinhaSenh@1\",\n  \"aceites\": [\n    { \"tipo\": \"LEMBRETES\",      \"versaoTermo\": \"v1.0\", \"aceito\": true },\n    { \"tipo\": \"TELEORIENTACAO\", \"versaoTermo\": \"v1.0\", \"aceito\": true },\n    { \"tipo\": \"MARKETING\",      \"versaoTermo\": \"v1.0\", \"aceito\": false }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register-invite",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register-invite"]
+            },
+            "description": "Valida o invite token e cria conta + consentimentos LGPD em uma única transação atômica.\n\n**409** se o invite já foi utilizado.\n**410** se o invite expirou.\n**422** se o tutor estiver inativo ou sem aviso de privacidade."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "2 — Auth",
+      "description": "Login, rotação de refresh token e logout.",
+      "item": [
+        {
+          "name": "POST /auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken',  body.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "    pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "    pm.test('accessToken presente',  () => pm.expect(body.accessToken).to.be.a('string'));",
+                  "    pm.test('refreshToken presente', () => pm.expect(body.refreshToken).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tutor@clyvo.vet\",\n  \"senha\": \"MinhaSenh@1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Autentica com email e senha.\n\n**401** credenciais inválidas.\n**403** conta desativada.\n**423** conta bloqueada (≥5 tentativas incorretas)."
+          }
+        },
+        {
+          "name": "POST /auth/refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken',  body.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "    pm.test('200 OK — tokens rotacionados', () => pm.response.to.have.status(200));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Troca refresh token por novo par (ROTATION). O refresh anterior é imediatamente invalidado.\n\n⚠️ Sempre persistir o novo `refreshToken` retornado — o anterior nunca mais funciona."
+          }
+        },
+        {
+          "name": "POST /auth/logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Invalida o refresh token do tutor autenticado. Requer Bearer token válido."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "3 — Tutor e Pets",
+      "description": "Consulta de perfil e pets do tutor autenticado.",
+      "item": [
+        {
+          "name": "GET /tutores/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('nmTutor presente', () => pm.expect(pm.response.json().nmTutor).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tutores/{{idTutor}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tutores", "{{idTutor}}"]
+            }
+          }
+        },
+        {
+          "name": "GET /tutores — lista com filtros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Resposta paginada', () => pm.expect(pm.response.json().content).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tutores?page=0&size=10&sort=nmTutor,asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["tutores"],
+              "query": [
+                { "key": "nome",   "value": "",  "disabled": true },
+                { "key": "cidade", "value": "",  "disabled": true },
+                { "key": "uf",     "value": "",  "disabled": true },
+                { "key": "page",   "value": "0" },
+                { "key": "size",   "value": "10" },
+                { "key": "sort",   "value": "nmTutor,asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /tutores/{id}/pets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Resposta paginada', () => pm.expect(pm.response.json().content).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tutores/{{idTutor}}/pets?page=0&size=20&sort=nmPet,asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["tutores", "{{idTutor}}", "pets"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "sort", "value": "nmPet,asc" }
+              ]
+            },
+            "description": "Ownership check: o {id} deve corresponder ao tutor autenticado (403 caso contrário)."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "4 — Timeline",
+      "description": "Leitura das views VW_TIMELINE_PET e VW_VACINAS_VENCENDO.",
+      "item": [
+        {
+          "name": "GET /pets/{idPet}/timeline",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Resposta paginada', () => pm.expect(pm.response.json().content).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{idPet}}/timeline?page=0&size=20&sort=dtEvento,desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["pets", "{{idPet}}", "timeline"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "sort", "value": "dtEvento,desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /tutores/{idTutor}/vacinas-vencendo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Array retornado', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tutores/{{idTutor}}/vacinas-vencendo",
+              "host": ["{{baseUrl}}"],
+              "path": ["tutores", "{{idTutor}}", "vacinas-vencendo"]
+            },
+            "description": "Vacinas com DT_PROXIMA_DOSE nos próximos 30 dias. Tutor só acessa os seus dados."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "5 — Catálogo",
+      "description": "Espécies e raças — dados de referência públicos, cacheados com Caffeine (6h).",
+      "item": [
+        {
+          "name": "GET /especies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Array de espécies', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/especies",
+              "host": ["{{baseUrl}}"],
+              "path": ["especies"]
+            },
+            "description": "Público — sem autenticação. Resultado cacheado 6h."
+          }
+        },
+        {
+          "name": "GET /racas?especieId=1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/racas?especieId=1&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["racas"],
+              "query": [
+                { "key": "especieId", "value": "1" },
+                { "key": "page",      "value": "0" },
+                { "key": "size",      "value": "20" }
+              ]
+            },
+            "description": "Público — sem autenticação. Com `especieId` usa cache 6h. Sem filtro: consulta paginada ao banco."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "6 — Consentimentos LGPD",
+      "description": "Gestão de consentimentos (LGPD) — idempotência via Idempotency-Key.",
+      "item": [
+        {
+          "name": "GET /tutores/{idTutor}/consentimentos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Array retornado', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tutores/{{idTutor}}/consentimentos",
+              "host": ["{{baseUrl}}"],
+              "path": ["tutores", "{{idTutor}}", "consentimentos"]
+            },
+            "description": "Retorna o último registro de cada tipo (estado atual vigente). Para histórico completo use GET /lgpd/consentimentos."
+          }
+        },
+        {
+          "name": "POST /tutores/{idTutor}/consentimentos (Idempotency-Key obrigatório)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Gera UUID v4 para idempotência se ainda não definido",
+                  "if (!pm.collectionVariables.get('idempotencyKey')) {",
+                  "    function uuid() {",
+                  "        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {",
+                  "            const r = Math.random() * 16 | 0;",
+                  "            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);",
+                  "        });",
+                  "    }",
+                  "    pm.collectionVariables.set('idempotencyKey', uuid());",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 ou 200 (idempotência)', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization",  "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",   "value": "application/json" },
+              { "key": "Idempotency-Key","value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"MARKETING\",\n  \"versaoTermo\": \"v1.0\",\n  \"aceito\": \"S\",\n  \"textoTermo\": \"Aceito receber comunicações de marketing da Clyvo Vet.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tutores/{{idTutor}}/consentimentos",
+              "host": ["{{baseUrl}}"],
+              "path": ["tutores", "{{idTutor}}", "consentimentos"]
+            },
+            "description": "Header `Idempotency-Key` (UUID v4) é **obrigatório**.\n\n- 201: novo registro criado\n- 200: mesma key dentro de 24h → retorna registro original sem duplicar\n\nPre-request script gera UUID automaticamente. Para testar idempotência, reenvie a requisição sem alterar a variável `idempotencyKey`."
+          }
+        },
+        {
+          "name": "GET /tutores/{idTutor}/lgpd/relatorio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tutores/{{idTutor}}/lgpd/relatorio",
+              "host": ["{{baseUrl}}"],
+              "path": ["tutores", "{{idTutor}}", "lgpd", "relatorio"]
+            },
+            "description": "Direito de acesso LGPD art. 18, I — agrega todos os dados pessoais do tutor."
+          }
+        },
+        {
+          "name": "GET /tutores/{idTutor}/lgpd/consentimentos (histórico)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Array retornado', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tutores/{{idTutor}}/lgpd/consentimentos",
+              "host": ["{{baseUrl}}"],
+              "path": ["tutores", "{{idTutor}}", "lgpd", "consentimentos"]
+            },
+            "description": "Histórico completo (inclui revogações) — evidência de auditoria ANPD."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "7 — Agendamentos",
+      "description": "CRUD de agendamentos. tutorId é sempre resolvido do JWT — nunca de query param.",
+      "item": [
+        {
+          "name": "POST /agendamentos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('idAgendamento', String(body.idAgendamento));",
+                  "    pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "    pm.test('Header Location presente', () => pm.expect(pm.response.headers.get('Location')).to.include('/agendamentos/'));",
+                  "    pm.test('nrVersion retornado',       () => pm.expect(body.nrVersion).to.be.a('number'));",
+                  "    pm.collectionVariables.set('nrVersion', String(body.nrVersion));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idPet\": 1,\n  \"idClinica\": 1,\n  \"idVeterinario\": null,\n  \"dtAgendamento\": \"2026-12-15T10:30:00\",\n  \"tipo\": \"CONSULTA\",\n  \"duracaoMinutos\": 30,\n  \"observacoes\": \"Consulta de rotina — criado via Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/agendamentos",
+              "host": ["{{baseUrl}}"],
+              "path": ["agendamentos"]
+            },
+            "description": "Cria agendamento. Status inicial: AGENDADO. Origem: PORTAL.\n\nPet deve pertencer ao tutor autenticado (403 caso contrário).\n\nO campo `nrVersion` é capturado automaticamente no test script — necessário para PUT."
+          }
+        },
+        {
+          "name": "GET /agendamentos (com filtros)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Resposta paginada', () => pm.expect(pm.response.json().content).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agendamentos?page=0&size=10&sort=dtAgendamento,asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["agendamentos"],
+              "query": [
+                { "key": "status",      "value": "AGENDADO",           "disabled": true },
+                { "key": "dataInicio",  "value": "2026-01-01T00:00:00","disabled": true },
+                { "key": "dataFim",     "value": "2026-12-31T23:59:59","disabled": true },
+                { "key": "tipo",        "value": "CONSULTA",           "disabled": true },
+                { "key": "page",        "value": "0" },
+                { "key": "size",        "value": "10" },
+                { "key": "sort",        "value": "dtAgendamento,asc" }
+              ]
+            },
+            "description": "tutorId vem do JWT — não aceita `tutorId` como query param (segurança IDOR).\n\nFiltros opcionais desativados: habilitar conforme necessidade."
+          }
+        },
+        {
+          "name": "PUT /agendamentos/{id} (nrVersion obrigatório)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('nrVersion', String(body.nrVersion));",
+                  "    pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "    pm.test('nrVersion incrementado', () => pm.expect(body.nrVersion).to.be.a('number'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dtAgendamento\": \"2026-12-20T14:00:00\",\n  \"dsTipoConsulta\": \"RETORNO\",\n  \"dsObservacoes\": \"Reagendado via Postman\",\n  \"idVeterinario\": null,\n  \"nrVersion\": {{nrVersion}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/agendamentos/{{idAgendamento}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["agendamentos", "{{idAgendamento}}"]
+            },
+            "description": "Atualiza data, tipo ou observações.\n\n`nrVersion` é **obrigatório** — ausente retorna 400.\nVersão divergente (optimistic lock) retorna 409.\n\nO test script captura o novo `nrVersion` automaticamente."
+          }
+        },
+        {
+          "name": "PATCH /agendamentos/{id}/cancelar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Status CANCELADO', () => pm.expect(pm.response.json().status).to.equal('CANCELADO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agendamentos/{{idAgendamento}}/cancelar?motivo=Cancelado+via+Postman",
+              "host": ["{{baseUrl}}"],
+              "path": ["agendamentos", "{{idAgendamento}}", "cancelar"],
+              "query": [
+                { "key": "motivo", "value": "Cancelado via Postman" }
+              ]
+            },
+            "description": "Cancela com motivo explícito. 409 se status for REALIZADO ou já CANCELADO."
+          }
+        },
+        {
+          "name": "DELETE /agendamentos/{id} (soft delete)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agendamentos/{{idAgendamento}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["agendamentos", "{{idAgendamento}}"]
+            },
+            "description": "Soft delete — muda ST_STATUS para CANCELADO. Nunca executa DELETE SQL.\n\n204 em sucesso. 409 se status for REALIZADO ou já CANCELADO."
+          }
+        }
+      ]
+    }
+
+  ]
+}
