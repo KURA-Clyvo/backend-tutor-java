@@ -26,6 +26,27 @@ class SecurityConfigTest {
     }
 
     @Test
+    @DisplayName("swaggerUiHtmlPublico — GET /swagger-ui.html sem token não deve retornar 401")
+    void swaggerUiHtmlPublico() throws Exception {
+        mockMvc.perform(get("/swagger-ui.html"))
+                .andExpect(status().is(org.hamcrest.Matchers.not(401)));
+    }
+
+    @Test
+    @DisplayName("swaggerUiWildcardPublico — GET /swagger-ui/index.html sem token não deve retornar 401")
+    void swaggerUiWildcardPublico() throws Exception {
+        mockMvc.perform(get("/swagger-ui/index.html"))
+                .andExpect(status().is(org.hamcrest.Matchers.not(401)));
+    }
+
+    @Test
+    @DisplayName("openApiDocsPublico — GET /v3/api-docs sem token não deve retornar 401")
+    void openApiDocsPublico() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().is(org.hamcrest.Matchers.not(401)));
+    }
+
+    @Test
     @DisplayName("endpointProtegidoSemTokenDeveRetornar401 — sem Authorization header retorna 401, NÃO 403")
     void endpointProtegidoSemTokenDeveRetornar401() throws Exception {
         mockMvc.perform(get("/agendamentos").param("tutorId", "1"))
