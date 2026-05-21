@@ -110,6 +110,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ApiError> naoEncontrado(NotFoundException ex, HttpServletRequest req) {
+        log.warn("404 on [{} {}]: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiError.of(404, "NAO_ENCONTRADO", ex.getMessage(), req.getRequestURI()));
     }
@@ -118,6 +119,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiError> conflito(ConflictException ex, HttpServletRequest req) {
+        log.warn("409 on [{} {}]: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.of(409, "CONFLITO", ex.getMessage(), req.getRequestURI()));
     }
@@ -149,6 +151,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(GoneException.class)
     public ResponseEntity<ApiError> recursoExpirado(GoneException ex, HttpServletRequest req) {
+        log.warn("410 on [{} {}]: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.GONE)
                 .body(ApiError.of(410, "RECURSO_EXPIRADO", ex.getMessage(), req.getRequestURI()));
     }
@@ -158,6 +161,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RegraDeNegocioException.class)
     public ResponseEntity<ApiError> regraDeNegocio(
             RegraDeNegocioException ex, HttpServletRequest req) {
+        log.warn("422 on [{} {}]: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(ApiError.of(422, "REGRA_DE_NEGOCIO", ex.getMessage(), req.getRequestURI()));
     }
@@ -167,6 +171,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccountLockedException.class)
     public ResponseEntity<ApiError> contaBloqueada(
             AccountLockedException ex, HttpServletRequest req) {
+        log.warn("423 on [{} {}]: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.LOCKED)
                 .body(ApiError.of(423, "CONTA_BLOQUEADA", ex.getMessage(), req.getRequestURI()));
     }

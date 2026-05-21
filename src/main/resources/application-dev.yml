@@ -45,4 +45,10 @@ logging:
   level:
     br.com.clyvo.kura: DEBUG
     org.hibernate.SQL: DEBUG
+    # Prints actual bound parameter values (e.g. the UUID token) — Hibernate 6.x (Boot 3.x)
+    org.hibernate.orm.jdbc.bind: TRACE
+    # Logs every request dispatch and handler resolution
+    org.springframework.web.servlet.DispatcherServlet: DEBUG
+    # Logs which @ExceptionHandler is selected for each exception
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: DEBUG
     org.flywaydb: INFO

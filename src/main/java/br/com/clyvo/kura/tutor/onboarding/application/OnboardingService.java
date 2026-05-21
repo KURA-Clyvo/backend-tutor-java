@@ -66,7 +66,8 @@ public class OnboardingService {
     public TokenResponse registrarPorInvite(RegisterInviteRequest request,
                                              HttpServletRequest httpRequest) {
         // 1. Localiza o convite pelo token
-        InviteTutor invite = inviteRepo.findByNrToken(request.token())
+        String nrToken = request.token().replace("-", "").toUpperCase();
+        InviteTutor invite = inviteRepo.findByNrToken(nrToken)
                 .orElseThrow(() -> new NotFoundException("Convite não encontrado para o token informado."));
 
         // 2. Convite deve estar ativo (não cancelado pela clínica)
