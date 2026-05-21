@@ -1,4 +1,4 @@
-package br.com.clyvo.kura.tutor.consentimento.application;
+﻿package br.com.clyvo.kura.tutor.consentimento.application;
 
 import br.com.clyvo.kura.tutor.consentimento.api.dto.ConsentimentoRequest;
 import br.com.clyvo.kura.tutor.consentimento.api.dto.ConsentimentoResponse;
@@ -9,7 +9,7 @@ import br.com.clyvo.kura.tutor.consentimento.lgpd.ValidadorConsentimento;
 import br.com.clyvo.kura.tutor.entity.Tutor;
 import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
 import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
-import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import br.com.clyvo.kura.tutor.shared.exception.NotFoundException;

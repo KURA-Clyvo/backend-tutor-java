@@ -1,6 +1,6 @@
-package br.com.clyvo.kura.tutor.timeline.application;
+﻿package br.com.clyvo.kura.tutor.timeline.application;
 
-import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import br.com.clyvo.kura.tutor.shared.exception.NotFoundException;

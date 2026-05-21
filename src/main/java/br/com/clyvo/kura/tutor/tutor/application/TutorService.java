@@ -1,8 +1,8 @@
-package br.com.clyvo.kura.tutor.tutor.application;
+﻿package br.com.clyvo.kura.tutor.tutor.application;
 
 import br.com.clyvo.kura.tutor.dto.response.TutorResponse;
 import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
-import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;

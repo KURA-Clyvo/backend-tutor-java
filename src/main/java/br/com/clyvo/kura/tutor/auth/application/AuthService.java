@@ -1,10 +1,10 @@
-package br.com.clyvo.kura.tutor.auth.application;
+﻿package br.com.clyvo.kura.tutor.auth.application;
 
 import br.com.clyvo.kura.tutor.auth.api.dto.LoginRequest;
 import br.com.clyvo.kura.tutor.auth.api.dto.RefreshRequest;
 import br.com.clyvo.kura.tutor.auth.api.dto.TokenResponse;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
-import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.AccountInactiveException;
 import br.com.clyvo.kura.tutor.shared.exception.AccountLockedException;
 import org.springframework.security.authentication.BadCredentialsException;

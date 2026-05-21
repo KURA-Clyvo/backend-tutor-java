@@ -1,4 +1,4 @@
-package br.com.clyvo.kura.tutor.agendamento.application;
+﻿package br.com.clyvo.kura.tutor.agendamento.application;
 
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoRequest;
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoUpdateRequest;
@@ -11,7 +11,7 @@ import br.com.clyvo.kura.tutor.entity.Clinica;
 import br.com.clyvo.kura.tutor.entity.Pet;
 import br.com.clyvo.kura.tutor.entity.Tutor;
 import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
-import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ConflictException;

@@ -1,7 +1,7 @@
 package br.com.clyvo.kura.tutor.auth.security;
 
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
-import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

@@ -1,4 +1,4 @@
-package br.com.clyvo.kura.tutor.onboarding.application;
+﻿package br.com.clyvo.kura.tutor.onboarding.application;
 
 import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
@@ -11,7 +11,7 @@ import br.com.clyvo.kura.tutor.onboarding.api.dto.RegisterInviteRequest;
 import br.com.clyvo.kura.tutor.onboarding.api.dto.TokenResponse;
 import br.com.clyvo.kura.tutor.onboarding.domain.InviteTutor;
 import br.com.clyvo.kura.tutor.onboarding.domain.repository.InviteTutorRepository;
-import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
 import br.com.clyvo.kura.tutor.shared.exception.GoneException;

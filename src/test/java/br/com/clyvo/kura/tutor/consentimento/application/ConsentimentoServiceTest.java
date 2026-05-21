@@ -1,4 +1,4 @@
-package br.com.clyvo.kura.tutor.consentimento.application;
+﻿package br.com.clyvo.kura.tutor.consentimento.application;
 
 import br.com.clyvo.kura.tutor.consentimento.api.dto.ConsentimentoRequest;
 import br.com.clyvo.kura.tutor.consentimento.application.ConsentimentoService.RegistroResult;
@@ -8,7 +8,7 @@ import br.com.clyvo.kura.tutor.consentimento.domain.repository.ConsentimentoRepo
 import br.com.clyvo.kura.tutor.consentimento.lgpd.TipoConsentimento;
 import br.com.clyvo.kura.tutor.consentimento.lgpd.ValidadorConsentimento;
 import br.com.clyvo.kura.tutor.entity.Tutor;
-import br.com.clyvo.kura.tutor.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
