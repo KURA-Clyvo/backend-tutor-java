@@ -60,7 +60,8 @@ class EspecieServiceCacheTest {
     @Test
     @DisplayName("primeiraChamadaBateNoRepo")
     void primeiraChamadaBateNoRepo() {
-        when(especieRepository.findAll()).thenReturn(List.of(especieFake(1L, "Cão")));
+        Especie especie = especieFake(1L, "Cão");
+        when(especieRepository.findAll()).thenReturn(List.of(especie));
 
         especieService.listarTodas();
 
@@ -72,7 +73,8 @@ class EspecieServiceCacheTest {
     @Test
     @DisplayName("segundaChamadaVemDoCache")
     void segundaChamadaVemDoCache() {
-        when(especieRepository.findAll()).thenReturn(List.of(especieFake(1L, "Cão")));
+        Especie especie = especieFake(1L, "Cão");
+        when(especieRepository.findAll()).thenReturn(List.of(especie));
 
         especieService.listarTodas();
         especieService.listarTodas(); // deve ser servida do cache

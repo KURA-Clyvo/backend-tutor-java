@@ -249,8 +249,8 @@ class AuthServiceTest {
 
     private ContaTutor contaAtiva(int tentativas) {
         Tutor tutor = mock(Tutor.class);
-        when(tutor.getIdTutor()).thenReturn(1L);
-        when(tutor.getNmTutor()).thenReturn("Tutor Teste");
+        lenient().when(tutor.getIdTutor()).thenReturn(1L);
+        lenient().when(tutor.getNmTutor()).thenReturn("Tutor Teste");
 
         ContaTutor c = new ContaTutor();
         c.setIdConta(10L);

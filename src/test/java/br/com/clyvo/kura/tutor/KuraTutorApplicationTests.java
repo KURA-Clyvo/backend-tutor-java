@@ -38,44 +38,44 @@ class KuraTutorApplicationTests {
     }
 
     @Test
-    @DisplayName("GET /api/especies deve retornar 200 sem autenticacao (rota publica)")
+    @DisplayName("GET /especies deve retornar 200 sem autenticacao (rota publica)")
     void especiesPublico() throws Exception {
-        mockMvc.perform(get("/api/especies"))
+        mockMvc.perform(get("/especies"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("GET /api/agendamentos sem token deve retornar 401 (não 403)")
+    @DisplayName("GET /agendamentos sem token deve retornar 401 (não 403)")
     void agendamentosSemToken() throws Exception {
-        mockMvc.perform(get("/api/agendamentos")
+        mockMvc.perform(get("/agendamentos")
                 .param("tutorId", "1"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("POST /api/auth/login com payload vazio deve retornar 400 com mapa de erros")
+    @DisplayName("POST /auth/login com payload vazio deve retornar 400 VALIDACAO_INVALIDA")
     void loginPayloadVazio() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.email").exists())
-                .andExpect(jsonPath("$.senha").exists());
+                .andExpect(jsonPath("$.codigo").value("VALIDACAO_INVALIDA"))
+                .andExpect(jsonPath("$.detalhes").isArray());
     }
 
     @Test
-    @DisplayName("GET /api/agendamentos com token invalido deve retornar 401 (não 403)")
+    @DisplayName("GET /agendamentos com token invalido deve retornar 401 (não 403)")
     void agendamentosTokenInvalido() throws Exception {
-        mockMvc.perform(get("/api/agendamentos")
+        mockMvc.perform(get("/agendamentos")
                 .param("tutorId", "1")
                 .header("Authorization", "Bearer token.invalido.aqui"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("GET /api/actuator/health deve retornar 200 sem autenticacao")
+    @DisplayName("GET /actuator/health deve retornar 200 sem autenticacao")
     void actuatorHealthPublico() throws Exception {
-        mockMvc.perform(get("/api/actuator/health"))
+        mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk());
     }
 }

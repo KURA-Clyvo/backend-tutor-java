@@ -19,12 +19,18 @@ public interface TutorRepository extends Repository<Tutor, Long>, PagingAndSorti
     @Query("""
         SELECT DISTINCT t FROM Tutor t
         WHERE t.stAtivo = 'S'
-          AND (:nome IS NULL OR LOWER(t.nmTutor) LIKE LOWER(CONCAT('%',:nome,'%')))
-          AND (:cidade IS NULL OR LOWER(t.nmCidade) LIKE LOWER(CONCAT('%',:cidade,'%')))
+          AND (:nomePat IS NULL OR LOWER(t.nmTutor) LIKE :nomePat ESCAPE '/')
+          AND (:cidadePat IS NULL OR LOWER(t.nmCidade) LIKE :cidadePat ESCAPE '/')
           AND (:uf IS NULL OR t.sgUf = :uf)
     """)
-    Page<Tutor> buscarComFiltros(@Param("nome") String nome,
-                                  @Param("cidade") String cidade,
-                                  @Param("uf") String uf,
-                                  Pageable pageable);
+    Page<Tutor> buscarComFiltrosQuery(@Param("nomePat") String nomePat,
+                                       @Param("cidadePat") String cidadePat,
+                                       @Param("uf") String uf,
+                                       Pageable pageable);
+
+    default Page<Tutor> buscarComFiltros(String nome, String cidade, String uf, Pageable pageable) {
+        String nomePat    = nome   != null ? "%" + nome.toLowerCase()   + "%" : null;
+        String cidadePat  = cidade != null ? "%" + cidade.toLowerCase() + "%" : null;
+        return buscarComFiltrosQuery(nomePat, cidadePat, uf, pageable);
+    }
 }

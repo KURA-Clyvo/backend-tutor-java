@@ -21,21 +21,21 @@ class SecurityConfigTest {
     @Test
     @DisplayName("endpointPublicoDeveRetornar200SemAuth — /actuator/health acessível sem token")
     void endpointPublicoDeveRetornar200SemAuth() throws Exception {
-        mockMvc.perform(get("/api/actuator/health"))
+        mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("endpointProtegidoSemTokenDeveRetornar401 — sem Authorization header retorna 401, NÃO 403")
     void endpointProtegidoSemTokenDeveRetornar401() throws Exception {
-        mockMvc.perform(get("/api/agendamentos").param("tutorId", "1"))
+        mockMvc.perform(get("/agendamentos").param("tutorId", "1"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("endpointProtegidoComTokenInvalidoDeveRetornar401ComApiError — JSON com campo 'codigo'")
     void endpointProtegidoComTokenInvalidoDeveRetornar401ComApiError() throws Exception {
-        mockMvc.perform(get("/api/agendamentos")
+        mockMvc.perform(get("/agendamentos")
                         .param("tutorId", "1")
                         .header("Authorization", "Bearer token.invalido.aqui"))
                 .andExpect(status().isUnauthorized())
