@@ -14,6 +14,10 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      connection-timeout: 20000        # ms antes de lançar exceção ao pedir conexão do pool
+      maximum-pool-size: 5             # Oracle XE suporta poucas conexões simultâneas
+      initialization-fail-timeout: 1   # falha rápido no startup se o DB não responder
 
   jpa:
     database-platform: org.hibernate.dialect.OracleDialect
@@ -23,8 +27,8 @@ spring:
 
   flyway:
     enabled: true
-    # Localização padrão (classpath:db/migration) — callbacks não rodam em prod
     locations: classpath:db/migration
+    baseline-on-migrate: true   # schema compartilhado com .NET — trata estado atual como baseline
 
 kura:
   jwt:
