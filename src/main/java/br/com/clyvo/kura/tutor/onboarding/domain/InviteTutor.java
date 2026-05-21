@@ -32,10 +32,10 @@ public class InviteTutor {
     @Column(name = "ds_canal", nullable = false, length = 20)
     private String dsCanal;
 
-    @Column(name = "st_utilizado", nullable = false, length = 1)
+    @Column(name = "st_utilizado", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stUtilizado;
 
-    @Column(name = "st_ativo", nullable = false, length = 1)
+    @Column(name = "st_ativo", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stAtivo;
 
     protected InviteTutor() {}

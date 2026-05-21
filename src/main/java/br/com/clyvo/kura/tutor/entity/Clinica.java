@@ -26,7 +26,7 @@ public class Clinica {
     @Column(name = "nm_cidade", length = 80)
     private String nmCidade;
 
-    @Column(name = "sg_uf", length = 2)
+    @Column(name = "sg_uf", length = 2, columnDefinition = "CHAR(2)")
     private String sgUf;
 
     @Column(name = "nr_cep", length = 9)
@@ -47,7 +47,7 @@ public class Clinica {
     @Column(name = "dt_cadastro", nullable = false, updatable = false)
     private LocalDateTime dtCadastro;
 
-    @Column(name = "st_ativa", nullable = false, length = 1)
+    @Column(name = "st_ativa", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stAtiva;
 
     protected Clinica() {}

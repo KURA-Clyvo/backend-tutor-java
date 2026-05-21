@@ -39,13 +39,13 @@ public class Pet {
     @Column(name = "dt_nascimento")
     private LocalDate dtNascimento;
 
-    @Column(name = "sg_sexo", length = 1)
+    @Column(name = "sg_sexo", length = 1, columnDefinition = "CHAR(1)")
     private String sgSexo;
 
-    @Column(name = "sg_porte", length = 1)
+    @Column(name = "sg_porte", length = 1, columnDefinition = "CHAR(1)")
     private String sgPorte;
 
-    @Column(name = "st_ativo", nullable = false, length = 1)
+    @Column(name = "st_ativo", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stAtivo;
 
     @Column(name = "dt_criacao")

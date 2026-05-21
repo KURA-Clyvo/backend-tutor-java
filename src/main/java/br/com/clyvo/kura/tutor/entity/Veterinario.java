@@ -30,7 +30,7 @@ public class Veterinario {
     @Column(name = "nr_telefone", length = 20)
     private String nrTelefone;
 
-    @Column(name = "st_ativo", nullable = false, length = 1)
+    @Column(name = "st_ativo", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stAtivo;
 
     @Column(name = "dt_criacao", nullable = false, updatable = false)

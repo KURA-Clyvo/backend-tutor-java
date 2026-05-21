@@ -56,10 +56,10 @@ public class ContaTutor {
     @Column(name = "dt_bloqueio")
     private LocalDateTime dtBloqueio;
 
-    @Column(name = "st_ativa", nullable = false, length = 1)
+    @Column(name = "st_ativa", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stAtiva = "S";
 
-    @Column(name = "st_email_verificado", nullable = false, length = 1)
+    @Column(name = "st_email_verificado", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stEmailVerificado = "N";
 
     @Column(name = "ds_token_reset", length = 256)

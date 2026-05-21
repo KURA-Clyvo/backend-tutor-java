@@ -29,7 +29,7 @@ public class TutorPet {
     @Column(name = "dt_vinculo", nullable = false)
     private LocalDateTime dtVinculo;
 
-    @Column(name = "st_principal", nullable = false, length = 1)
+    @Column(name = "st_principal", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stPrincipal;
 
     protected TutorPet() {}

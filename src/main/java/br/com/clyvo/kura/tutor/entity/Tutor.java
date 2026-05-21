@@ -43,7 +43,7 @@ public class Tutor {
     @Column(name = "nm_cidade", length = 80)
     private String nmCidade;
 
-    @Column(name = "sg_uf", length = 2)
+    @Column(name = "sg_uf", length = 2, columnDefinition = "CHAR(2)")
     private String sgUf;
 
     @Column(name = "nr_cep", length = 9)
@@ -55,10 +55,10 @@ public class Tutor {
     @Column(name = "dt_atualizacao")
     private LocalDateTime dtAtualizacao;
 
-    @Column(name = "st_ativo", nullable = false, length = 1)
+    @Column(name = "st_ativo", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stAtivo;
 
-    @Column(name = "st_aviso_privacidade", nullable = false, length = 1)
+    @Column(name = "st_aviso_privacidade", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stAvisoPrivacidade;
 
     @Column(name = "dt_aviso_privacidade")

@@ -35,7 +35,7 @@ public class Consentimento {
     @Column(name = "ds_texto_termo")
     private String dsTextoTermo;
 
-    @Column(name = "st_aceito", nullable = false, length = 1)
+    @Column(name = "st_aceito", nullable = false, length = 1, columnDefinition = "CHAR(1)")
     private String stAceito;
 
     @Column(name = "dt_aceite", nullable = false, updatable = false)
