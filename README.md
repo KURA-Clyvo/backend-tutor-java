@@ -91,6 +91,10 @@ Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita
 | **Envelope de erro** | Subconjunto do RFC 7807 (`status`, `error`, `message`, `path`, `correlationId`) | Contrato consistente; cada request recebe `X-Correlation-Id` para rastreamento no servidor |
 | **Gestão de schema** | Flyway V1–V5 (idempotentes, compatíveis com Oracle 19c) | Java e .NET escrevem no mesmo schema; todo DDL deve ser versionado para evitar drift |
 
+### 1.4 Diagrama Entidade-Relacionamento (Notação Barker via PlantUML)
+
+![DER Kura](docs/diagrams/der-plantuml.png)
+
 ---
 
 ## 2. Stack Tecnológica
@@ -305,15 +309,16 @@ bash tests/test_architecture.sh    # Valida estrutura do documento de arquitetur
 
 > Esta seção é direcionada aos **professores avaliadores da FIAP** e demonstra que todos os artefatos de software produzidos durante a Sprint 1 estão versionados, publicamente acessíveis e organizados neste repositório.
 
-**Repositório:** [github.com/FelipeFerrete/backend-tutor-java](https://github.com/FelipeFerrete/backend-tutor-java)
+**Repositório:** [github.com/KURA-Clyvo/backend-tutor-java](https://github.com/KURA-Clyvo/backend-tutor-java)
 
 ### Índice de Artefatos
 
 | Artefato | Caminho no Repositório | Descrição |
 |---|---|---|
 | **Código-fonte** | [`src/`](src/) | Pacotes Java organizados por bounded context (`auth`, `onboarding`, `agendamento`, `consentimento`, `tutor`, `timeline`, `shared`) |
-| **Diagrama Entidade-Relacionamento (DER)** | [`docs/diagrams/der.dmd`](docs/diagrams/der.dmd) | DER em notação Barker — formato nativo Oracle Data Modeler |
-| **DER (PlantUML)** | [`docs/diagrams/der.puml`](docs/diagrams/der.puml) | DER em formato texto, renderizável em qualquer leitor PlantUML |
+| **Diagrama Entidade-Relacionamento (DER)** | [`docs/diagrams/der-plantuml.png`](docs/diagrams/der-plantuml.png) | DER em notação Barker — imagem PNG gerada via PlantUML |
+| **DER (PlantUML fonte)** | [`docs/diagrams/der.puml`](docs/diagrams/der.puml) | Fonte PlantUML do DER, renderizável em qualquer leitor compatível |
+| **DER (Oracle Data Modeler)** | [`docs/diagrams/der.dmd`](docs/diagrams/der.dmd) | Arquivo nativo Oracle Data Modeler |
 | **Documento de Arquitetura** | [`docs/architecture.md`](docs/architecture.md) | Bounded contexts, decisões arquiteturais e boundary Java ↔ .NET |
 | **Collection Postman** | [`docs/postman/kura-tutor.postman_collection.json`](docs/postman/kura-tutor.postman_collection.json) | Todos os endpoints com exemplos de request/response |
 | **Ambiente Postman — Dev** | [`docs/postman/kura-tutor-dev.postman_environment.json`](docs/postman/kura-tutor-dev.postman_environment.json) | Variáveis para execução local (H2) |
