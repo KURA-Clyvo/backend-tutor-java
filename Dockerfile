@@ -9,6 +9,14 @@ COPY pom.xml .
 RUN mvn dependency:go-offline -q
 
 COPY src ./src
+
+# Normalize CRLF and strip UTF-8 BOM — both added by Windows editors, both fatal to javac on Linux.
+RUN apt-get update && apt-get install -y --no-install-recommends dos2unix \
+    && find ./src -name "*.java" -type f -exec dos2unix {} + \
+    && find ./src -name "*.java" -type f -exec sed -i 's/\xEF\xBB\xBF//g' {} + \
+    && find ./src -name "*.java" -type f -exec sed -i 's/\xef\xbb\xbf//g' {} + \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN mvn package -DskipTests -q
 
 # ─── Stage 2: Runtime ─────────────────────────────────────────────────────────

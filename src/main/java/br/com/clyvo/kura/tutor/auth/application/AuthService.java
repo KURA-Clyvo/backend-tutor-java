@@ -1,4 +1,4 @@
-﻿package br.com.clyvo.kura.tutor.auth.application;
+package br.com.clyvo.kura.tutor.auth.application;
 
 import br.com.clyvo.kura.tutor.auth.api.dto.LoginRequest;
 import br.com.clyvo.kura.tutor.auth.api.dto.RefreshRequest;

@@ -1,4 +1,4 @@
-﻿package br.com.clyvo.kura.tutor.agendamento.application;
+package br.com.clyvo.kura.tutor.agendamento.application;
 
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoRequest;
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoUpdateRequest;

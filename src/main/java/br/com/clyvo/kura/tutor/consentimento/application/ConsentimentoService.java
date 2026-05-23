@@ -1,4 +1,4 @@
-﻿package br.com.clyvo.kura.tutor.consentimento.application;
+package br.com.clyvo.kura.tutor.consentimento.application;
 
 import br.com.clyvo.kura.tutor.consentimento.api.dto.ConsentimentoRequest;
 import br.com.clyvo.kura.tutor.consentimento.api.dto.ConsentimentoResponse;

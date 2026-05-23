@@ -1,4 +1,4 @@
-﻿package br.com.clyvo.kura.tutor.consentimento.application;
+package br.com.clyvo.kura.tutor.consentimento.application;
 
 import br.com.clyvo.kura.tutor.consentimento.domain.Consentimento;
 import br.com.clyvo.kura.tutor.consentimento.domain.repository.ConsentimentoRepository;

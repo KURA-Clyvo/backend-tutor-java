@@ -1,4 +1,4 @@
-﻿package br.com.clyvo.kura.tutor.timeline.application;
+package br.com.clyvo.kura.tutor.timeline.application;
 
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.PetRepository;

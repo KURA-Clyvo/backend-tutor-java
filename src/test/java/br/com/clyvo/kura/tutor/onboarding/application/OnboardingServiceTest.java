@@ -1,4 +1,4 @@
-﻿package br.com.clyvo.kura.tutor.onboarding.application;
+package br.com.clyvo.kura.tutor.onboarding.application;
 
 import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;

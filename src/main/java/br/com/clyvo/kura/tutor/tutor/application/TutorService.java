@@ -1,4 +1,4 @@
-﻿package br.com.clyvo.kura.tutor.tutor.application;
+package br.com.clyvo.kura.tutor.tutor.application;
 
 import br.com.clyvo.kura.tutor.dto.response.TutorResponse;
 import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
