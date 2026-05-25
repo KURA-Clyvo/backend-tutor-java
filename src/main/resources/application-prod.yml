@@ -27,8 +27,11 @@ spring:
 
   flyway:
     enabled: true
-    locations: classpath:db/migration
     baseline-on-migrate: true   # schema compartilhado com .NET — trata estado atual como baseline
+    baseline-version: "0"       # V0 = linha base; V1–V6 são aplicados se ainda não registrados
+    out-of-order: false         # impede gaps acidentais na sequência de versões
+    validate-on-migrate: true   # rejeita startup se checksum de migration aplicada divergir
+    locations: classpath:db/migration
 
 kura:
   jwt:
