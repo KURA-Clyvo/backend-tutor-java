@@ -68,6 +68,12 @@ public class ContaTutor {
     @Column(name = "dt_token_expira")
     private LocalDateTime dtTokenExpira;
 
+    @Column(name = "ds_push_token", length = 512)
+    private String dsPushToken;
+
+    @Column(name = "ds_plataforma_push", length = 10)
+    private String dsPlataformaPush;
+
     public ContaTutor() {}
 
     // ── Getters ───────────────────────────────────────────────────────────────
@@ -86,6 +92,8 @@ public class ContaTutor {
     public String getStEmailVerificado()      { return stEmailVerificado; }
     public String getDsTokenReset()           { return dsTokenReset; }
     public LocalDateTime getDtTokenExpira()   { return dtTokenExpira; }
+    public String getDsPushToken()            { return dsPushToken; }
+    public String getDsPlataformaPush()       { return dsPlataformaPush; }
 
     // ── Setters ───────────────────────────────────────────────────────────────
     public void setIdConta(Long v)               { this.idConta = v; }
@@ -101,8 +109,10 @@ public class ContaTutor {
     public void setDtBloqueio(LocalDateTime v)   { this.dtBloqueio = v; }
     public void setStAtiva(String v)             { this.stAtiva = v; }
     public void setStEmailVerificado(String v)   { this.stEmailVerificado = v; }
-    public void setDsTokenReset(String v)        { this.dsTokenReset = v; }
-    public void setDtTokenExpira(LocalDateTime v){ this.dtTokenExpira = v; }
+    public void setDsTokenReset(String v)          { this.dsTokenReset = v; }
+    public void setDtTokenExpira(LocalDateTime v)  { this.dtTokenExpira = v; }
+    public void setDsPushToken(String v)           { this.dsPushToken = v; }
+    public void setDsPlataformaPush(String v)      { this.dsPlataformaPush = v; }
 
     // ── Helpers de domínio ────────────────────────────────────────────────────
     private static final int MAX_TENTATIVAS_LOGIN = 5;
