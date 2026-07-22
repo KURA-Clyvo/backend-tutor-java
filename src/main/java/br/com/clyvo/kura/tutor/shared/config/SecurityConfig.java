@@ -32,6 +32,10 @@ public class SecurityConfig {
         "/auth/login",
         "/auth/refresh",
         "/auth/register-invite",
+        // BFF aliases — mobile-tutor-rn usa /api/v1/auth/**
+        "/v1/auth/login",
+        "/v1/auth/refresh",
+        "/v1/auth/register-invite",
         "/swagger-ui/**",
         "/swagger-ui.html",
         "/v3/api-docs/**",
