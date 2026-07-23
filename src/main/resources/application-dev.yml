@@ -28,7 +28,12 @@ spring:
 
   flyway:
     enabled: true
-    locations: classpath:db/migration,classpath:db/callback
+    # db/migration-h2 = equivalentes portáveis das migrations Oracle PL/SQL
+    # (V2/V3/V5) — ver db/migration-oracle e docs/INT-01-contract-map.md.
+    # Precisa ser SIBLING de db/migration (não subpasta): Flyway descarta
+    # localizações que são sub-diretório de outra já incluída (scan recursivo),
+    # o que faria as duas variantes colidirem com "Found more than one migration".
+    locations: classpath:db/migration,classpath:db/migration-h2,classpath:db/callback
     baseline-on-migrate: true
 
 management:

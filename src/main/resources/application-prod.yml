@@ -31,7 +31,11 @@ spring:
     baseline-version: "0"       # V0 = linha base; V1–V6 são aplicados se ainda não registrados
     out-of-order: false         # impede gaps acidentais na sequência de versões
     validate-on-migrate: true   # rejeita startup se checksum de migration aplicada divergir
-    locations: classpath:db/migration
+    # db/migration-oracle = V2/V3/V5 originais (PL/SQL) — movidos de db/migration/
+    # para permitir uma variante H2 portável em dev (sibling dir — ver nota em
+    # application-dev.yml sobre Flyway descartar sub-locations aninhadas).
+    # Conteúdo idêntico ao anterior; prod continua rodando o mesmo PL/SQL.
+    locations: classpath:db/migration,classpath:db/migration-oracle
 
 kura:
   jwt:

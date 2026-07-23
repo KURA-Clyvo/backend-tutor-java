@@ -65,9 +65,10 @@ public class OnboardingService {
     @Transactional
     public TokenResponse registrarPorInvite(RegisterInviteRequest request,
                                              HttpServletRequest httpRequest) {
-        // 1. Localiza o convite pelo token
-        String nrToken = request.token().replace("-", "").toUpperCase();
-        InviteTutor invite = inviteRepo.findByNrToken(nrToken)
+        // 1. Localiza o convite pelo token — comparação exata. NR_TOKEN é armazenado
+        // como Guid.ToString() do .NET (hifenizado, minúsculo); normalizar aqui
+        // (remover hífens/uppercase) faz a busca nunca bater com o valor gerado.
+        InviteTutor invite = inviteRepo.findByNrToken(request.token())
                 .orElseThrow(() -> new NotFoundException("Convite não encontrado para o token informado."));
 
         // 2. Convite deve estar ativo (não cancelado pela clínica)
