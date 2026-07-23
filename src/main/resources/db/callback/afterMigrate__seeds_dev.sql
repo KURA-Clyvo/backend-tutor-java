@@ -34,20 +34,21 @@ WHEN NOT MATCHED THEN INSERT (ID_ESPECIE, NM_ESPECIE)
 VALUES (2, 'Gato');
 
 -- ─── 3. TIPO_EVENTO ───────────────────────────────────────────────────────────
+-- CD_TIPO (V9): chave de negócio usada pelo .NET — aqui igual a NM_TIPO.
 MERGE INTO TIPO_EVENTO t
 USING (SELECT 1 FROM DUAL) SRC ON (t.ID_TIPO_EVENTO = 1)
-WHEN NOT MATCHED THEN INSERT (ID_TIPO_EVENTO, NM_TIPO, DS_TIPO, ST_ATIVO)
-VALUES (1, 'CONSULTA', 'Consulta veterinária presencial', 'S');
+WHEN NOT MATCHED THEN INSERT (ID_TIPO_EVENTO, CD_TIPO, NM_TIPO, DS_TIPO, ST_ATIVO)
+VALUES (1, 'CONSULTA', 'CONSULTA', 'Consulta veterinária presencial', 'S');
 
 MERGE INTO TIPO_EVENTO t
 USING (SELECT 1 FROM DUAL) SRC ON (t.ID_TIPO_EVENTO = 2)
-WHEN NOT MATCHED THEN INSERT (ID_TIPO_EVENTO, NM_TIPO, DS_TIPO, ST_ATIVO)
-VALUES (2, 'TELEORIENTACAO', 'Orientação veterinária via videochamada', 'S');
+WHEN NOT MATCHED THEN INSERT (ID_TIPO_EVENTO, CD_TIPO, NM_TIPO, DS_TIPO, ST_ATIVO)
+VALUES (2, 'TELEORIENTACAO', 'TELEORIENTACAO', 'Orientação veterinária via videochamada', 'S');
 
 MERGE INTO TIPO_EVENTO t
 USING (SELECT 1 FROM DUAL) SRC ON (t.ID_TIPO_EVENTO = 3)
-WHEN NOT MATCHED THEN INSERT (ID_TIPO_EVENTO, NM_TIPO, DS_TIPO, ST_ATIVO)
-VALUES (3, 'VACINA', 'Aplicação de vacina', 'S');
+WHEN NOT MATCHED THEN INSERT (ID_TIPO_EVENTO, CD_TIPO, NM_TIPO, DS_TIPO, ST_ATIVO)
+VALUES (3, 'VACINA', 'VACINA', 'Aplicação de vacina', 'S');
 
 -- ─── 4. RACA ──────────────────────────────────────────────────────────────────
 MERGE INTO RACA t
