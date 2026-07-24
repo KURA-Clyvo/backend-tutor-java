@@ -77,6 +77,10 @@ public class Agendamento {
     @Column(name = "ID_EVENTO_GERADO")
     private Long idEventoGerado;
 
+    /** Sala de teleconsulta (Daily.co) — escrita exclusiva do .NET (TASK-10). Java só lê. */
+    @Column(name = "DS_SALA_URL", length = 512, insertable = false, updatable = false)
+    private String dsSalaUrl;
+
     /** Optimistic locking — sincroniza Java POST/PUT com .NET PATCH /status */
     @Version
     @Column(name = "NR_VERSION", nullable = false)
@@ -168,5 +172,6 @@ public class Agendamento {
     public LocalDateTime getDtCancelamento(){ return dtCancelamento; }
     public String getDsMotivoCancel()       { return dsMotivoCancel; }
     public Long getIdEventoGerado()         { return idEventoGerado; }
+    public String getDsSalaUrl()            { return dsSalaUrl; }
     public Long getNrVersion()              { return nrVersion; }
 }

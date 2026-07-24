@@ -24,7 +24,9 @@ public record AgendamentoResponse(
     @Schema(description = "Data/hora de criação") LocalDateTime dtCriacao,
     @Schema(description = "Data/hora de confirmação") LocalDateTime dtConfirmacao,
     @Schema(description = "Data/hora de cancelamento") LocalDateTime dtCancelamento,
-    @Schema(description = "Versão para optimistic locking — enviar no PUT para evitar conflito 409", example = "0") Long nrVersion
+    @Schema(description = "Versão para optimistic locking — enviar no PUT para evitar conflito 409", example = "0") Long nrVersion,
+    @Schema(description = "URL da sala de teleconsulta (Daily.co), preenchida pelo .NET após a criação. Null se ainda não criada.")
+        String dsSalaUrl
 ) {
     public static AgendamentoResponse fromEntity(Agendamento a) {
         return new AgendamentoResponse(
@@ -43,7 +45,8 @@ public record AgendamentoResponse(
             a.getDtCriacao(),
             a.getDtConfirmacao(),
             a.getDtCancelamento(),
-            a.getNrVersion()
+            a.getNrVersion(),
+            a.getDsSalaUrl()
         );
     }
 }

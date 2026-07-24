@@ -158,7 +158,7 @@ class AgendamentoControllerTest {
             ID_AG, 10L, 5L, "Rex", 2L, null,
             LocalDateTime.now().plusDays(7), 30,
             "CONSULTA", "AGENDADO", "PORTAL",
-            null, LocalDateTime.now(), null, null, 0L
+            null, LocalDateTime.now(), null, null, 0L, null
         );
     }
 }

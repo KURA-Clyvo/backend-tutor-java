@@ -63,7 +63,7 @@ class AgendamentoBffControllerTest {
                 1L, 42L, 10L, "Rex", 2L, 3L,
                 LocalDateTime.of(2026, 8, 1, 10, 0), 30,
                 "CONSULTA", "AGENDADO", "PORTAL", null,
-                LocalDateTime.now(), null, null, 0L);
+                LocalDateTime.now(), null, null, 0L, null);
     }
 
     // ─── GET ─────────────────────────────────────────────────────────────────
