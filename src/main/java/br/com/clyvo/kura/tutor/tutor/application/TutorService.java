@@ -1,11 +1,14 @@
 package br.com.clyvo.kura.tutor.tutor.application;
 
 import br.com.clyvo.kura.tutor.dto.response.TutorResponse;
+import br.com.clyvo.kura.tutor.entity.Pet;
 import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
+import br.com.clyvo.kura.tutor.timeline.domain.repository.TimelinePetRepository;
+import br.com.clyvo.kura.tutor.tutor.api.dto.PetDetalheResponse;
 import br.com.clyvo.kura.tutor.tutor.api.dto.PetResponse;
 import br.com.clyvo.kura.tutor.tutor.dto.PushTokenRequest;
 import org.slf4j.Logger;
@@ -25,13 +28,16 @@ public class TutorService {
     private final TutorRepository tutorRepository;
     private final PetRepository petRepository;
     private final ContaTutorRepository contaTutorRepository;
+    private final TimelinePetRepository timelinePetRepository;
 
     public TutorService(TutorRepository tutorRepository,
                         PetRepository petRepository,
-                        ContaTutorRepository contaTutorRepository) {
+                        ContaTutorRepository contaTutorRepository,
+                        TimelinePetRepository timelinePetRepository) {
         this.tutorRepository = tutorRepository;
         this.petRepository = petRepository;
         this.contaTutorRepository = contaTutorRepository;
+        this.timelinePetRepository = timelinePetRepository;
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +72,28 @@ public class TutorService {
 
         return petRepository.findAtivosByIdTutor(idTutor, efetivo)
                 .map(PetResponse::fromEntity);
+    }
+
+    /**
+     * Detalhe de um pet do tutor autenticado (TASK-31 — antes stub 501).
+     * idTutor sempre do JWT (via emailAutenticado); {@code idPet} vem do path
+     * (identifica o recurso, não o tutor) e sua posse é verificada via
+     * {@code PetRepository.countVinculo} antes de retornar qualquer dado.
+     */
+    @Transactional(readOnly = true)
+    public PetDetalheResponse buscarPetDetalhe(Long idPet, String emailAutenticado) {
+        Long idTutor = contaTutorRepository.findIdTutorByEmail(emailAutenticado)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Conta", emailAutenticado));
+
+        if (petRepository.countVinculo(idPet, idTutor) == 0) {
+            throw new ForbiddenException("Acesso negado: pet não pertence ao tutor autenticado.");
+        }
+
+        Pet pet = petRepository.findByIdPetAndStAtivo(idPet, "S")
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Pet", idPet));
+
+        long nrConsultas = timelinePetRepository.countByIdPet(idPet);
+        return PetDetalheResponse.fromEntity(pet, nrConsultas);
     }
 
     @Transactional

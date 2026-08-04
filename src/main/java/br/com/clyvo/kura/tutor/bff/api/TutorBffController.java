@@ -2,6 +2,11 @@ package br.com.clyvo.kura.tutor.bff.api;
 
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
+import br.com.clyvo.kura.tutor.timeline.api.dto.TimelineEventoResponse;
+import br.com.clyvo.kura.tutor.timeline.api.dto.VacinaStatusResponse;
+import br.com.clyvo.kura.tutor.timeline.api.dto.VacinaVencendoResponse;
+import br.com.clyvo.kura.tutor.timeline.application.TimelineService;
+import br.com.clyvo.kura.tutor.tutor.api.dto.PetDetalheResponse;
 import br.com.clyvo.kura.tutor.tutor.api.dto.PetResponse;
 import br.com.clyvo.kura.tutor.tutor.application.TutorService;
 import br.com.clyvo.kura.tutor.tutor.dto.PushTokenRequest;
@@ -16,14 +21,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * BFF tutor — expõe /api/v1/tutor/** com idTutor derivado sempre do JWT.
- * Nunca aceita idTutor de path para evitar IDOR.
+ * Nunca aceita idTutor de path para evitar IDOR. {id}/{idPet} no path identificam
+ * o recurso (pet), não o tutor — a posse é sempre verificada contra o idTutor do JWT.
  */
 @RestController
 @RequestMapping("/v1/tutor")
@@ -32,11 +39,14 @@ import org.springframework.web.bind.annotation.*;
 public class TutorBffController {
 
     private final TutorService tutorService;
+    private final TimelineService timelineService;
     private final ContaTutorRepository contaTutorRepository;
 
     public TutorBffController(TutorService tutorService,
+                               TimelineService timelineService,
                                ContaTutorRepository contaTutorRepository) {
         this.tutorService = tutorService;
+        this.timelineService = timelineService;
         this.contaTutorRepository = contaTutorRepository;
     }
 
@@ -58,19 +68,87 @@ public class TutorBffController {
     }
 
     @GetMapping("/pets/{id}")
-    @Operation(summary = "Detalhe do pet (stub)", description = "Não implementado — pendente INT-01.")
-    @ApiResponse(responseCode = "501", description = "Não implementado")
-    public ResponseEntity<Void> detalharPet(
-            @Parameter(description = "ID do pet") @PathVariable Long id) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    @Operation(
+        summary = "Detalhe do pet (TASK-31)",
+        description = "idTutor derivado do JWT; posse do pet verificada via vínculo tutor-pet."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Pet retornado"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "Pet não pertence ao tutor autenticado"),
+        @ApiResponse(responseCode = "404", description = "Pet não encontrado")
+    })
+    public ResponseEntity<PetDetalheResponse> detalharPet(
+            @Parameter(description = "ID do pet") @PathVariable Long id,
+            Authentication auth) {
+        return ResponseEntity.ok(tutorService.buscarPetDetalhe(id, auth.getName()));
     }
 
     @GetMapping("/pets/{id}/timeline")
-    @Operation(summary = "Timeline do pet (stub)", description = "Não implementado — pendente INT-01.")
-    @ApiResponse(responseCode = "501", description = "Não implementado")
-    public ResponseEntity<Void> timelinePet(
-            @Parameter(description = "ID do pet") @PathVariable Long id) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    @Operation(
+        summary = "Linha do tempo de atendimentos do pet (TASK-31)",
+        description = "Paginada, ordenada por dtEvento desc. idTutor derivado do JWT."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Timeline retornada"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "Pet não pertence ao tutor autenticado")
+    })
+    public ResponseEntity<Page<TimelineEventoResponse>> timelinePet(
+            @Parameter(description = "ID do pet") @PathVariable Long id,
+            @PageableDefault(size = 20, sort = "dtEvento", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication auth) {
+        return ResponseEntity.ok(timelineService.listarTimeline(id, auth.getName(), pageable));
+    }
+
+    @GetMapping("/pets/{id}/timeline/{idEvento}")
+    @Operation(
+        summary = "Detalhe de um evento da timeline do pet (TASK-31)",
+        description = "idTutor derivado do JWT. Evento identificado por ID_EVENTO (VW_TIMELINE_PET)."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Evento retornado"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "Pet não pertence ao tutor autenticado"),
+        @ApiResponse(responseCode = "404", description = "Evento não encontrado para este pet")
+    })
+    public ResponseEntity<TimelineEventoResponse> detalharEventoTimeline(
+            @Parameter(description = "ID do pet") @PathVariable Long id,
+            @Parameter(description = "ID do evento") @PathVariable Long idEvento,
+            Authentication auth) {
+        return ResponseEntity.ok(timelineService.buscarEventoDetalhe(id, idEvento, auth.getName()));
+    }
+
+    @GetMapping("/pets/{id}/vacinas")
+    @Operation(
+        summary = "Vacinas pendentes do pet nos próximos 30 dias (TASK-31)",
+        description = "Leitura de VW_VACINAS_VENCENDO. idTutor derivado do JWT."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista de vacinas pendentes"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "Pet não pertence ao tutor autenticado")
+    })
+    public ResponseEntity<List<VacinaVencendoResponse>> vacinasPet(
+            @Parameter(description = "ID do pet") @PathVariable Long id,
+            Authentication auth) {
+        return ResponseEntity.ok(timelineService.listarVacinasPet(id, auth.getName()));
+    }
+
+    @GetMapping("/pets/{id}/vacinas/status")
+    @Operation(
+        summary = "Resumo de vacinação pendente do pet (TASK-31)",
+        description = "Leitura de VW_VACINAS_VENCENDO. idTutor derivado do JWT."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Status retornado"),
+        @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+        @ApiResponse(responseCode = "403", description = "Pet não pertence ao tutor autenticado")
+    })
+    public ResponseEntity<VacinaStatusResponse> statusVacinasPet(
+            @Parameter(description = "ID do pet") @PathVariable Long id,
+            Authentication auth) {
+        return ResponseEntity.ok(timelineService.statusVacinasPet(id, auth.getName()));
     }
 
     @PatchMapping("/me/push-token")

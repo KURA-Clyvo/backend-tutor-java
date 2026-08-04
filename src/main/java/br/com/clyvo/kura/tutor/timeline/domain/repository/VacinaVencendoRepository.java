@@ -10,4 +10,6 @@ public interface VacinaVencendoRepository
         extends Repository<VacinaVencendo, VacinaVencendoId> {
 
     List<VacinaVencendo> findByIdTutor(Long idTutor);
+
+    List<VacinaVencendo> findByIdPet(Long idPet);
 }

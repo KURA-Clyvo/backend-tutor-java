@@ -14,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -113,6 +114,19 @@ public class GlobalExceptionHandler {
         log.warn("404 on [{} {}]: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiError.of(404, "NAO_ENCONTRADO", ex.getMessage(), req.getRequestURI()));
+    }
+
+    /**
+     * Spring 6.1+ (Boot 3.2) resolve rota sem handler tentando servir como recurso
+     * estático antes de desistir — sem este handler específico, cai no catch-all
+     * de 500 abaixo, mascarando um simples "rota inexistente" como erro interno.
+     * Descoberto na TASK-31 testando que endpoints deliberadamente não implementados
+     * (ex.: PATCH .../notificacoes/{id}/lida) respondem 404, não 500.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> rotaInexistente(NoResourceFoundException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiError.of(404, "NAO_ENCONTRADO", "Rota inexistente.", req.getRequestURI()));
     }
 
     // ─── 409 ─────────────────────────────────────────────────────────────────

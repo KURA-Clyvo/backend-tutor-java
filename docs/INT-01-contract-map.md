@@ -30,36 +30,92 @@ o smoke test (fora do escopo original de TASK-08, mas bloqueantes; ver checkpoin
 Resultado: suíte completa `mvn test -Dspring.profiles.active=dev` foi de um estado onde a aplicação
 não subia para **133/133 testes verdes**.
 
+## Atualização TASK-31 (2026-08-04) — fechamento dos stubs 501 e endpoints sem backing
+
+Reexecutado o levantamento (`grep -rn "api/v1/tutor" mobile-tutor-rn/src/services/`) contra o código
+real dos controllers Java. Duas descobertas importantes que corrigem o mapa original:
+
+1. **A linha #3 (`GET /pets`) estava marcada ✅ incorretamente.** O DTO Java real
+   (`PetResponse`: `idPet, nmPet, nmEspecie, nmRaca, sgSexo, dtNascimento, sgPorte`, dentro de um
+   `Page`) não bate em nada com o tipo que o app consome (`PetTutorResponse`: `id, dsStatusGeral,
+   nrAlertasAtivos, nrConsultas, chips, condicoes, ...`, array plano). O app já roda hoje contra esse
+   contrato via `usePets()`/`mapPetDto` — ou seja, **a lista de pets em produção real quebraria** (ou
+   está sendo consumida só via mock/`EXPO_PUBLIC_USE_MOCKS`). Isso não estava documentado antes.
+   **Fora do escopo da TASK-31** (não é um dos 5 itens travados) — requer decisão de produto própria
+   (de onde vêm `chips`/`condicoes`/`dsStatusGeral` — o mesmo problema das linhas #4-8, mas com
+   superfície maior). Rastrear como nova task.
+2. **As linhas #12/#13 (`GET`/`POST /consentimentos`) também estavam ✅ incorretas** pelo mesmo
+   motivo: o Java real espera `{tipo, versaoTermo, aceito: 'S'|'N', textoTermo?}` com enum
+   `TipoConsentimento` (`TELEORIENTACAO, LEMBRETES, DADOS_ANONIMOS, COMPARTILHAR_SEGURADORA,
+   MARKETING`); o app manda/espera `{dsTipoConsentimento, dsAceite}` com um enum de negócio
+   totalmente diferente (`COMUNICACAO_WHATSAPP, DADOS_CLINICOS_IA, COMPARTILHAMENTO_LABORATORIO`).
+   A TASK-31 implementou a revogação como POST reaproveitando o **mesmo payload que o app já usa
+   para assinar** (mecanismo correto: insert-only, sem DELETE) — mas isso herda o mesmo mismatch de
+   payload do #13, então tanto assinar quanto revogar continuam falhando contra o Java real até essa
+   divergência maior ser resolvida (fora do escopo desta task: mapear taxonomia de consentimento é
+   decisão de produto, não técnica).
+
+Dos 5 itens travados com o usuário para esta task, os 4 primeiros foram implementados no Java
+(read-only onde aplicável, `idTutor` sempre do JWT) e o app foi ajustado para os contratos reais:
+
+- `TutorBffController.detalharPet` (linha #4) e `.timelinePet` (linha #5) deixaram de ser stub —
+  agora delegam para `TutorService.buscarPetDetalhe` / `TimelineService.listarTimeline`.
+- `TutorBffController.detalharEventoTimeline` (linha #6), `.vacinasPet` e `.statusVacinasPet`
+  (linhas #7/#8) são endpoints novos, todos self-scoped e read-only.
+- `NotificacaoBffController` (linhas #15/#16/#17) é novo — só `GET`, leitura de `NOTIFICACAO`
+  (entidade `@Immutable`, sem nenhum método de escrita no repositório).
+- `ConsentimentoBffController.deletar` (linha #14) permanece como estava (stub 501, coberto por
+  teste) — decisão foi **não implementar DELETE**; o app não o chama mais.
+
+Achado extra (infra, não fazia parte da lista): `NoResourceFoundException` (Spring 6.1/Boot 3.2, uma
+rota sem handler que também não bate com nenhum recurso estático) caía no catch-all `Exception.class`
+de `GlobalExceptionHandler` e virava 500 em vez de 404 — descoberto testando que
+`PATCH /notificacoes/{id}/lida` (deliberadamente inexistente) responde 404. Corrigido com um
+`@ExceptionHandler(NoResourceFoundException.class)` dedicado.
+
+Achado extra (dead code): existia um `TimelineController` (`timeline/api/TimelineController.java`,
+fora de `/v1/tutor`, `GET /pets/{idPet}/timeline` e `GET /tutores/{idTutor}/vacinas-vencendo` com
+`idTutor` **vindo do path** — violando a regra self-scoped) que não é chamado pelo app real (paths
+não batem com o que `mobile-tutor-rn` usa). Não foi removido nesta task (fora do escopo autorizado),
+mas `TimelineService.listarVacinasVencendo` (seu único caller) foi marcado `@Deprecated` com
+javadoc explicando que a superfície pública correta agora é `listarVacinasPet`/`statusVacinasPet`.
+
 ## Mapa de contratos
 
 | # | Mobile (`mobile-tutor-rn/src/services`) | Java (`bff/api`) | Status | Divergência | Decisão |
 |---|---|---|---|---|---|
-| 1 | `POST /api/v1/auth/login` `{dsEmail, dsSenha}` | `POST /v1/auth/login` espera `{email, senha}` | ❌ payload | Campos JSON não batem — todo login do app falharia com 400 contra o Java real | **Ajustar o app**: renomear campos em `types/api.ts:LoginRequest`, `validators.ts`, `app/login.tsx` para `email`/`senha` |
-| 2 | `POST /api/v1/auth/register` `{inviteToken, nmTutor, dsSenha, dsTelefone}` | Não existe — Java só tem `POST /v1/auth/register-invite` `{token, senha, aceites[]}` | ❌ rota + payload | Path diferente (`register` vs `register-invite`) **e** payload diferente; `nmTutor`/`dsTelefone` nem existem no DTO Java (vêm da `TUTOR` .NET-owned, não são enviados) | **Ajustar o app**: renomear chamada para `/register-invite`, remover `nmTutor`/`dsTelefone` do payload, adicionar `aceites: AceiteRequest[]` (tela de registro precisa coletar consentimentos LGPD) |
-| 3 | `GET /api/v1/tutor/pets` | `GET /v1/tutor/pets` | ✅ | — | — |
-| 4 | `GET /api/v1/tutor/pets/{id}` | Stub `501` (`TutorBffController.detalharPet`) | ⚠️ não implementado | Documentado desde TASK-03 | **Implementar** — próxima INT-01 sub-task |
-| 5 | `GET /api/v1/tutor/pets/{idPet}/timeline` | Stub `501` (`TutorBffController.timelinePet`) | ⚠️ não implementado | Documentado desde TASK-03; `VW_TIMELINE_PET` (V6) já existe como fonte | **Implementar** — próxima INT-01 sub-task |
-| 6 | `GET /api/v1/tutor/pets/{idPet}/timeline/{idEvento}` | Não existe (nem stub) | ❌ ausente | Sem rota alguma para detalhe de evento | **Implementar** (detalhe) — ou remover a tela de detalhe do app se não for crítico ao MVP |
-| 7 | `GET /api/v1/tutor/pets/{id}/vacinas` | Não existe | ❌ ausente | `VW_VACINAS_VENCENDO` (V6) já existe como fonte de dado | **Implementar** — controller fino sobre a view já existente |
-| 8 | `GET /api/v1/tutor/pets/{id}/vacinas/status` | Não existe | ❌ ausente | Idem #7 | **Implementar** junto com #7 |
+| 1 | `POST /api/v1/auth/login` `{dsEmail, dsSenha}` | `POST /v1/auth/login` espera `{email, senha}` | ❌ payload | Campos JSON não batem — todo login do app falharia com 400 contra o Java real | **Ajustar o app**: renomear campos em `types/api.ts:LoginRequest`, `validators.ts`, `app/login.tsx` para `email`/`senha` — não tocado na TASK-31 (fora do escopo) |
+| 2 | `POST /api/v1/auth/register` `{inviteToken, nmTutor, dsSenha, dsTelefone}` | Não existe — Java só tem `POST /v1/auth/register-invite` `{token, senha, aceites[]}` | ❌ rota + payload | Path diferente (`register` vs `register-invite`) **e** payload diferente | **Ajustar o app** — não tocado na TASK-31 (fora do escopo) |
+| 3 | `GET /api/v1/tutor/pets` | `GET /v1/tutor/pets` | ❌ payload (achado TASK-31 — marcado ✅ incorretamente antes) | `PetResponse` real (idPet/nmPet/nmEspecie/...) não bate com `PetTutorResponse` esperado pelo app (id/dsStatusGeral/chips/condicoes/...); também retorna `Page`, app espera array plano | **Fora do escopo da TASK-31** — precisa decisão de produto sobre `chips`/`condicoes`/`dsStatusGeral`. Rastrear como nova task |
+| 4 | `GET /api/v1/tutor/pets/{id}` | `GET /v1/tutor/pets/{id}` (`TutorBffController.detalharPet`) | ✅ **implementado na TASK-31** | Era stub 501 | **Implementado no Java** (read-only, self-scoped) — DTO honesto (`PetDetalheResponse`); app usa `mapPetDetailDto` para preencher como ausente os campos que a UI aspiracional espera mas o backend não tem (chips/vitais/observações/condições) |
+| 5 | `GET /api/v1/tutor/pets/{idPet}/timeline` | `GET /v1/tutor/pets/{id}/timeline` (`TutorBffController.timelinePet`) | ✅ **implementado na TASK-31** | Era stub 501 | **Implementado no Java** via `TimelineService.listarTimeline` (VW_TIMELINE_PET, paginado); app extrai `.content` e usa `mapTimelineEventoDto` |
+| 6 | `GET /api/v1/tutor/pets/{idPet}/timeline/{idEvento}` | `GET /v1/tutor/pets/{id}/timeline/{idEvento}` (`TutorBffController.detalharEventoTimeline`) | ✅ **implementado na TASK-31** | Não existia rota alguma | **Implementado no Java** — mesma fonte de dado da lista (VW_TIMELINE_PET); sem SOAP/diagnóstico estruturado ainda, os campos ricos do detalhe (`dsDiagnostico`, `prescricoes`, etc.) ficam ausentes por ora |
+| 7 | `GET /api/v1/tutor/pets/{id}/vacinas` | `GET /v1/tutor/pets/{id}/vacinas` (`TutorBffController.vacinasPet`) | ✅ **implementado na TASK-31** | Não existia | **Implementado no Java** sobre `VW_VACINAS_VENCENDO` — só retorna pendências futuras (nunca "aplicadas"); app mapeia `sgStatus` sempre como `VENCENDO` |
+| 8 | `GET /api/v1/tutor/pets/{id}/vacinas/status` | `GET /v1/tutor/pets/{id}/vacinas/status` (`TutorBffController.statusVacinasPet`) | ✅ **implementado na TASK-31** | Não existia | **Implementado no Java** (decisão travada com o usuário) — resumo `{idPet, qtdPendentes, dtProximaDose, dsStatusGeral}` sobre a mesma view |
 | 9 | `GET /api/v1/tutor/agendamentos` | `GET /v1/tutor/agendamentos` | ✅ | — | — |
-| 10 | `POST /api/v1/tutor/agendamentos` `{idPet, sgTipoConsulta, dsMotivo, dtPreferida, dtAlternativa?, idClinica?}` | `POST /v1/tutor/agendamentos` espera `{idPet, idClinica, dtAgendamento, tipo, duracaoMinutos, observacoes?}` | ❌ payload | Nomes de campo, obrigatoriedade de `idClinica` e enum de tipo divergem por completo (`sgTipoConsulta` valores `RETORNO\|ROTINA\|URGENCIA\|TELEORIENTACAO` vs `tipo` valores `CONSULTA\|RETORNO\|VACINA\|EXAME\|PROCEDIMENTO\|TELEORIENTACAO`) | **Decisão a registrar em sub-task**: alinhar o app ao contrato Java (mais simples, um único formulário) ou criar tradução no BFF (`dtPreferida`→`dtAgendamento`, mapa de enum) — recomendo alinhar o app, já que o conceito de "data alternativa" não tem equivalente no Java hoje |
+| 10 | `POST /api/v1/tutor/agendamentos` `{idPet, sgTipoConsulta, dsMotivo, dtPreferida, dtAlternativa?, idClinica?}` | `POST /v1/tutor/agendamentos` espera `{idPet, idClinica, dtAgendamento, tipo, duracaoMinutos, observacoes?}` | ❌ payload | Nomes de campo, obrigatoriedade de `idClinica` e enum de tipo divergem por completo | **Decisão pendente** — não tocado na TASK-31 (fora do escopo) |
 | 11 | `DELETE /api/v1/tutor/agendamentos/{id}` | `DELETE /v1/tutor/agendamentos/{id}` | ✅ | — | — |
-| 12 | `GET /api/v1/tutor/consentimentos` | `GET /v1/tutor/consentimentos` | ✅ | — | — |
-| 13 | `POST /api/v1/tutor/consentimentos` (+ header `Idempotency-Key`) | `POST /v1/tutor/consentimentos` (+ header `Idempotency-Key` obrigatório) | ✅ | O app já envia o header corretamente | — |
-| 14 | `DELETE /api/v1/tutor/consentimentos/{id}` | Stub `501` (`ConsentimentoBffController.deletar`) | ⚠️ não implementável | Consentimento é **insert-only** por design (histórico LGPD) — não existe "revogar por delete" | **Ajustar o app**: revogação deve ser um novo `POST` com tipo `REVOGACAO` (o endpoint #13 já suporta isso via `ConsentimentoRequest`), não um `DELETE` |
-| 15 | `GET /api/v1/tutor/notificacoes` | Não existe | ❌ ausente | `NOTIFICACAO` é tabela .NET-owned; não há `NotificacaoBffController` | **Decisão a registrar**: implementar leitura read-only (`@Immutable`, mesmo padrão de `PET`/`TUTOR`) ou mover a feature para o app clínica |
-| 16 | `PATCH /api/v1/tutor/notificacoes/{id}/lida` | Não existe | ❌ ausente | Idem #15 — e é escrita numa tabela .NET-owned (Java não pode escrever `NOTIFICACAO`) | **Decisão a registrar**: precisa de endpoint .NET (`PATCH /api/v1/notificacoes/{id}/lida`) chamado pelo app diretamente, ou uma tabela de "lida" espelho Java-owned |
-| 17 | `PATCH /api/v1/tutor/notificacoes/lidas` | Não existe | ❌ ausente | Idem #16 | Mesma decisão de #16 |
-| 18 | `PATCH /api/v1/tutor/me/push-token` `{dsPushToken, dsPlatform}` | `PATCH /v1/tutor/me/push-token` espera `{dsPushToken, dsPlatforma}` | ❌ payload (typo) | Campo Java tem um typo (`dsPlatforma` — falta o 'a' entre 't' e 'f'; nem é "Plataforma" PT nem "Platform" EN correto) que não bate com o `dsPlatform` do app | **Corrigir o typo Java** (`PushTokenRequest.dsPlatforma` → `dsPlatform`, alinhando ao app, que já usa o nome em inglês corretamente) — troca de 1 campo, sem migration (coluna `DS_PLATAFORMA_PUSH` no banco não muda, só o nome do DTO) |
+| 12 | `GET /api/v1/tutor/consentimentos` | `GET /v1/tutor/consentimentos` | ❌ payload (achado TASK-31 — marcado ✅ incorretamente antes) | `ConsentimentoResponse` real (`idConsentimento, tipo, versaoTermo, aceito, ativo, dtAceite, dtRevogacao`) não bate com o tipo do app (`id, dsTipoConsentimento, sgStatus, dtConsentimento`) | **Fora do escopo da TASK-31** — mapear taxonomia de consentimento é decisão de produto. Rastrear como nova task |
+| 13 | `POST /api/v1/tutor/consentimentos` (+ header `Idempotency-Key`) | `POST /v1/tutor/consentimentos` espera `{tipo, versaoTermo, aceito: 'S'\|'N'}` | ❌ payload (mesmo achado de #12) | App manda `{dsTipoConsentimento, dsAceite:'SIM'}` — campos e enum diferentes | **Fora do escopo da TASK-31** — mesma decisão de produto de #12 |
+| 14 | `DELETE /api/v1/tutor/consentimentos/{id}` | Stub `501` (`ConsentimentoBffController.deletar`) — **mantido de propósito** | ✅ **decisão implementada na TASK-31**: app não chama mais DELETE | Consentimento é **insert-only** por design (histórico LGPD) | **Ajustado o app**: `consentimentos.service.ts#revogar` agora faz `POST /consentimentos` com `dsAceite:'NAO'` (mesmo endpoint/payload de "assinar", reaproveitando a semântica `aceito='N'` que `ConsentimentoService` já suporta). Herda o mesmo mismatch de payload de #12/#13 — mecanismo correto (insert-only), mas só funciona de ponta a ponta depois que #12/#13 forem corrigidos |
+| 15 | `GET /api/v1/tutor/notificacoes` | `GET /v1/tutor/notificacoes` (`NotificacaoBffController`, novo) | ✅ **implementado na TASK-31** | Não existia `NotificacaoController` | **Implementado no Java** — leitura estritamente read-only de `NOTIFICACAO` (.NET owned; entidade `@Immutable`, repositório sem nenhum método de escrita) |
+| 16 | `PATCH /api/v1/tutor/notificacoes/{id}/lida` | Não implementado (decisão: **não implementar**) | ✅ **decisão implementada na TASK-31**: sem 501/404 quebrando o app | Escrita numa tabela .NET-owned — Java nunca escreve `NOTIFICACAO` | **Decisão travada**: não implementar. `notifications.service.ts#marcarLida` resolve localmente (sem chamada de rede); o hook já faz update otimista da cache — "lida" agora é um estado só de sessão, não persistido no servidor |
+| 17 | `PATCH /api/v1/tutor/notificacoes/lidas` | Não implementado (decisão: **não implementar**) | ✅ mesma solução de #16 | Idem #16 | Idem #16 — `marcarTodasLidas` também resolve localmente |
+| 18 | `PATCH /api/v1/tutor/me/push-token` `{dsPushToken, dsPlatform}` | `PATCH /v1/tutor/me/push-token` espera `{dsPushToken, dsPlatforma}` | ❌ payload (typo) | Campo Java tem um typo (`dsPlatforma`) que não bate com `dsPlatform` do app | **Decisão pendente** — não tocado na TASK-31 (fora do escopo); `registerDeviceToken` já degrada com `try/catch` + `console.warn` |
 
-## Resumo
+## Resumo (após TASK-31)
 
-- **✅ Funcionando de ponta a ponta:** `pets` (lista), `agendamentos` (lista/cancelar), `consentimentos` (lista/registrar) — 6 de 18 chamadas.
-- **❌ Payload/rota divergente (bug de contrato, não falta de feature):** login, register, criar agendamento, push-token — 4 de 18. Todas com decisão registrada acima; nenhuma implementada nesta task (fora do escopo — ver TASK-03 "documentar, não corrigir").
-- **⚠️ Stub `501` documentado (TASK-03):** detalhe de pet, timeline de pet — 2 de 18.
-- **❌ Sem backing nenhum no Java:** timeline de evento, vacinas (×2), notificações (×3), delete de consentimento — 6 de 18.
+- **✅ Funcionando de ponta a ponta:** `agendamentos` (lista/cancelar) — 2 de 18.
+- **✅ Implementado nesta task (TASK-31), read-only, self-scoped:** detalhe de pet, timeline (lista
+  e detalhe), vacinas (lista e status), notificações (lista) — 6 de 18.
+- **✅ Decisão de produto implementada nesta task (sem quebrar o app):** revogação de consentimento
+  (insert-only, sem DELETE), marcar notificação como lida/todas (estado local, sem PATCH ao
+  backend) — 3 de 18.
+- **❌ Payload/rota divergente, fora do escopo desta task:** login, register, criar agendamento,
+  push-token (documentados, não implementados) — 4 de 18.
+- **❌ Achado nesta task — marcado ✅ incorretamente antes, precisa de task própria:** `pets` (lista),
+  `consentimentos` GET e POST (`assinar`) — 3 de 18. Note-se que a revogação (#14) reaproveita o
+  mesmo endpoint de #13, então herda o mesmo bloqueio até essa divergência maior ser resolvida.
 
-Nenhuma dessas 12 divergências/pendências foi corrigida nesta task — smoke test e mapeamento apenas.
-Os dois bugs de infraestrutura (Flyway/H2 e token de convite) foram corrigidos porque bloqueavam
-qualquer teste autenticado, inclusive os 3 fluxos que hoje funcionam corretamente.
+Histórico anterior (TASK-08/INT-01 original) preservado abaixo para contexto — os dois bugs de
+infraestrutura (Flyway/H2 e token de convite) seguem corrigidos e não foram alterados nesta task.
