@@ -110,9 +110,10 @@ class AgendamentoBffControllerTest {
         AgendamentoResponse resp = agendamentoFixture();
         when(agendamentoService.criar(eq(EMAIL), any(AgendamentoRequest.class))).thenReturn(resp);
 
-        String body = "{\"idPet\":10,\"idClinica\":2,\"idVeterinario\":3," +
-                "\"dtAgendamento\":\"2026-08-01T10:00:00\"," +
-                "\"nrDuracaoMinutos\":30,\"tipo\":\"CONSULTA\"}";
+        // Data relativa (now + 7 dias): dtAgendamento tem @Future — literal fixa expira e derruba o teste com o tempo
+        AgendamentoRequest request = new AgendamentoRequest(
+                10L, 2L, 3L, LocalDateTime.now().plusDays(7), "CONSULTA", 30, null);
+        String body = objectMapper.writeValueAsString(request);
 
         mockMvc.perform(post("/v1/tutor/agendamentos")
                         .contentType(MediaType.APPLICATION_JSON)

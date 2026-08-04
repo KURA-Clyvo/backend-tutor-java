@@ -19,6 +19,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -117,14 +118,15 @@ class GlobalExceptionHandlerTest {
         when(agendamentoService.atualizar(any(), any(), any()))
                 .thenThrow(new ObjectOptimisticLockingFailureException("Agendamento", 1L));
 
+        // Data relativa (now + 7 dias): dtAgendamento tem @Future — literal fixa expira e derruba o teste com o tempo
         mockMvc.perform(put("/agendamentos/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
-                              "dtAgendamento": "2030-06-01T10:00:00",
+                              "dtAgendamento": "%s",
                               "nrVersion": 999
                             }
-                            """))
+                            """.formatted(LocalDateTime.now().plusDays(7))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.codigo").value("VERSAO_DESATUALIZADA"))

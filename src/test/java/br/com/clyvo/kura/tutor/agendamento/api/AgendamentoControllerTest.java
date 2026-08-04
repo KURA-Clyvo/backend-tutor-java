@@ -73,14 +73,16 @@ class AgendamentoControllerTest {
         AgendamentoResponse response = agendamentoResponse();
         when(agendamentoService.criar(eq(EMAIL), any())).thenReturn(response);
 
+        // Data relativa (now + 7 dias): dtAgendamento tem @Future — literal fixa expira e derruba o teste com o tempo
+        String dtFutura = LocalDateTime.now().plusDays(7).toString();
         String body = """
             {
               "idPet": 1,
               "idClinica": 1,
-              "dtAgendamento": "2030-01-01T10:00:00",
+              "dtAgendamento": "%s",
               "tipo": "CONSULTA"
             }
-            """;
+            """.formatted(dtFutura);
 
         mockMvc.perform(post("/agendamentos")
                 .contentType(MediaType.APPLICATION_JSON)

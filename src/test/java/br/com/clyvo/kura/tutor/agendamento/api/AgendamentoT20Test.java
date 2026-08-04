@@ -57,13 +57,14 @@ class AgendamentoT20Test {
         when(agendamentoService.atualizar(eq(EMAIL), eq(ID_AG), any()))
                 .thenThrow(new ObjectOptimisticLockingFailureException("Agendamento", ID_AG));
 
+        // Data relativa (now + 7 dias): dtAgendamento tem @Future — literal fixa expira e derruba o teste com o tempo
         String body = """
             {
-              "dtAgendamento": "2030-06-01T10:00:00",
+              "dtAgendamento": "%s",
               "dsTipoConsulta": "RETORNO",
               "nrVersion": 999
             }
-            """;
+            """.formatted(LocalDateTime.now().plusDays(7));
 
         mockMvc.perform(put("/agendamentos/{id}", ID_AG)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -80,13 +81,14 @@ class AgendamentoT20Test {
         AgendamentoResponse updated = agendamentoResponse(1L);
         when(agendamentoService.atualizar(eq(EMAIL), eq(ID_AG), any())).thenReturn(updated);
 
+        // Data relativa (now + 7 dias): dtAgendamento tem @Future — literal fixa expira e derruba o teste com o tempo
         String body = """
             {
-              "dtAgendamento": "2030-06-01T10:00:00",
+              "dtAgendamento": "%s",
               "dsTipoConsulta": "RETORNO",
               "nrVersion": 0
             }
-            """;
+            """.formatted(LocalDateTime.now().plusDays(7));
 
         mockMvc.perform(put("/agendamentos/{id}", ID_AG)
                 .contentType(MediaType.APPLICATION_JSON)
