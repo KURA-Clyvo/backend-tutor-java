@@ -13,9 +13,25 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * TASK-48: prefixo próprio ({@code /onboarding}) para não mais disputar {@code /auth} com
+ * {@link br.com.clyvo.kura.tutor.auth.api.AuthController} (login/refresh/logout) — os dois
+ * conviviam sob o mesmo prefixo sem colidir hoje só porque os paths de método não se cruzavam,
+ * o que é frágil a qualquer rota nova.
+ *
+ * O caminho legado {@code /auth/register-invite} é mantido como alias {@code @Deprecated} (mesmo
+ * método, mapeamento adicional no {@code @RequestMapping} da classe) durante uma transição.
+ * Risco de quebra é baixo: o consumidor real do app (`mobile-tutor-rn`, pós-TASK-55) chama
+ * {@code /api/v1/auth/register-invite}, servido por
+ * {@link br.com.clyvo.kura.tutor.bff.api.AuthBffController#registerInvite}, que delega direto ao
+ * {@code OnboardingService} sem depender do mapeamento desta classe — o alias aqui existe só para
+ * não quebrar qualquer outro consumidor do path legado {@code /api/auth/register-invite} (ex.:
+ * chamadas manuais/scripts antigos), não o app. Prazo sugerido de remoção do alias: ~30 dias após
+ * TASK-48 (revisar até 2026-09-06) — ver `docs/INT-01-contract-map.md`.
+ */
 @RestController
-@RequestMapping("/auth")
-@Tag(name = "Autenticação", description = "Onboarding por convite — cria conta e retorna JWT")
+@RequestMapping({"/onboarding", "/auth"})
+@Tag(name = "Onboarding", description = "Onboarding por convite — cria conta e retorna JWT. Prefixo primário /onboarding; alias legado /auth/register-invite mantido temporariamente (@Deprecated, ver javadoc da classe)")
 public class OnboardingController {
 
     private final OnboardingService onboardingService;

@@ -80,12 +80,32 @@ não batem com o que `mobile-tutor-rn` usa). Não foi removido nesta task (fora 
 mas `TimelineService.listarVacinasVencendo` (seu único caller) foi marcado `@Deprecated` com
 javadoc explicando que a superfície pública correta agora é `listarVacinasPet`/`statusVacinasPet`.
 
+## Atualização TASK-48 (2026-08-06) — `/auth` deixa de ser compartilhado por dois controllers
+
+`auth/api/AuthController` (login/refresh/logout) e `onboarding/api/OnboardingController`
+(`register-invite`) disputavam o mesmo prefixo `/auth` sem colidir apenas porque os paths de
+método não se cruzavam — qualquer rota nova em um dos dois podia quebrar o outro silenciosamente.
+`OnboardingController` ganhou prefixo próprio: **`/onboarding`** (`POST /onboarding/register-invite`).
+
+**Isto não afeta o contrato consumido pelo app.** `mobile-tutor-rn` (pós-TASK-55) chama
+`POST /api/v1/auth/register-invite`, servido por `bff/api/AuthBffController#registerInvite` — um
+controller distinto que já delegava direto a `OnboardingService`, sem depender do mapeamento de
+`OnboardingController`. A linha #2 abaixo (histórica, pré-TASK-55) estava desatualizada nesse
+ponto — ver correção logo após a tabela.
+
+O caminho legado `POST /api/auth/register-invite` (sem `/v1`, sem `/onboarding`) continua
+respondendo via alias `@Deprecated` no `OnboardingController` (`@RequestMapping({"/onboarding",
+"/auth"})`), coberto por teste (`OnboardingControllerTest#postNoAliasLegadoDeveContinuarFuncionando`).
+Prazo sugerido de remoção do alias: ~30 dias após TASK-48 (revisar até 2026-09-06) — nenhum
+consumidor confirmado depende dele hoje (nem o app, nem o script `scripts/test-e2e-tutor.sh`, que
+já testava só a superfície `/v1/**`).
+
 ## Mapa de contratos
 
 | # | Mobile (`mobile-tutor-rn/src/services`) | Java (`bff/api`) | Status | Divergência | Decisão |
 |---|---|---|---|---|---|
 | 1 | `POST /api/v1/auth/login` `{dsEmail, dsSenha}` | `POST /v1/auth/login` espera `{email, senha}` | ❌ payload | Campos JSON não batem — todo login do app falharia com 400 contra o Java real | **Ajustar o app**: renomear campos em `types/api.ts:LoginRequest`, `validators.ts`, `app/login.tsx` para `email`/`senha` — não tocado na TASK-31 (fora do escopo) |
-| 2 | `POST /api/v1/auth/register` `{inviteToken, nmTutor, dsSenha, dsTelefone}` | Não existe — Java só tem `POST /v1/auth/register-invite` `{token, senha, aceites[]}` | ❌ rota + payload | Path diferente (`register` vs `register-invite`) **e** payload diferente | **Ajustar o app** — não tocado na TASK-31 (fora do escopo) |
+| 2 | `POST /api/v1/auth/register-invite` `{inviteToken, ...}` | `POST /v1/auth/register-invite` (`AuthBffController`) `{token, senha, aceites[]}` | ✅ **corrigido na TASK-55** (repo `mobile-tutor-rn`, `d2731b9`) | Era `POST /api/v1/auth/register` (rota errada, 404) — corrigido para `register-invite`. Payload já estava certo (`inviteToken`) | **App corrigido** (TASK-55). Rota servida por `AuthBffController`, independente do prefixo de `OnboardingController` (que mudou de `/auth` para `/onboarding` na TASK-48, sem afetar este contrato) |
 | 3 | `GET /api/v1/tutor/pets` | `GET /v1/tutor/pets` | ❌ payload (achado TASK-31 — marcado ✅ incorretamente antes) | `PetResponse` real (idPet/nmPet/nmEspecie/...) não bate com `PetTutorResponse` esperado pelo app (id/dsStatusGeral/chips/condicoes/...); também retorna `Page`, app espera array plano | **Fora do escopo da TASK-31** — precisa decisão de produto sobre `chips`/`condicoes`/`dsStatusGeral`. Rastrear como nova task |
 | 4 | `GET /api/v1/tutor/pets/{id}` | `GET /v1/tutor/pets/{id}` (`TutorBffController.detalharPet`) | ✅ **implementado na TASK-31** | Era stub 501 | **Implementado no Java** (read-only, self-scoped) — DTO honesto (`PetDetalheResponse`); app usa `mapPetDetailDto` para preencher como ausente os campos que a UI aspiracional espera mas o backend não tem (chips/vitais/observações/condições) |
 | 5 | `GET /api/v1/tutor/pets/{idPet}/timeline` | `GET /v1/tutor/pets/{id}/timeline` (`TutorBffController.timelinePet`) | ✅ **implementado na TASK-31** | Era stub 501 | **Implementado no Java** via `TimelineService.listarTimeline` (VW_TIMELINE_PET, paginado); app extrai `.content` e usa `mapTimelineEventoDto` |
@@ -116,6 +136,14 @@ javadoc explicando que a superfície pública correta agora é `listarVacinasPet
 - **❌ Achado nesta task — marcado ✅ incorretamente antes, precisa de task própria:** `pets` (lista),
   `consentimentos` GET e POST (`assinar`) — 3 de 18. Note-se que a revogação (#14) reaproveita o
   mesmo endpoint de #13, então herda o mesmo bloqueio até essa divergência maior ser resolvida.
+
+**Atualização pós-TASK-55/TASK-48:** a linha #2 (`register`/`register-invite`) saiu da contagem
+"❌ payload/rota divergente" acima — o app foi corrigido na TASK-55 (repo `mobile-tutor-rn`) para
+chamar `POST /api/v1/auth/register-invite` com o payload correto, e a TASK-48 (este repo) separou
+o prefixo de `OnboardingController` (`/auth` → `/onboarding`) sem afetar essa rota, que é servida
+por `AuthBffController`. Contagem atualizada: **✅ funcionando de ponta a ponta: 3 de 18**
+(`agendamentos` lista/cancelar + `register-invite`); **❌ payload/rota divergente: 3 de 18**
+(login, criar agendamento, push-token).
 
 Histórico anterior (TASK-08/INT-01 original) preservado abaixo para contexto — os dois bugs de
 infraestrutura (Flyway/H2 e token de convite) seguem corrigidos e não foram alterados nesta task.

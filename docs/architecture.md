@@ -42,7 +42,7 @@ O Java roda na porta **8081** com context-path `/api`. Em dev, usa H2 em memóri
 br.com.clyvo.kura.tutor
 ├── shared/          # SecurityConfig, GlobalExceptionHandler, ApiError, CorsConfig
 ├── auth/            # Login, refresh, logout · ContaTutor (entity write)
-├── onboarding/      # POST /auth/register-invite · InviteTutor (read-only)
+├── onboarding/      # POST /onboarding/register-invite (TASK-48; alias legado /auth/register-invite) · InviteTutor (read-only)
 ├── tutor/           # GET tutor, pet, catálogo · todas as entidades @Immutable
 ├── timeline/        # VW_TIMELINE_PET, VW_VACINAS_VENCENDO (views read-only)
 ├── consentimento/   # LGPD + IdempotencyKey · LgpdController
@@ -111,7 +111,7 @@ Front Clínica      .NET          Tutor         App RN         Java
      │                             │ define senha  │             │
      │                             │ + aceita LGPD │             │
      │                             │──────────────►│             │
-     │                             │               │ POST /auth/register-invite
+     │                             │               │ POST /onboarding/register-invite
      │                             │               │ {token, senha, aceites[]}
      │                             │               │────────────►│
      │                             │               │        ┌────┴─────┐
@@ -135,7 +135,7 @@ Front Clínica      .NET          Tutor         App RN         Java
 ### 3.2 Endpoint e códigos de resposta
 
 ```
-POST /api/auth/register-invite
+POST /api/onboarding/register-invite
 Content-Type: application/json
 X-Forwarded-For: <ip_real>
 
@@ -158,6 +158,13 @@ X-Forwarded-For: <ip_real>
 | 409 | Invite já utilizado (`ST_UTILIZADO='S'`) ou race condition (`UK_CONTA_INVITE_USED`) |
 | 410 | `DT_EXPIRACAO < NOW()` — token expirado (Gone, não 400, porque existiu) |
 | 422 | Tutor inativo ou sem aviso de privacidade aceito no balcão |
+
+> **TASK-48:** `/onboarding` é o prefixo primário (era `/auth`, colidindo com `AuthController`).
+> `POST /api/auth/register-invite` segue respondendo como alias `@Deprecated` durante uma
+> transição (prazo sugerido ~30 dias, revisar até 2026-09-06) — ver `docs/INT-01-contract-map.md`.
+> O app (`mobile-tutor-rn`) não é afetado: ele chama `POST /api/v1/auth/register-invite`, servido
+> por `AuthBffController`, que já delegava direto ao `OnboardingService` e não depende deste
+> mapeamento.
 
 ### 3.3 Defense-in-depth contra reuso de invite
 
@@ -212,7 +219,7 @@ O .NET expõe `PATCH /api/v1/agendamentos/{id}/status` com `nrVersion` no body. 
 
 ### 5.1 Problema
 
-`POST /consentimento` e `POST /auth/register-invite` são operações que **não podem ser executadas duas vezes** — um clique duplo ou retry de rede geraria registros duplicados de consentimento LGPD ou tentativa de criar duas contas.
+`POST /consentimento` e `POST /onboarding/register-invite` são operações que **não podem ser executadas duas vezes** — um clique duplo ou retry de rede geraria registros duplicados de consentimento LGPD ou tentativa de criar duas contas.
 
 ### 5.2 Solução: tabela `IDEMPOTENCY_KEY`
 
@@ -348,7 +355,7 @@ Todos os erros da API retornam o mesmo envelope JSON (subconjunto do RFC 7807 Pr
   "status":        409,
   "error":         "Conflict",
   "message":       "Invite já utilizado.",
-  "path":          "/api/auth/register-invite",
+  "path":          "/api/onboarding/register-invite",
   "correlationId": "a1b2c3d4"
 }
 ```

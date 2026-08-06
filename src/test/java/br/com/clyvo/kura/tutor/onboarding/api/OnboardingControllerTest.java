@@ -44,9 +44,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 class OnboardingControllerTest {
 
-    private static final String ENDPOINT    = "/auth/register-invite";
-    private static final String TOKEN_SEED  = "550e8400-e29b-41d4-a716-446655440000";
-    private static final String SENHA_FORTE = "Senha@123";
+    private static final String ENDPOINT        = "/onboarding/register-invite";
+    private static final String ENDPOINT_LEGADO = "/auth/register-invite"; // alias @Deprecated (TASK-48)
+    private static final String TOKEN_SEED      = "550e8400-e29b-41d4-a716-446655440000";
+    private static final String SENHA_FORTE     = "Senha@123";
 
     @Autowired MockMvc     mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -77,6 +78,22 @@ class OnboardingControllerTest {
                 .andExpect(jsonPath("$.expiresIn").value(900))
                 .andExpect(jsonPath("$.tutor.idTutor").value(1))
                 .andExpect(jsonPath("$.tutor.nmTutor").value("Tutor Teste"));
+    }
+
+    @Test
+    @DisplayName("postNoAliasLegadoDeveContinuarFuncionando — /auth/register-invite (TASK-48, @Deprecated)")
+    void postNoAliasLegadoDeveContinuarFuncionando() throws Exception {
+        TutorResumoResponse tutor = new TutorResumoResponse(1L, "Tutor Teste");
+        TokenResponse resposta    = TokenResponse.of("access.jwt", "refresh.jwt", 900, tutor);
+        when(onboardingService.registrarPorInvite(any(), any())).thenReturn(resposta);
+
+        RegisterInviteRequest req = new RegisterInviteRequest(TOKEN_SEED, SENHA_FORTE, List.of());
+
+        mockMvc.perform(post(ENDPOINT_LEGADO)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accessToken").value("access.jwt"));
     }
 
     // ─── Validação Bean — mensagens PT-BR ─────────────────────────────────────

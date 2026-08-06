@@ -9,6 +9,19 @@
 # (afterMigrate__seeds_dev.sql): ID_TUTOR=1, ID_PET=1, ID_CLINICA=1,
 # invite token 550e8400-e29b-41d4-a716-446655440000, e-mail felipe@clyvo.vet
 # (herdado de TUTOR.DS_EMAIL, tabela .NET-owned/@Immutable).
+#
+# ⚠️ Roda contra localhost:8081 — se um stack Docker (DevOps-Cloud) já estiver
+# ocupando essa porta (ex. `docker ps` mostrando kura_java_tutor), o health
+# check deste script responde a partir do container (perfil prod, sem seed de
+# demonstração) em vez da instância local que o script sobe, e os asserts
+# batem em dado que não existe (achado durante TASK-48). Liberar a porta
+# (`docker stop kura_java_tutor`) antes de rodar.
+#
+# NOTA (TASK-48): os asserts #4/#5 (`GET /v1/tutor/pets/1`, `.../timeline`)
+# foram atualizados de "espera 501 (stub)" para "espera 200" — estavam
+# desatualizados desde a TASK-31, que implementou os dois endpoints de
+# verdade (ver docs/INT-01-contract-map.md, linhas #4/#5). Achado incidental,
+# não relacionado à separação de prefixo /auth vs /onboarding desta task.
 
 set -uo pipefail
 
@@ -117,15 +130,19 @@ log "GET /v1/tutor/pets"
 STATUS="$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/v1/tutor/pets" -H "$AUTH_HEADER")"
 assert_status "GET /v1/tutor/pets" "200" "$STATUS"
 
-# ─── 4. GET /v1/tutor/pets/{id} — stub 501 documentado ────────────────────────
-log "GET /v1/tutor/pets/1 (stub — pendente INT-01)"
+# ─── 4. GET /v1/tutor/pets/{id} — implementado na TASK-31 (era stub 501) ──────
+# NOTA: script atualizado na TASK-48 — a expectativa de 501 estava desatualizada
+# desde a TASK-31, que implementou o detalhe de pet de verdade (ver
+# docs/INT-01-contract-map.md, linha #4). Achado incidental durante TASK-48
+# (não relacionado à separação de prefixo /auth vs /onboarding).
+log "GET /v1/tutor/pets/1 (implementado na TASK-31)"
 STATUS="$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/v1/tutor/pets/1" -H "$AUTH_HEADER")"
-assert_status "GET /v1/tutor/pets/1 (stub)" "501" "$STATUS"
+assert_status "GET /v1/tutor/pets/1" "200" "$STATUS"
 
-# ─── 5. GET /v1/tutor/pets/{id}/timeline — stub 501 documentado ───────────────
-log "GET /v1/tutor/pets/1/timeline (stub — pendente INT-01)"
+# ─── 5. GET /v1/tutor/pets/{id}/timeline — implementado na TASK-31 (era stub 501)
+log "GET /v1/tutor/pets/1/timeline (implementado na TASK-31)"
 STATUS="$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/v1/tutor/pets/1/timeline" -H "$AUTH_HEADER")"
-assert_status "GET /v1/tutor/pets/1/timeline (stub)" "501" "$STATUS"
+assert_status "GET /v1/tutor/pets/1/timeline" "200" "$STATUS"
 
 # ─── 6. POST /v1/tutor/agendamentos ────────────────────────────────────────────
 log "POST /v1/tutor/agendamentos"
