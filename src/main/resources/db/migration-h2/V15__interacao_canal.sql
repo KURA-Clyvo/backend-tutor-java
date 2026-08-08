@@ -2,11 +2,12 @@
 -- V15__interacao_canal.sql (variante H2)
 -- Equivalente funcional de db/migration-oracle/V15__interacao_canal.sql.
 -- TASK-66 (KURA_BACKLOG_FIX_6). Cria INTERACAO_CANAL, tabela .NET-owned que
--- falta no schema — a Luna (kura-luna-ai) chama POST /api/luna/interactions
--- hoje e recebe 404, porque o endpoint nunca foi implementado e a tabela em
--- que ele escreveria não existe. Ver o cabeçalho da variante Oracle para o
--- contexto completo (DTO de origem, divergência de rota vs. o brief,
--- justificativa de CLOB e VARCHAR2(4000)) — não repetido aqui.
+-- falta no schema — a Luna (kura-luna-ai) chama a rota canônica
+-- POST /api/v1/luna/interactions hoje e recebe 404, porque o endpoint nunca
+-- foi implementado e a tabela em que ele escreveria não existe. Ver o
+-- cabeçalho da variante Oracle para o contexto completo (DTO de origem, nota
+-- histórica sobre o client da Luna hoje não enviar /v1 — corrigido pela
+-- TASK-68 — e justificativa de CLOB e VARCHAR2(4000)) — não repetido aqui.
 --
 -- Diferença de sintaxe em relação à variante Oracle (só sintaxe — o efeito no
 -- schema é o mesmo):
@@ -35,7 +36,7 @@ CREATE TABLE INTERACAO_CANAL (
     CONSTRAINT CHK_INTERACAO_DIRECAO CHECK (DS_DIRECAO IN ('INBOUND','OUTBOUND')),
     CONSTRAINT CHK_INTERACAO_ATIVA   CHECK (ST_ATIVA   IN ('S','N'))
 );
-COMMENT ON TABLE INTERACAO_CANAL IS '.NET owned. Interação de canal (WhatsApp/email/SMS) registrada pela Luna via POST /api/luna/interactions.';
+COMMENT ON TABLE INTERACAO_CANAL IS '.NET owned. Interação de canal (WhatsApp/email/SMS) registrada pela Luna via POST /api/v1/luna/interactions.';
 
 -- TRIAGEM_LUNA é pré-existente (V9) — FK nova nasce nullable, a migration não
 -- pode assumir que a tabela está vazia. TriageRequestDTO envia id_interacao,

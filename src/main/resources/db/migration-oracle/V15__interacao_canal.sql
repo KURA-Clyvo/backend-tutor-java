@@ -1,13 +1,14 @@
 -- =============================================================================
 -- V15__interacao_canal.sql (variante Oracle)
 -- TASK-66 (KURA_BACKLOG_FIX_6). Cria INTERACAO_CANAL, tabela .NET-owned que
--- falta no schema — a Luna (kura-luna-ai) chama POST /api/luna/interactions
--- hoje e recebe 404, porque o endpoint nunca foi implementado e a tabela em
--- que ele escreveria não existe (grep -rn "INTERACAO" nas migrations
--- devolvia 0 resultados antes desta migration). Consequência em produção:
--- toda mensagem de WhatsApp inbound morre silenciosamente — a exceção sobe
--- pro `except Exception` genérico do lado Luna, o tutor recebe um fallback e
--- nada é persistido nem chega ao lado clínico.
+-- falta no schema — a Luna (kura-luna-ai) chama a rota canônica
+-- POST /api/v1/luna/interactions hoje e recebe 404, porque o endpoint nunca
+-- foi implementado e a tabela em que ele escreveria não existe (grep -rn
+-- "INTERACAO" nas migrations devolvia 0 resultados antes desta migration).
+-- Consequência em produção: toda mensagem de WhatsApp inbound morre
+-- silenciosamente — a exceção sobe pro `except Exception` genérico do lado
+-- Luna, o tutor recebe um fallback e nada é persistido nem chega ao lado
+-- clínico.
 --
 -- Esta task entrega SOMENTE o DDL. A implementação do endpoint .NET
 -- (POST /api/v1/luna/interactions, deriva ID_CLINICA do tutor, faz o INSERT)
@@ -26,12 +27,17 @@
 --       dt_recebimento: datetime
 --       ds_metadados: dict | None = None
 --
--- DIVERGÊNCIA DO BRIEF (reportada, não corrigida por conta própria): o brief
--- desta task cita a rota como "POST /api/v1/luna/interactions". O cliente
--- HTTP real da Luna (kura-luna-ai/luna/src/integration/kura_client.py:83-97,
--- método registrar_interacao) chama "POST /api/luna/interactions", sem
--- prefixo /v1. O COMMENT ON TABLE abaixo usa a rota real do arquivo, não a do
--- brief — mesma regra aplicada ao ler dtos.py.
+-- ROTA CANÔNICA: POST /api/v1/luna/interactions (com /v1) — mesmo prefixo já
+-- usado pela tabela irmã TRIAGEM_LUNA (V9: "POST /api/v1/luna/triage").
+-- Nota histórica, não normativa: o cliente HTTP real da Luna hoje
+-- (kura-luna-ai/luna/src/integration/kura_client.py:83-97, método
+-- registrar_interacao) chama "POST /api/luna/interactions", SEM /v1 — esse é
+-- o defeito 2 do Bloco 0 deste backlog (KURA_BACKLOG_FIX_6), e a TASK-68
+-- corrige o client para bater com a rota canônica. Ou seja: a ausência do
+-- /v1 no client é o estado quebrado transitório, não o contrato — o
+-- COMMENT ON TABLE abaixo documenta a rota com /v1 de propósito, para não
+-- induzir a TASK-67 (que implementa o endpoint .NET a partir deste schema) a
+-- nascer no path errado.
 --
 -- PK por sequence, não IDENTITY: esta tabela é .NET-owned (quem escreve nela
 -- é o backend .NET, TASK-67), e o padrão .NET-owned deste projeto é
@@ -79,7 +85,7 @@ CREATE TABLE INTERACAO_CANAL (
     CONSTRAINT CHK_INTERACAO_DIRECAO CHECK (DS_DIRECAO IN ('INBOUND','OUTBOUND')),
     CONSTRAINT CHK_INTERACAO_ATIVA   CHECK (ST_ATIVA   IN ('S','N'))
 );
-COMMENT ON TABLE INTERACAO_CANAL IS '.NET owned. Interação de canal (WhatsApp/email/SMS) registrada pela Luna via POST /api/luna/interactions.';
+COMMENT ON TABLE INTERACAO_CANAL IS '.NET owned. Interação de canal (WhatsApp/email/SMS) registrada pela Luna via POST /api/v1/luna/interactions.';
 
 -- TRIAGEM_LUNA é pré-existente (V9) — FK nova nasce nullable, a migration não
 -- pode assumir que a tabela está vazia. TriageRequestDTO envia id_interacao,
