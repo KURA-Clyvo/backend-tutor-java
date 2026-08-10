@@ -10,8 +10,10 @@ public record AgendamentoRequest(
     @Schema(description = "ID do pet do tutor", example = "1")
     @NotNull Long idPet,
 
-    @Schema(description = "ID da clínica", example = "1")
-    @NotNull Long idClinica,
+    @Schema(description = "ID da clínica (opcional — quando ausente, é derivado da clínica do pet; "
+            + "quando informado, deve coincidir com a clínica do pet ou a requisição é rejeitada)",
+            example = "1")
+    Long idClinica,
 
     @Schema(description = "ID do veterinário (opcional)", example = "2")
     Long idVeterinario,

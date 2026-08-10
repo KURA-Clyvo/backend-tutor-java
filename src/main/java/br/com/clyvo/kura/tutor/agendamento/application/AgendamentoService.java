@@ -18,7 +18,6 @@ import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import br.com.clyvo.kura.tutor.shared.exception.NotFoundException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,18 +33,15 @@ public class AgendamentoService {
     private final ContaTutorRepository contaTutorRepository;
     private final TutorRepository tutorRepository;
     private final PetRepository petRepository;
-    private final EntityManager entityManager;
 
     public AgendamentoService(AgendamentoRepository agendamentoRepository,
                                ContaTutorRepository contaTutorRepository,
                                TutorRepository tutorRepository,
-                               PetRepository petRepository,
-                               EntityManager entityManager) {
+                               PetRepository petRepository) {
         this.agendamentoRepository = agendamentoRepository;
         this.contaTutorRepository  = contaTutorRepository;
         this.tutorRepository       = tutorRepository;
         this.petRepository         = petRepository;
-        this.entityManager         = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +75,15 @@ public class AgendamentoService {
             throw new ForbiddenException("Pet não vinculado a este tutor.");
         }
 
-        Clinica clinica = entityManager.getReference(Clinica.class, request.idClinica());
+        // A clínica é sempre derivada do pet — o BFF do tutor não expõe idClinica em
+        // nenhum DTO de pet, então o app não tem como preenchê-la (decisão de produto,
+        // TASK-74). Se o chamador ainda assim mandar idClinica, ela precisa bater com a
+        // clínica real do pet — divergência é rejeitada explicitamente, nunca ignorada em
+        // silêncio, para não abrir uma via de agendar um pet de uma clínica dentro de outra.
+        Clinica clinica = pet.getClinica();
+        if (request.idClinica() != null && !request.idClinica().equals(clinica.getIdClinica())) {
+            throw new ForbiddenException("idClinica informado não corresponde à clínica do pet.");
+        }
 
         Agendamento ag = Agendamento.criar(
                 tutor, pet, clinica, request.idVeterinario(),

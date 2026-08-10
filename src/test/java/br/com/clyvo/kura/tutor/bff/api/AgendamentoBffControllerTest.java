@@ -123,6 +123,34 @@ class AgendamentoBffControllerTest {
                 .andExpect(jsonPath("$.idAgendamento").value(1));
     }
 
+    @Test
+    @DisplayName("POST /v1/tutor/agendamentos sem idClinica retorna 201 (TASK-74 — clínica passa a ser derivada do pet)")
+    @WithMockUser(username = EMAIL)
+    void criar_semIdClinica_retorna201() throws Exception {
+        AgendamentoResponse resp = agendamentoFixture();
+        when(agendamentoService.criar(eq(EMAIL), any(AgendamentoRequest.class))).thenReturn(resp);
+
+        // Payload real do app: sem idClinica — o app não tem como preenchê-lo, nenhum
+        // DTO de pet do BFF o expõe. Data relativa: dtAgendamento tem @Future.
+        String dtFutura = LocalDateTime.now().plusDays(7).toString();
+        String body = """
+            {
+              "idPet": 10,
+              "sgTipoConsulta": "CONSULTA",
+              "dsMotivo": "Consulta de rotina",
+              "dtAgendamento": "%s",
+              "tipo": "CONSULTA"
+            }
+            """.formatted(dtFutura);
+
+        mockMvc.perform(post("/v1/tutor/agendamentos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(jsonPath("$.idAgendamento").value(1));
+    }
+
     // ─── DELETE ───────────────────────────────────────────────────────────────
 
     @Test
