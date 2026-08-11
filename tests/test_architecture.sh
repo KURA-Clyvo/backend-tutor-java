@@ -71,8 +71,17 @@ _assert_grep "JpaRepository ausente (mínimo)" "$DOC" "Repository|JpaRepository"
 echo ""
 echo "── 5. Seção 3 — Fluxo Invite-Based ──"
 _assert_grep "Seção 3 presente"              "$DOC" "^## 3\."
-_assert_grep "Sequence diagram presente"     "$DOC" "POST /tutores|POST /auth/register-invite"
+_assert_grep "Sequence diagram (ASCII) presente" "$DOC" "POST /tutores"
+_assert_grep "Endpoint primário /onboarding/register-invite documentado" "$DOC" "POST /onboarding/register-invite"
 _assert_grep "Endpoint register-invite"      "$DOC" "register-invite"
+# TASK-82: o assert acima ("Sequence diagram presente") era um OR onde o lado esquerdo
+# ("POST /tutores", a arte ASCII da seção 3.1) sempre bate sozinho — trocar o lado direito
+# de /auth para /onboarding só atualizava a string no teste, sem dar poder de detecção real.
+# Separado em dois asserts independentes (acima) + os dois abaixo, que travam de verdade:
+# (1) a doc tem que declarar a remoção do alias explicitamente, e (2) não pode voltar a
+# descrever o alias como endpoint vigente com a frase que o fazia antes da TASK-82.
+_assert_grep     "Remoção do alias documentada (TASK-82)" "$DOC" "TASK-82.*alias.*removid|alias.*removid.*TASK-82|removid.*TASK-82.*alias"
+_assert_not_grep "Alias legado NÃO documentado como vigente (regressão pré-TASK-82)" "$DOC" "auth/register-invite.*segue respondendo"
 _assert_grep "Token invite exemplo"          "$DOC" "550e8400"
 _assert_grep "Status 201 documentado"        "$DOC" "201"
 _assert_grep "Status 409 documentado"        "$DOC" "409"

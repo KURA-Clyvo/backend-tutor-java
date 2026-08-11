@@ -84,7 +84,7 @@ Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita
 | Preocupação | Decisão | Justificativa |
 |---|---|---|
 | **Autenticação** | JWT stateless — access token 15 min + refresh 7 dias com rotação BCrypt | Minimiza janela de abuso; revogação sem estado compartilhado |
-| **Onboarding** | Exclusivamente por convite (`POST /onboarding/register-invite`; alias legado `POST /auth/register-invite` deprecado, TASK-48) | Convites são emitidos pelo .NET; Java os consome atomicamente em uma única transação |
+| **Onboarding** | Exclusivamente por convite (`POST /onboarding/register-invite`; alias legado `POST /auth/register-invite`, TASK-48, removido na TASK-82) | Convites são emitidos pelo .NET; Java os consome atomicamente em uma única transação |
 | **Concorrência** | Optimistic locking (`@Version`) em `AGENDAMENTO` | Evita deadlocks por lock pessimista entre backends distintos |
 | **Idempotência** | Tabela `IDEMPOTENCY_KEY` (sem Redis) | Segura em rollback — a chave é gravada na mesma transação que a operação protegida |
 | **Cache** | Caffeine in-process apenas para `ESPECIE` / `RACA` | São catálogos estáticos; entidades mutáveis (`Tutor`, `Pet`) nunca são cacheadas |
@@ -204,7 +204,7 @@ Collection Postman: [`docs/postman/kura-tutor.postman_collection.json`](docs/pos
 
 | Método | Endpoint | Auth | Descrição |
 |---|---|---|---|
-| `POST` | `/onboarding/register-invite` | Pública | Onboarding por convite — cria conta + consentimentos LGPD + emite par JWT (TASK-48; alias legado `@Deprecated` em `/auth/register-invite`) |
+| `POST` | `/onboarding/register-invite` | Pública | Onboarding por convite — cria conta + consentimentos LGPD + emite par JWT (TASK-48; alias legado `/auth/register-invite` removido na TASK-82) |
 | `POST` | `/auth/login` | Pública | Autenticação email/senha → access + refresh token |
 | `POST` | `/auth/refresh` | Pública | Rotação de refresh token (invalida o anterior) |
 | `POST` | `/auth/logout` | JWT | Invalida o hash do refresh token armazenado |

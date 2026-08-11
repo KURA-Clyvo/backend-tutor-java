@@ -17,6 +17,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -45,7 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OnboardingControllerTest {
 
     private static final String ENDPOINT        = "/onboarding/register-invite";
-    private static final String ENDPOINT_LEGADO = "/auth/register-invite"; // alias @Deprecated (TASK-48)
+    private static final String ENDPOINT_LEGADO = "/auth/register-invite"; // removido na TASK-82 — deve responder 404
     private static final String TOKEN_SEED      = "550e8400-e29b-41d4-a716-446655440000";
     private static final String SENHA_FORTE     = "Senha@123";
 
@@ -81,8 +82,21 @@ class OnboardingControllerTest {
     }
 
     @Test
-    @DisplayName("postNoAliasLegadoDeveContinuarFuncionando — /auth/register-invite (TASK-48, @Deprecated)")
-    void postNoAliasLegadoDeveContinuarFuncionando() throws Exception {
+    @WithMockUser(username = "tutor@teste.com")
+    @DisplayName("postNoAliasLegadoDeveResponder404 — /auth/register-invite removido (TASK-82)")
+    void postNoAliasLegadoDeveResponder404() throws Exception {
+        // Prova de mordida da TASK-82: o alias @Deprecated existia desde a TASK-48 e este
+        // teste antes se chamava postNoAliasLegadoDeveContinuarFuncionando, esperando 201 aqui.
+        // Rodado contra o código pré-TASK-82 (@RequestMapping({"/onboarding", "/auth"})), este
+        // mesmo POST responde 201.
+        //
+        // @WithMockUser autentica a request ANTES dela chegar no dispatcher — sem isso, o teste
+        // colide com uma questão diferente: como "/auth/register-invite" saiu de ROTAS_PUBLICAS
+        // junto com a remoção do alias, uma request anônima já leva 401 do
+        // AuthorizationFilter/JwtAuthenticationEntryPoint antes mesmo de o Spring MVC tentar
+        // casar um handler — e 401 não prova que o @RequestMapping da classe deixou de incluir
+        // "/auth". Autenticando a request, ela passa pela camada de segurança e o 404 que sobra
+        // vem genuinamente do DispatcherServlet não achar handler nenhum para esse path.
         TutorResumoResponse tutor = new TutorResumoResponse(1L, "Tutor Teste");
         TokenResponse resposta    = TokenResponse.of("access.jwt", "refresh.jwt", 900, tutor);
         when(onboardingService.registrarPorInvite(any(), any())).thenReturn(resposta);
@@ -90,6 +104,23 @@ class OnboardingControllerTest {
         RegisterInviteRequest req = new RegisterInviteRequest(TOKEN_SEED, SENHA_FORTE, List.of());
 
         mockMvc.perform(post(ENDPOINT_LEGADO)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("postNoPrefixoPrimarioDeveContinuarFuncionando — /onboarding/register-invite intacto (TASK-82)")
+    void postNoPrefixoPrimarioDeveContinuarFuncionando() throws Exception {
+        // Descarta a hipótese de o 404 acima ser um typo de URL: a rota primária, no mesmo
+        // controller, com o mesmo payload, continua respondendo 201 normalmente.
+        TutorResumoResponse tutor = new TutorResumoResponse(1L, "Tutor Teste");
+        TokenResponse resposta    = TokenResponse.of("access.jwt", "refresh.jwt", 900, tutor);
+        when(onboardingService.registrarPorInvite(any(), any())).thenReturn(resposta);
+
+        RegisterInviteRequest req = new RegisterInviteRequest(TOKEN_SEED, SENHA_FORTE, List.of());
+
+        mockMvc.perform(post(ENDPOINT)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())

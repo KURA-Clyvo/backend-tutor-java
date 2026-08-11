@@ -42,7 +42,7 @@ O Java roda na porta **8081** com context-path `/api`. Em dev, usa H2 em memóri
 br.com.clyvo.kura.tutor
 ├── shared/          # SecurityConfig, GlobalExceptionHandler, ApiError, CorsConfig
 ├── auth/            # Login, refresh, logout · ContaTutor (entity write)
-├── onboarding/      # POST /onboarding/register-invite (TASK-48; alias legado /auth/register-invite) · InviteTutor (read-only)
+├── onboarding/      # POST /onboarding/register-invite (TASK-48; alias legado /auth/register-invite removido na TASK-82) · InviteTutor (read-only)
 ├── tutor/           # GET tutor, pet, catálogo · todas as entidades @Immutable
 ├── timeline/        # VW_TIMELINE_PET, VW_VACINAS_VENCENDO (views read-only)
 ├── consentimento/   # LGPD + IdempotencyKey · LgpdController
@@ -160,11 +160,15 @@ X-Forwarded-For: <ip_real>
 | 422 | Tutor inativo ou sem aviso de privacidade aceito no balcão |
 
 > **TASK-48:** `/onboarding` é o prefixo primário (era `/auth`, colidindo com `AuthController`).
-> `POST /api/auth/register-invite` segue respondendo como alias `@Deprecated` durante uma
-> transição (prazo sugerido ~30 dias, revisar até 2026-09-06) — ver `docs/INT-01-contract-map.md`.
-> O app (`mobile-tutor-rn`) não é afetado: ele chama `POST /api/v1/auth/register-invite`, servido
-> por `AuthBffController`, que já delegava direto ao `OnboardingService` e não depende deste
-> mapeamento.
+> **TASK-82 (2026-08-11):** o alias `@Deprecated` `/auth/register-invite` foi **removido**.
+> `OnboardingController` agora mapeia só `/onboarding` — o alias, mantido desde a TASK-48
+> durante uma transição, foi removido depois que G0 do backlog (varredura nos 6 repos)
+> confirmou zero consumidores reais; hoje `/api/auth/register-invite` responde `404`
+> (autenticado) ou `401` (anônimo, porque saiu de `ROTAS_PUBLICAS` e cai em
+> `anyRequest().authenticated()`), coberto por
+> `OnboardingControllerTest#postNoAliasLegadoDeveResponder404`. O app (`mobile-tutor-rn`) não é
+> afetado: ele chama `POST /api/v1/auth/register-invite`, servido por `AuthBffController`, que já
+> delegava direto ao `OnboardingService` e nunca dependeu deste mapeamento.
 
 ### 3.3 Defense-in-depth contra reuso de invite
 

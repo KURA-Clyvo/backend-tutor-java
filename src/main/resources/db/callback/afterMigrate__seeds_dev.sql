@@ -108,7 +108,7 @@ WHEN NOT MATCHED THEN INSERT (
 );
 
 -- ─── 7. INVITE_TUTOR (válido por 7 dias) ──────────────────────────────────────
--- Token seed: usado pelo teste de integração POST /auth/register-invite
+-- Token seed: usado pelo teste de integração POST /onboarding/register-invite
 -- ST_UTILIZADO='N' + ST_ATIVO='S' + DT_EXPIRACAO futura = invite válido
 MERGE INTO INVITE_TUTOR t
 USING (SELECT 1 FROM DUAL) SRC ON (t.ID_INVITE = 1)

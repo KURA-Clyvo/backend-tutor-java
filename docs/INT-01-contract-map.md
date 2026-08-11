@@ -93,12 +93,15 @@ controller distinto que já delegava direto a `OnboardingService`, sem depender 
 `OnboardingController`. A linha #2 abaixo (histórica, pré-TASK-55) estava desatualizada nesse
 ponto — ver correção logo após a tabela.
 
-O caminho legado `POST /api/auth/register-invite` (sem `/v1`, sem `/onboarding`) continua
-respondendo via alias `@Deprecated` no `OnboardingController` (`@RequestMapping({"/onboarding",
-"/auth"})`), coberto por teste (`OnboardingControllerTest#postNoAliasLegadoDeveContinuarFuncionando`).
-Prazo sugerido de remoção do alias: ~30 dias após TASK-48 (revisar até 2026-09-06) — nenhum
-consumidor confirmado depende dele hoje (nem o app, nem o script `scripts/test-e2e-tutor.sh`, que
-já testava só a superfície `/v1/**`).
+**Atualização TASK-82 (2026-08-11):** o caminho legado `POST /api/auth/register-invite` (sem
+`/v1`, sem `/onboarding`), que respondia via alias `@Deprecated` no `OnboardingController`
+(`@RequestMapping({"/onboarding", "/auth"})`), foi **removido** — dentro do prazo sugerido pela
+TASK-48 (~30 dias, revisar até 2026-09-06). `OnboardingController` mapeia hoje só `/onboarding`.
+G0 da TASK-82 (varredura nos 6 repos do ecossistema) confirmou zero consumidores reais do alias
+antes da remoção — nem o app, nem o script `scripts/test-e2e-tutor.sh`, que
+já testava só a superfície `/v1/**`. `/api/auth/register-invite` responde hoje `404`
+(autenticado) ou `401` (anônimo — o path saiu de `ROTAS_PUBLICAS`), coberto por
+`OnboardingControllerTest#postNoAliasLegadoDeveResponder404`.
 
 ## Mapa de contratos
 

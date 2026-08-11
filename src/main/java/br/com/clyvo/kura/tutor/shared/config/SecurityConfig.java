@@ -31,8 +31,7 @@ public class SecurityConfig {
     private static final String[] ROTAS_PUBLICAS = {
         "/auth/login",
         "/auth/refresh",
-        "/auth/register-invite", // legado — alias @Deprecated de OnboardingController (TASK-48)
-        "/onboarding/register-invite", // prefixo primário pós-TASK-48
+        "/onboarding/register-invite", // prefixo primário pós-TASK-48; alias legado /auth/register-invite removido na TASK-82
         // BFF aliases — mobile-tutor-rn usa /api/v1/auth/**
         "/v1/auth/login",
         "/v1/auth/refresh",

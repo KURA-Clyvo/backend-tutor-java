@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/v1/auth")
-@Tag(name = "Auth BFF", description = "Alias /api/v1/auth/** para mobile-tutor-rn (delega a /api/auth/**)")
+@Tag(name = "Auth BFF", description = "Alias /api/v1/auth/** para mobile-tutor-rn (login/refresh delegam a /api/auth/**; register-invite delega a /api/onboarding/register-invite, TASK-82)")
 public class AuthBffController {
 
     private final AuthService authService;
@@ -59,7 +59,7 @@ public class AuthBffController {
     }
 
     @PostMapping("/register-invite")
-    @Operation(summary = "Criar conta por convite (alias BFF)", description = "Delega a /api/auth/register-invite.")
+    @Operation(summary = "Criar conta por convite (alias BFF)", description = "Delega a /api/onboarding/register-invite.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Conta criada"),
         @ApiResponse(responseCode = "404", description = "Convite não encontrado"),

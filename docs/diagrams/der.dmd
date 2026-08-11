@@ -456,7 +456,7 @@
          ══════════════════════════════════════════════════════════ -->
 
     <entity id="ENT_INVITE_TUTOR" name="INVITE_TUTOR" owner=".NET" javaAccess="READ_ONCE" pkStrategy="SEQUENCE" pkSequence="SEQ_INVITE_TUTOR">
-      <comment>.NET gera invite com UUID v4; Java lê 1x em POST /auth/register-invite; nunca escreve.</comment>
+      <comment>.NET gera invite com UUID v4; Java lê 1x em POST /onboarding/register-invite; nunca escreve.</comment>
       <columns>
         <column id="C9_1" name="ID_INVITE"      type="NUMBER(10)"   pk="true"  nullable="false"/>
         <column id="C9_2" name="ID_TUTOR"        type="NUMBER(10)"   pk="false" nullable="false" fk="true" references="ENT_TUTOR.C6_1" onDelete="CASCADE"/>
@@ -484,7 +484,7 @@
          ══════════════════════════════════════════════════════════ -->
 
     <entity id="ENT_CONTA_TUTOR" name="CONTA_TUTOR" owner="Java" javaAccess="READ_WRITE" pkStrategy="IDENTITY">
-      <comment>Java owns. Criada em POST /auth/register-invite. UK_CONTA_INVITE_USED: 1 invite = 1 conta.</comment>
+      <comment>Java owns. Criada em POST /onboarding/register-invite. UK_CONTA_INVITE_USED: 1 invite = 1 conta.</comment>
       <columns>
         <column id="C10_1"  name="ID_CONTA"               type="NUMBER(10)"    pk="true"  nullable="false" identity="true"/>
         <column id="C10_2"  name="ID_TUTOR"               type="NUMBER(10)"    pk="false" nullable="false" fk="true" references="ENT_TUTOR.C6_1" unique="true"/>

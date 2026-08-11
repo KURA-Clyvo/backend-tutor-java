@@ -19,19 +19,18 @@ import org.springframework.web.bind.annotation.*;
  * conviviam sob o mesmo prefixo sem colidir hoje só porque os paths de método não se cruzavam,
  * o que é frágil a qualquer rota nova.
  *
- * O caminho legado {@code /auth/register-invite} é mantido como alias {@code @Deprecated} (mesmo
- * método, mapeamento adicional no {@code @RequestMapping} da classe) durante uma transição.
- * Risco de quebra é baixo: o consumidor real do app (`mobile-tutor-rn`, pós-TASK-55) chama
+ * TASK-82 (FIX_7): o alias legado {@code /auth/register-invite}, mantido temporariamente como
+ * {@code @Deprecated} desde a TASK-48, foi removido. G0 do backlog (varredura nos 6 repos)
+ * confirmou zero consumidores reais: o app (`mobile-tutor-rn`, pós-TASK-55) sempre chamou
  * {@code /api/v1/auth/register-invite}, servido por
  * {@link br.com.clyvo.kura.tutor.bff.api.AuthBffController#registerInvite}, que delega direto ao
- * {@code OnboardingService} sem depender do mapeamento desta classe — o alias aqui existe só para
- * não quebrar qualquer outro consumidor do path legado {@code /api/auth/register-invite} (ex.:
- * chamadas manuais/scripts antigos), não o app. Prazo sugerido de remoção do alias: ~30 dias após
- * TASK-48 (revisar até 2026-09-06) — ver `docs/INT-01-contract-map.md`.
+ * {@code OnboardingService} sem depender do mapeamento desta classe. {@code /auth/register-invite}
+ * agora responde {@code 404} — coberto por
+ * {@code OnboardingControllerTest#postNoAliasLegadoDeveResponder404}.
  */
 @RestController
-@RequestMapping({"/onboarding", "/auth"})
-@Tag(name = "Onboarding", description = "Onboarding por convite — cria conta e retorna JWT. Prefixo primário /onboarding; alias legado /auth/register-invite mantido temporariamente (@Deprecated, ver javadoc da classe)")
+@RequestMapping("/onboarding")
+@Tag(name = "Onboarding", description = "Onboarding por convite — cria conta e retorna JWT. Prefixo único: /onboarding (alias legado /auth/register-invite removido na TASK-82)")
 public class OnboardingController {
 
     private final OnboardingService onboardingService;
