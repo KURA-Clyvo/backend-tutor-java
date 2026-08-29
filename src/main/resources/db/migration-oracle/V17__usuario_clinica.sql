@@ -40,16 +40,42 @@
 -- reverter (ORA-02289 em toda base que não fosse bootstrapada manualmente).
 -- Não repetir o erro aqui.
 --
--- POR QUE HÁ SPLIT -oracle/-h2 (e por que ele é MÍNIMO)
--- Mesma razão da V15: a expressão de DEFAULT que lê da sequence não é
--- portável — Oracle usa `SEQ_X.NEXTVAL`, H2 usa `NEXT VALUE FOR SEQ_X` (H2 não
--- aceita SEQ_X.NEXTVAL em expressão de DEFAULT nem sob MODE=Oracle). Todo o
--- resto do DDL desta migration foi verificado como portável e é IDÊNTICO nas
--- duas variantes: tipos (NUMBER/VARCHAR2/CHAR/TIMESTAMP), CHECK, UNIQUE, FK,
--- COMMENT e o INSERT ... SELECT da conversão. A única linha que diverge entre
--- os dois arquivos é a do DEFAULT da PK — e isso está travado por teste
--- (UsuarioClinicaV17MigrationTest#variantes_diferem_apenas_na_linha_do_default_da_pk),
--- para que o split não vire dívida silenciosa se alguém editar um lado só.
+-- POR QUE HÁ SPLIT -oracle/-h2 — E O QUE FOI, DE FATO, MEDIDO
+-- ⚠️ CORREÇÃO DA REVISÃO G2. A primeira versão deste cabeçalho repetia a frase
+-- herdada do cabeçalho da V15: "o H2 não aceita SEQ_X.NEXTVAL em expressão de
+-- DEFAULT nem sob MODE=Oracle". Essa frase é FALSA, e nunca tinha sido
+-- executada por ninguém neste projeto. Medição própria, feita nesta task,
+-- contra o mesmo H2 da suíte (2.2.224, MODE=Oracle): o H2 ACEITA
+-- `DEFAULT SEQ_X.NEXTVAL`, cria a tabela e a sequence alimenta a PK. Isso está
+-- travado em teste — UsuarioClinicaV17MigrationTest
+-- #h2AceitaNextvalEmExpressaoDeDefault, que mede em vez de citar.
+-- (A V15 carrega a MESMA frase falsa. Corrigi-la está fora do escopo da FD-01
+-- e NÃO foi feito aqui — quem for mexer nela precisa saber disso.)
+--
+-- O QUE **NÃO** FOI MEDIDO: se o Oracle aceita `DEFAULT NEXT VALUE FOR SEQ_X`.
+-- Nenhum teste desta suíte toca Oracle — a conta da FIAP está bloqueada
+-- (ORA-28000) e este ciclo não abre conexão com ela. Ou seja: das duas metades
+-- do argumento de portabilidade, uma foi medida e REFUTADA, e a outra continua
+-- NÃO VERIFICADA. Não troque uma alegação não medida por outra: o que está
+-- escrito aqui é o que rodou.
+--
+-- POR QUE O SPLIT FICA MESMO ASSIM: colapsar os dois arquivos em um exige
+-- eleger UMA sintaxe para rodar nos dois bancos, e a única metade verificada é
+-- a do H2 aceitando a sintaxe Oracle. Unificar seria, então, uma aposta sobre o
+-- banco de PRODUÇÃO validada só pelo banco de teste — e o custo assimétrico é
+-- claro: o split custa duplicação de arquivo; unificar errado custa o startup
+-- do prod. Além disso, unificar aqui abriria precedente contra a V12 e a V15,
+-- que é mudança de raio maior que a FD-01. O split fica, e a justificativa
+-- honesta é: ele se sustenta pelo lado NÃO MEDIDO, não pelo lado medido.
+--
+-- Todo o RESTO do DDL desta migration foi verificado como portável e é
+-- IDÊNTICO nas duas variantes: tipos (NUMBER/VARCHAR2/CHAR/TIMESTAMP), CHECK,
+-- UNIQUE, FK, COMMENT e o INSERT ... SELECT da conversão. A única linha que
+-- diverge entre os dois arquivos é a do DEFAULT da PK — e isso está travado por
+-- teste (UsuarioClinicaV17MigrationTest#variantesDiferemApenasNaLinhaDoDefaultDaPk),
+-- para que o split não vire dívida silenciosa se alguém editar um lado só. A
+-- comparação normaliza CRLF/LF de propósito (o repo tem core.autocrlf=true e
+-- nenhum .gitattributes): o alvo é divergência SEMÂNTICA, não fim de linha.
 --
 -- UNICIDADE DE E-MAIL: POR CLÍNICA, NÃO GLOBAL
 -- UK_USUARIO_CLINICA_EMAIL é (ID_CLINICA, DS_EMAIL) — deliberadamente

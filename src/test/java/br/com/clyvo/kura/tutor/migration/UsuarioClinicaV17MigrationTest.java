@@ -76,6 +76,12 @@ class UsuarioClinicaV17MigrationTest {
                 null, null, "S");
         plantarClinica(9003, "Clinica C inativa com credencial", "90030000000193",
                 "gestor.c@kura.test", HASH_C, "N");
+        // F3 (ressalva da revisao G2): clinica COM e-mail de acesso e SEM hash. Sem esta fixture,
+        // o predicado "AND c.DS_SENHA_HASH IS NOT NULL" nao tinha cobertura nenhuma e a mutacao
+        // que o removia SOBREVIVIA (BUILD SUCCESS, 9/9). Com ela, remover o predicado faz a
+        // conversao tentar gravar NULL em USUARIO_CLINICA.DS_SENHA_HASH (NOT NULL) e a suite cai.
+        plantarClinica(9004, "Clinica D com email e sem hash", "90040000000194",
+                "gestor.d@kura.test", null, "S");
 
         // ── CONTROLE POSITIVO ────────────────────────────────────────────────
         // Um "0" só é interpretável depois de provar que o instrumento enxerga "1".
@@ -115,6 +121,11 @@ class UsuarioClinicaV17MigrationTest {
 
         assertThat(contarUsuarios(9002))
                 .as("clínica sem DS_EMAIL_ACESSO não gera usuário — o WHERE morde de verdade")
+                .isZero();
+
+        assertThat(contarUsuarios(9004))
+                .as("clínica com e-mail e SEM hash não gera usuário — converter essa linha "
+                        + "trocaria \"não loga\" por \"Flyway aborta o startup\" (DS_SENHA_HASH é NOT NULL)")
                 .isZero();
 
         Map<String, Object> gestorC = usuarioDa(9003);
@@ -252,6 +263,34 @@ class UsuarioClinicaV17MigrationTest {
                 .isEqualTo(sqlDeConversaoDoArquivo(ARQUIVO_ORACLE));
     }
 
+    // ─── F2: medição própria do argumento de portabilidade ───────────────────
+
+    @Test
+    @DisplayName("portabilidade — H2 ACEITA SEQ_X.NEXTVAL em expressão de DEFAULT (medido aqui, não herdado)")
+    void h2AceitaNextvalEmExpressaoDeDefault() {
+        // O cabeçalho da V15 afirma que o H2 não aceita SEQ_X.NEXTVAL em DEFAULT nem sob
+        // MODE=Oracle, e a V17 tinha herdado a frase. A revisão G2 refutou isso em H2 2.2.224.
+        // Este teste MEDE, contra o mesmo H2 da suíte, para que a justificativa do split pare de
+        // repousar numa alegação que ninguém nunca executou. Consequência: o split NÃO se sustenta
+        // por este lado — ele se sustenta pelo lado NÃO MEDIDO (NEXT VALUE FOR em Oracle real),
+        // que nenhum teste desta suíte pode exercitar. Ver cabeçalho da V17.
+        try {
+            jdbc.execute("CREATE SEQUENCE SEQ_PROBE_FD01 START WITH 100 INCREMENT BY 1");
+            jdbc.execute("CREATE TABLE PROBE_FD01 ("
+                    + "ID NUMBER(10) DEFAULT SEQ_PROBE_FD01.NEXTVAL PRIMARY KEY, DS VARCHAR2(10))");
+            jdbc.update("INSERT INTO PROBE_FD01 (DS) VALUES (?)", "x");
+
+            Integer id = jdbc.queryForObject("SELECT ID FROM PROBE_FD01", Integer.class);
+            assertThat(id)
+                    .as("H2 aceitou .NEXTVAL como expressão de DEFAULT e a sequence alimentou a PK")
+                    .isNotNull()
+                    .isGreaterThanOrEqualTo(100);
+        } finally {
+            jdbc.execute("DROP TABLE IF EXISTS PROBE_FD01");
+            jdbc.execute("DROP SEQUENCE IF EXISTS SEQ_PROBE_FD01");
+        }
+    }
+
     // ─── helpers ─────────────────────────────────────────────────────────────
 
     private void plantarClinica(long id, String nome, String cnpj, String emailAcesso,
@@ -300,9 +339,22 @@ class UsuarioClinicaV17MigrationTest {
                 .toList();
     }
 
+    /**
+     * Le o arquivo de migration <b>normalizando CRLF para LF</b>.
+     *
+     * <p>Sem isso a comparacao entre as variantes e byte a byte incluindo {@code \r}, e este repo
+     * tem {@code core.autocrlf=true} e nenhum {@code .gitattributes}: basta um checkout no Windows
+     * deixar um arquivo em CRLF e o outro em LF para a suite ficar VERMELHA sobre um blob correto.
+     * Foi o que a revisao G2 mediu ({@code Tests run: 168, Failures: 1} num checkout novo).
+     *
+     * <p>O proposito desta classe e detectar <b>divergencia semantica</b> entre as duas variantes,
+     * nao divergencia de fim de linha. Normalizar remove o falso positivo sem afrouxar a guarda,
+     * e isso esta provado por mutacao no relatorio da task: com o arquivo -h2 forcado a CRLF, uma
+     * divergencia real (VARCHAR2(120) -> VARCHAR2(80)) continua sendo detectada e NOMEADA.
+     */
     private static String lerRecurso(String caminho) {
         try (InputStream in = new ClassPathResource(caminho).getInputStream()) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
         } catch (IOException e) {
             throw new IllegalStateException("Não foi possível ler " + caminho, e);
         }

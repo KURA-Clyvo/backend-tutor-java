@@ -15,15 +15,23 @@
 -- schema é o mesmo):
 --   Oracle: DEFAULT SEQ_USUARIO_CLINICA.NEXTVAL
 --   H2    : DEFAULT NEXT VALUE FOR SEQ_USUARIO_CLINICA
--- `NEXT VALUE FOR` é a forma nativa do H2 (SQL:2003); SEQ_X.NEXTVAL só existe
--- lá via MODE=Oracle e não é aceito em expressão de DEFAULT (mesmo motivo
--- documentado em V12__sequences_dotnet.sql e repetido na V15).
+-- `NEXT VALUE FOR` é a forma nativa do H2 (SQL:2003).
 --
--- Essa é a ÚNICA linha que diverge entre as duas variantes — foi verificado, e
--- está travado por teste: UsuarioClinicaV17MigrationTest compara as duas
--- versões linha a linha (ignorando comentários) e falha se aparecer uma segunda
--- divergência. Editar um lado só passa a quebrar a suíte em vez de virar dívida
--- silenciosa.
+-- ⚠️ CORREÇÃO DA REVISÃO G2 — não repita a frase antiga. Este cabeçalho dizia
+-- que o H2 "não aceita SEQ_X.NEXTVAL em expressão de DEFAULT nem sob
+-- MODE=Oracle", frase herdada da V15 e nunca executada por ninguém. É FALSA:
+-- medido nesta task contra o H2 desta suíte (2.2.224, MODE=Oracle), o H2
+-- ACEITA `DEFAULT SEQ_X.NEXTVAL` — travado em
+-- UsuarioClinicaV17MigrationTest#h2AceitaNextvalEmExpressaoDeDefault. O que NÃO
+-- foi medido é o inverso (Oracle aceitar `NEXT VALUE FOR`), porque nenhum teste
+-- desta suíte toca Oracle. O split se mantém por causa do lado NÃO MEDIDO, e o
+-- argumento completo está no cabeçalho da variante Oracle.
+--
+-- Essa é a ÚNICA linha que diverge entre as duas variantes — verificado e
+-- travado por teste: UsuarioClinicaV17MigrationTest compara as duas versões
+-- linha a linha (ignorando comentários, normalizando CRLF/LF) e falha se
+-- aparecer uma segunda divergência. Editar um lado só quebra a suíte em vez de
+-- virar dívida silenciosa.
 -- =============================================================================
 
 CREATE SEQUENCE SEQ_USUARIO_CLINICA START WITH 100 INCREMENT BY 1;
