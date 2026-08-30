@@ -91,7 +91,10 @@ class FinanceiroV18MigrationTest {
 
         // A FK continua apontando para o serviço — ela é rastreabilidade de ORIGEM
         // (mix por serviço da FD-11), nunca fonte de valor.
-        assertThat(colunaDaCobranca(cobranca, "ID_SERVICO_PRECO")).isEqualTo(servico);
+        // Numero puro: o driver devolve Integer para NUMBER(10), entao compara-se o valor,
+        // nao o box (assertThat(Object).isEqualTo(long) falharia com "103 != 103L").
+        assertThat(((Number) colunaDaCobranca(cobranca, "ID_SERVICO_PRECO")).longValue())
+                .isEqualTo(servico);
     }
 
     @Test
@@ -294,8 +297,11 @@ class FinanceiroV18MigrationTest {
         long idEvento = semente;
         jdbc.update("INSERT INTO VETERINARIO (ID_VETERINARIO, ID_CLINICA, NM_VETERINARIO) VALUES (?, ?, ?)",
                 idVet, idClinica, "Vet FD07 " + semente);
-        jdbc.update("INSERT INTO TIPO_EVENTO (ID_TIPO_EVENTO, NM_TIPO) VALUES (?, ?)",
-                idTipo, "FD07-TIPO-" + semente);
+        // CD_TIPO e NOT NULL + UNIQUE desde a V9 (chave de negocio lida pelo .NET); NM_TIPO
+        // tambem e UNIQUE desde a V1. Ambos derivados da semente para nao colidir com o
+        // catalogo semeado pela V14 nem entre os testes desta classe.
+        jdbc.update("INSERT INTO TIPO_EVENTO (ID_TIPO_EVENTO, CD_TIPO, NM_TIPO) VALUES (?, ?, ?)",
+                idTipo, "FD07T" + semente, "FD07-TIPO-" + semente);
         jdbc.update("INSERT INTO EVENTO_CLINICO (ID_EVENTO, ID_CLINICA, ID_VETERINARIO, "
                         + "ID_TIPO_EVENTO, DS_OBSERVACAO) VALUES (?, ?, ?, ?, ?)",
                 idEvento, idClinica, idVet, idTipo, "Atendimento de teste FD-07");
