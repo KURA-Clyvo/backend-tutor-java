@@ -188,7 +188,7 @@ O Java **nunca escreve** em `INVITE_TUTOR` — o anti-reuso opera em duas camada
 `AGENDAMENTO` é a única tabela com escrita simultânea Java e .NET:
 
 - **Java escreve:** POST (criar), PUT (reagendar), DELETE soft (cancelar pelo tutor).
-- **.NET escreve:** PATCH `ST_STATUS` apenas (REALIZADO, NAO_COMPARECEU, CONFIRMADO — pelo vet).
+- **.NET escreve:** PATCH `ST_STATUS` apenas (REALIZADO, CANCELADO, NAO_COMPARECEU, CONFIRMADO — pelo vet), respeitando a maquina de estados da FD-06: `INTENCAO -> CANCELADO`; `AGENDADO -> CONFIRMADO, REALIZADO, CANCELADO, NAO_COMPARECEU`; `CONFIRMADO -> REALIZADO, CANCELADO, NAO_COMPARECEU`. `REALIZADO`, `CANCELADO` e `NAO_COMPARECEU` sao **finais** nos dois backends (`StatusAgendamento.isFinal()` aqui, `AgendaService.StatusFinais` no .NET).
 
 Pessimistic locking (`SELECT FOR UPDATE`) bloquearia linhas entre os dois backends em sistemas separados, causando deadlocks e degradando throughput. Optimistic locking detecta conflito apenas no momento do commit, sem manter locks.
 

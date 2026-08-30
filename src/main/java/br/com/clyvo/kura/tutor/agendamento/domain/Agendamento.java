@@ -114,7 +114,8 @@ public class Agendamento {
     }
 
     public void cancelar(String motivo) {
-        if (stStatus == StatusAgendamento.REALIZADO || stStatus == StatusAgendamento.CANCELADO) {
+        // FD-06: a lista virou StatusAgendamento.isFinal() e ganhou NAO_COMPARECEU.
+        if (stStatus != null && stStatus.isFinal()) {
             throw new IllegalStateException(
                 "Não é possível cancelar agendamento com status " + stStatus.name() + ".");
         }

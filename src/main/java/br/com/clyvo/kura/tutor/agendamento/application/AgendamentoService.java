@@ -126,8 +126,8 @@ public class AgendamentoService {
             throw new ForbiddenException("Agendamento não pertence a este tutor.");
         }
 
-        if (ag.getStStatus() == StatusAgendamento.REALIZADO
-                || ag.getStStatus() == StatusAgendamento.CANCELADO) {
+        // FD-06: mesma regra do dominio (StatusAgendamento.isFinal()), agora com NAO_COMPARECEU.
+        if (ag.getStStatus() != null && ag.getStStatus().isFinal()) {
             throw new ConflictException(
                 "Não é possível cancelar agendamento com status " + ag.getStStatus().name() + ".");
         }

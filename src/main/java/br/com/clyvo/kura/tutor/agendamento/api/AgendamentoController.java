@@ -116,7 +116,7 @@ public class AgendamentoController {
      * Soft-delete: muda status para CANCELADO.
      *
      * Retorna 403 se o agendamento não pertencer ao tutor.
-     * Retorna 409 se o status for REALIZADO ou já CANCELADO.
+     * Retorna 409 se o status for final (REALIZADO, CANCELADO ou NAO_COMPARECEU).
      */
     @DeleteMapping("/{id}")
     @Operation(
@@ -125,7 +125,7 @@ public class AgendamentoController {
     )
     @ApiResponse(responseCode = "204", description = "Agendamento cancelado (soft delete)")
     @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor")
-    @ApiResponse(responseCode = "409", description = "Agendamento REALIZADO ou já CANCELADO")
+    @ApiResponse(responseCode = "409", description = "Agendamento em estado final (REALIZADO, CANCELADO ou NAO_COMPARECEU)")
     public ResponseEntity<Void> excluir(
             Authentication auth,
             @PathVariable Long id) {
@@ -137,7 +137,7 @@ public class AgendamentoController {
      * Cancela agendamento do tutor autenticado.
      *
      * Retorna 403 se o agendamento não pertencer ao tutor.
-     * Retorna 422 se o status não permitir cancelamento (REALIZADO ou CANCELADO).
+     * Retorna 422 se o status não permitir cancelamento (REALIZADO, CANCELADO ou NAO_COMPARECEU).
      */
     @PatchMapping("/{id}/cancelar")
     @Operation(
@@ -148,7 +148,7 @@ public class AgendamentoController {
         @ApiResponse(responseCode = "200", description = "Agendamento cancelado"),
         @ApiResponse(responseCode = "400", description = "Motivo em branco"),
         @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor"),
-        @ApiResponse(responseCode = "409", description = "Status não permite cancelamento (REALIZADO ou CANCELADO)")
+        @ApiResponse(responseCode = "409", description = "Status não permite cancelamento: estado final (REALIZADO, CANCELADO ou NAO_COMPARECEU)")
     })
     public ResponseEntity<AgendamentoResponse> cancelar(
             Authentication auth,

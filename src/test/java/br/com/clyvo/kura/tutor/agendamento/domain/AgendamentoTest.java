@@ -1,6 +1,8 @@
 package br.com.clyvo.kura.tutor.agendamento.domain;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -56,6 +58,45 @@ class AgendamentoTest {
         setStatus(ag, StatusAgendamento.NAO_COMPARECEU);
         assertThrows(IllegalStateException.class, () -> ag.cancelar("motivo"));
         assertEquals(StatusAgendamento.NAO_COMPARECEU, ag.getStStatus());
+    }
+
+    @Test
+    void cancelarCANCELADODeveLancarIllegalState() throws Exception {
+        LocalDateTime futuro = LocalDateTime.now().plusDays(1);
+        Agendamento ag = Agendamento.criar(null, null, null, null, futuro, "CONSULTA", null);
+        setStatus(ag, StatusAgendamento.CANCELADO);
+        assertThrows(IllegalStateException.class, () -> ag.cancelar("motivo"));
+    }
+
+    /**
+     * Controle positivo. Sem estes casos, um {@code isFinal()} que devolvesse {@code true} para
+     * tudo deixaria os testes de recusa VERDES e quebraria o cancelamento inteiro sem ninguem ver.
+     */
+    @ParameterizedTest
+    @EnumSource(value = StatusAgendamento.class, names = {"INTENCAO", "AGENDADO", "CONFIRMADO"})
+    void cancelarAPartirDeEstadoNaoFinalDeveFuncionar(StatusAgendamento origem) throws Exception {
+        LocalDateTime futuro = LocalDateTime.now().plusDays(1);
+        Agendamento ag = Agendamento.criar(null, null, null, null, futuro, "CONSULTA", null);
+        setStatus(ag, origem);
+
+        ag.cancelar("motivo");
+
+        assertEquals(StatusAgendamento.CANCELADO, ag.getStStatus());
+        assertNotNull(ag.getDtCancelamento());
+    }
+
+    /**
+     * A lista de estados finais e a mesma que o .NET deriva em {@code AgendaService.StatusFinais}.
+     * Este teste e o que faz uma divergencia entre os dois donos da tabela compartilhada quebrar a
+     * suite em vez de apodrecer em silencio.
+     */
+    @ParameterizedTest
+    @EnumSource(StatusAgendamento.class)
+    void isFinalDeveSerVerdadeiroExatamenteParaOsTresEstadosFinais(StatusAgendamento status) {
+        boolean esperado = status == StatusAgendamento.REALIZADO
+                        || status == StatusAgendamento.CANCELADO
+                        || status == StatusAgendamento.NAO_COMPARECEU;
+        assertEquals(esperado, status.isFinal(), "isFinal() divergiu para " + status.name());
     }
 
     private static void setStatus(Agendamento ag, StatusAgendamento status) throws Exception {
