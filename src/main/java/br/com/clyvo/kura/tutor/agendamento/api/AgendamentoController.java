@@ -148,7 +148,7 @@ public class AgendamentoController {
         @ApiResponse(responseCode = "200", description = "Agendamento cancelado"),
         @ApiResponse(responseCode = "400", description = "Motivo em branco"),
         @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor"),
-        @ApiResponse(responseCode = "409", description = "Status não permite cancelamento: estado final (REALIZADO, CANCELADO ou NAO_COMPARECEU)")
+        @ApiResponse(responseCode = "422", description = "Status não permite cancelamento: estado final (REALIZADO, CANCELADO ou NAO_COMPARECEU)")
     })
     public ResponseEntity<AgendamentoResponse> cancelar(
             Authentication auth,

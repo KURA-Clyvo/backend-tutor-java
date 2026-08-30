@@ -2,6 +2,7 @@ package br.com.clyvo.kura.tutor.agendamento.application;
 
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoRequest;
 import br.com.clyvo.kura.tutor.agendamento.domain.Agendamento;
+import br.com.clyvo.kura.tutor.agendamento.domain.StatusAgendamento;
 import br.com.clyvo.kura.tutor.agendamento.domain.repository.AgendamentoRepository;
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.entity.Clinica;
@@ -10,6 +11,7 @@ import br.com.clyvo.kura.tutor.entity.Tutor;
 import br.com.clyvo.kura.tutor.entity.TutorPet;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
+import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -60,6 +65,7 @@ class AgendamentoServiceTest {
     private static final Long   ID_PET      = 10L;
     private static final Long   ID_CLINICA_DO_PET = 5L;
     private static final Long   ID_CLINICA_OUTRA   = 999L;
+    private static final Long   ID_AGENDAMENTO     = 77L;
 
     // ─── (a) POST sem idClinica: hoje dá 400 (idClinica @NotNull), depois de fix cria ──
 
@@ -127,6 +133,88 @@ class AgendamentoServiceTest {
         var response = service.criar(EMAIL, request);
 
         assertThat(response.idClinica()).isEqualTo(ID_CLINICA_DO_PET);
+    }
+
+    // ─── FD-06 (fix wave pós-G2, F1): a guarda de estado final de excluir() ─────
+    //
+    // 🔴 Por que estes testes existem. A guarda de `excluir()` entrou na FD-06 SEM
+    // trava: a mutação M5 da revisão G2 reverteu-a e a suíte ficou 180/0 BUILD
+    // SUCCESS. `AgendamentoServiceTest` só cobria `criar()`, e os testes que citam
+    // `excluir(` mockam o próprio service — nenhum deles executa esta guarda.
+    //
+    // É a quarta ocorrência de "código certo sem trava" neste ciclo. Numa delas
+    // (FD-03) o que estava destravado era um vazamento cross-tenant explorável.
+    //
+    // ⚠️ `excluir()` NÃO delega a decisão ao domínio: ele decide antes, para
+    // preservar o 409 CONFLITO que o endpoint DELETE já devolvia. Sem esta
+    // pré-checagem o `ag.cancelar()` lá embaixo lançaria IllegalStateException, que
+    // o GlobalExceptionHandler mapeia para 409 ESTADO_INVALIDO — mesmo status,
+    // mesma mensagem, `codigo` diferente. É por isso que a guarda é duplicada de
+    // propósito, e por isso ela precisa de teste próprio: o teste de domínio
+    // (AgendamentoTest) não passa por aqui.
+
+    @Test
+    @DisplayName("excluir agendamento em NAO_COMPARECEU — rejeita com ConflictException e NÃO grava")
+    void excluirAgendamentoEmNaoCompareceu_rejeitaComConflict() throws Exception {
+        Agendamento ag = agendamentoDoTutor(StatusAgendamento.NAO_COMPARECEU);
+
+        when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
+        when(agendamentoRepository.findById(ID_AGENDAMENTO)).thenReturn(Optional.of(ag));
+
+        assertThatThrownBy(() -> service.excluir(EMAIL, ID_AGENDAMENTO))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("NAO_COMPARECEU");
+
+        // A prova de que a guarda mordeu, e não só de que uma exceção apareceu:
+        // nada foi gravado e o status continua o que era.
+        verify(agendamentoRepository, never()).save(any(Agendamento.class));
+        assertThat(ag.getStStatus()).isEqualTo(StatusAgendamento.NAO_COMPARECEU);
+    }
+
+    @Test
+    @DisplayName("excluir agendamento REALIZADO — rejeita com ConflictException (comportamento anterior à FD-06)")
+    void excluirAgendamentoRealizado_rejeitaComConflict() throws Exception {
+        Agendamento ag = agendamentoDoTutor(StatusAgendamento.REALIZADO);
+
+        when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
+        when(agendamentoRepository.findById(ID_AGENDAMENTO)).thenReturn(Optional.of(ag));
+
+        assertThatThrownBy(() -> service.excluir(EMAIL, ID_AGENDAMENTO))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("REALIZADO");
+
+        verify(agendamentoRepository, never()).save(any(Agendamento.class));
+    }
+
+    /**
+     * Controle positivo. Sem ele, uma guarda que rejeitasse TUDO deixaria os dois
+     * testes acima verdes e quebraria o cancelamento inteiro sem ninguém ver — o
+     * mesmo instrumento que declara "0 achados" tem de ser capaz de enxergar um 1.
+     */
+    @Test
+    @DisplayName("excluir agendamento AGENDADO — cancela e grava (controle positivo)")
+    void excluirAgendamentoAgendado_cancelaEGrava() throws Exception {
+        Agendamento ag = agendamentoDoTutor(StatusAgendamento.AGENDADO);
+
+        when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
+        when(agendamentoRepository.findById(ID_AGENDAMENTO)).thenReturn(Optional.of(ag));
+
+        service.excluir(EMAIL, ID_AGENDAMENTO);
+
+        assertThat(ag.getStStatus()).isEqualTo(StatusAgendamento.CANCELADO);
+        verify(agendamentoRepository).save(ag);
+    }
+
+    /** Agendamento real (não mock) pertencente ao tutor autenticado, no status pedido. */
+    private Agendamento agendamentoDoTutor(StatusAgendamento status) throws Exception {
+        Tutor tutor = mockTutor(ID_TUTOR);
+        Agendamento ag = Agendamento.criar(
+                tutor, null, null, null, LocalDateTime.now().plusDays(3), "CONSULTA", null);
+
+        Field campo = Agendamento.class.getDeclaredField("stStatus");
+        campo.setAccessible(true);
+        campo.set(ag, status);
+        return ag;
     }
 
     // ─── helpers ────────────────────────────────────────────────────────────────

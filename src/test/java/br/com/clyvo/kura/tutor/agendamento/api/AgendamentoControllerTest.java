@@ -4,6 +4,8 @@ import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoResponse;
 import br.com.clyvo.kura.tutor.agendamento.application.AgendamentoService;
 import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
 import br.com.clyvo.kura.tutor.auth.security.JwtAuthenticationEntryPoint;
+import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
+import br.com.clyvo.kura.tutor.shared.exception.GlobalExceptionHandler;
 import br.com.clyvo.kura.tutor.shared.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -41,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *  - GET ignora qualquer tutorId de query param — usa SEMPRE o SecurityContext
  */
 @WebMvcTest(AgendamentoController.class)
-@Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class})
+@Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class, GlobalExceptionHandler.class})
 @TestPropertySource(properties = {
     "kura.jwt.secret=dev-secret-trocar-em-prod-com-no-minimo-64-bytes-aqui-para-test-kura",
     "kura.jwt.access-expiration-minutes=15",
@@ -151,6 +153,29 @@ class AgendamentoControllerTest {
 
         // Serviço foi chamado com o EMAIL do SecurityContext (não com 999)
         verify(agendamentoService).listar(eq(EMAIL), isNull(), isNull(), isNull(), isNull(), any());
+    }
+
+    // ─── FD-06 (fix wave pós-G2, F2): o status REAL de PATCH /{id}/cancelar ─────
+    //
+    // O @ApiResponse deste endpoint anunciava 409 para "status não permite
+    // cancelamento". O service captura o IllegalStateException do domínio e
+    // relança RegraDeNegocioException, que o GlobalExceptionHandler mapeia para
+    // 422 — ou seja, o contrato publicado mentia, e a FD-06 editou essa exata
+    // linha sem corrigir o número.
+    //
+    // Este teste MEDE o status em vez de deduzi-lo do handler, e trava o número
+    // que a documentação passou a afirmar.
+
+    @Test
+    @DisplayName("cancelar com status final — devolve o status que a documentação anuncia")
+    @WithMockUser(username = EMAIL)
+    void cancelarComStatusFinal_devolve422() throws Exception {
+        when(agendamentoService.cancelar(eq(EMAIL), eq(ID_AG), any()))
+                .thenThrow(new RegraDeNegocioException(
+                        "Não é possível cancelar agendamento com status NAO_COMPARECEU."));
+
+        mockMvc.perform(patch("/agendamentos/{id}/cancelar", ID_AG).param("motivo", "desisti"))
+            .andExpect(status().isUnprocessableEntity());
     }
 
     // ─── helper ───────────────────────────────────────────────────────────────
