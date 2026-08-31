@@ -68,7 +68,11 @@ class UsuarioClinicaV19FkCompostaTest {
                 .as("usuario da clinica A apontando veterinario da clinica B tem que morrer no "
                         + "BANCO. Se esta assercao cair, o unico obstaculo volta a ser uma linha "
                         + "de C# que o backend Java nao executa.")
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataIntegrityViolationException.class)
+                // Nomear a constraint no assert e o que impede este teste de passar por
+                // motivo errado: sem isto, uma colisao de UK de e-mail (ou qualquer outra
+                // violacao de integridade) seria lida como "a FK composta mordeu".
+                .hasMessageContaining("FK_USUARIO_CLINICA_VET");
 
         assertThat(contarUsuario(clinicaA, "cross@fd14.test"))
                 .as("a linha cross-tenant nao pode ter sido gravada")
