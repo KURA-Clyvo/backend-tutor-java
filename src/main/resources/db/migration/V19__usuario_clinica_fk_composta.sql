@@ -40,8 +40,32 @@
 -- IMPLICACAO -- nao existe dataset possivel que viole a UK nova sem ja violar
 -- a PK. Constraints medidas em VETERINARIO no momento desta task:
 -- SYS_C008340 (P), UK_VET_CRMV (U), FK_VET_CLINICA (R).
--- (Isso dispensa a CACA a linhas violadoras; NAO dispensa a prova V1->V19 do
--- zero, que foi executada -- ver fd-14-report.md.)
+-- (Isso dispensa a caca a linhas violadoras DA UK -- e SO da UK. NAO dispensa
+-- a prova V1->V19 do zero, que foi executada -- ver fd-14-report.md.)
+--
+-- ATENCAO: O PASSO 2 *PODE* FALHAR POR DADO PRE-EXISTENTE -- LEIA ANTES DE
+-- APLICAR ESTA MIGRATION EM BASE COM DADO ACUMULADO.
+-- O argumento estrutural acima vale para o passo 1 (a UK) e NAO se estende ao
+-- passo 2. Se a base ja contiver UMA UNICA linha USUARIO_CLINICA apontando
+-- veterinario de outra clinica -- exatamente o furo que esta migration fecha,
+-- e que era ACEITO ate agora --, o ADD CONSTRAINT do passo 2 falha com
+--   ORA-02298: cannot validate (RM562999.FK_USUARIO_CLINICA_VET)
+--               - parent keys not found
+-- e o Flyway aborta, o que impede o kura-tutor de subir.
+-- PIOR: DDL no Oracle autocommita e o DROP vem ANTES do ADD, entao quando o
+-- passo 2 falha a tabela fica SEM FK NENHUMA -- estritamente pior que o estado
+-- anterior a migration. Ambos MEDIDOS (maestro e revisao G2 da FD-14, por
+-- caminhos independentes).
+-- VERIFICACAO OBRIGATORIA antes de aplicar em base com dado -- e rode o
+-- CONTROLE POSITIVO dela (plante uma linha cross-tenant e confirme que a
+-- consulta devolve 1), porque um 0 de detector nao provado nao vale nada:
+--   SELECT COUNT(*) FROM USUARIO_CLINICA u
+--    WHERE u.ID_VETERINARIO IS NOT NULL
+--      AND NOT EXISTS (SELECT 1 FROM VETERINARIO v
+--                       WHERE v.ID_VETERINARIO = u.ID_VETERINARIO
+--                         AND v.ID_CLINICA     = u.ID_CLINICA);
+-- Resultado > 0 => corrija as linhas ANTES de aplicar. Em base nascida do zero
+-- (o compose) o resultado e 0 e o passo 2 passa.
 --
 -- ID_VETERINARIO CONTINUA NULLABLE, E A FK COMPOSTA CONTINUA PERMITINDO NULO
 -- Um GESTOR pode nao ser veterinario (dono, administrador, financeiro) -- a V17
