@@ -379,7 +379,6 @@ bash tests/test_architecture.sh    # Valida estrutura do documento de arquitetur
 | **Cronograma de Atividades** | [`docs/timeline.md`](docs/timeline.md) | Matriz de responsabilidades e timeline semanal da sprint |
 | **Migrations do Banco** | [`src/main/resources/db/migration/`](src/main/resources/db/migration/) | Flyway V1–V19: criação de schema, constraints e dados de referência |
 | **Scripts de Validação** | [`tests/`](tests/) | Scripts shell para validação de arquitetura, migrations e Docker |
-| **Plano de Desenvolvimento** | [`plano.md`](plano.md) | 26 tasks detalhadas de execução da Sprint 1 |
 | **Containerização** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) | Build Docker multi-stage e configuração do Compose |
 
 ### Histórico de Contribuições
