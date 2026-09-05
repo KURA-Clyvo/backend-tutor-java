@@ -60,9 +60,46 @@ br.com.clyvo.kura.tutor/
 ├── tutor/          Tutor · Pet · Espécie · Raça (leitura de dados do .NET)
 ├── timeline/       VW_TIMELINE_PET · VW_VACINAS_VENCENDO (views Oracle, read-only)
 ├── consentimento/  Rastreamento de consentimentos LGPD · Chave de idempotência
+├── notificacao/    Notificações (push, e-mail) do tutor
 ├── agendamento/    Agendamentos (shared-write com .NET via @Version)
-└── shared/         SecurityConfig · GlobalExceptionHandler · CorrelationIdFilter · CacheConfig
+└── shared/         SecurityConfig · CorsConfig · GlobalExceptionHandler · CorrelationIdFilter · CacheConfig
 ```
+
+Cada contexto acima segue `api/` (controllers + DTOs) → `application/` (services) → `domain/` (entidades + repositórios).
+
+**Estrutura legada** — ainda existe no disco, não apagar sem checar quem referencia. Serve a collection Postman, testes mais antigos e um healthcheck com rotas id-scoped:
+
+```
+br.com.clyvo.kura.tutor/
+├── controller/  Só sobrou AutenticacaoController.java — stub @Deprecated vazio, mantido para não quebrar import legado
+├── entity/      Entidades @Immutable das tabelas .NET-owned (Tutor, Pet, Clinica, Especie, Raca, Veterinario, TutorPet) + ContaTutor (Java-owned)
+├── repository/  Repositórios Spring Data para as entidades acima
+├── dto/         Request/Response da era pré-bounded-context
+├── service/     AuthService.java legado
+├── config/      Só sobrou SwaggerConfig.java — stub @Deprecated vazio (substituído por shared/config/OpenApiConfig)
+└── exception/   GerenciadorExcecoes.java é stub @Deprecated vazio, MAS RecursoNaoEncontradoException e
+                 RegraDeNegocioException no mesmo pacote são aliases de compatibilidade ATIVOS — usados
+                 de verdade pelos services novos (agendamento, consentimento, onboarding, tutor, bff)
+```
+
+**`bff/api/`** — o que o app mobile realmente chama, e que não tem seção própria neste índice até esta revisão:
+
+```
+br.com.clyvo.kura.tutor/
+└── bff/api/
+    ├── AuthBffController.java
+    ├── AgendamentoBffController.java
+    ├── ConsentimentoBffController.java
+    ├── NotificacaoBffController.java
+    └── TutorBffController.java
+```
+
+Os 5 controllers expõem `/v1/**` e são **sempre auto-escopados pelo JWT** — nunca recebem `idTutor` no path, porque o tutor logado é quem o token diz que é (evita IDOR: `{id}`/`{idPet}` no path identificam o recurso, nunca o tutor).
+
+**Duas perguntas frequentes sobre esta estrutura:**
+
+- *Por que existem dois `AuthController`?* `controller/AutenticacaoController` é o nome antigo, renomeado para `auth/api/AuthController` — o antigo ficou como stub `@Deprecated` vazio só para não quebrar import de código legado, não tem lógica.
+- *Por que `Tutor.java` (em `entity/`) é `@Immutable`?* `TUTOR` é tabela **.NET-owned** — este backend Java lê mas não escreve nela. O `@Immutable` do Hibernate transforma esse acordo em erro de runtime em vez de depender de disciplina de código. A única tabela de escrita compartilhada é `AGENDAMENTO`, e é por isso que ela (`agendamento/domain/Agendamento.java`) tem lock otimista via `@Version`/`NR_VERSION`.
 
 Documentação completa das decisões arquiteturais em [`docs/architecture.md`](docs/architecture.md).
 
