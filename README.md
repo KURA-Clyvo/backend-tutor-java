@@ -5,7 +5,7 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2.5-6DB33F?logo=springboot&logoColor=white)
 ![Oracle](https://img.shields.io/badge/Oracle-19c%20%2F%2023c-F80000?logo=oracle&logoColor=white)
-![Flyway](https://img.shields.io/badge/Flyway-V1--V5-CC0200?logo=flyway&logoColor=white)
+![Flyway](https://img.shields.io/badge/Flyway-V1--V19-CC0200?logo=flyway&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![FIAP](https://img.shields.io/badge/FIAP-Challenge_2026-ED1C24)
 
@@ -89,7 +89,9 @@ Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita
 | **Idempotência** | Tabela `IDEMPOTENCY_KEY` (sem Redis) | Segura em rollback — a chave é gravada na mesma transação que a operação protegida |
 | **Cache** | Caffeine in-process apenas para `ESPECIE` / `RACA` | São catálogos estáticos; entidades mutáveis (`Tutor`, `Pet`) nunca são cacheadas |
 | **Envelope de erro** | Subconjunto do RFC 7807 (`status`, `error`, `message`, `path`, `correlationId`) | Contrato consistente; cada request recebe `X-Correlation-Id` para rastreamento no servidor |
-| **Gestão de schema** | Flyway V1–V5 (idempotentes, compatíveis com Oracle 19c) | Java e .NET escrevem no mesmo schema; todo DDL deve ser versionado para evitar drift |
+| **Gestão de schema** | Flyway V1–V19 (idempotentes, compatíveis com Oracle 19c) | Java e .NET escrevem no mesmo schema; todo DDL deve ser versionado para evitar drift |
+
+As migrations vivem em três diretórios: [`db/migration/`](src/main/resources/db/migration/) tem SQL portável que roda nos dois perfis (`dev` e `prod`); [`db/migration-oracle/`](src/main/resources/db/migration-oracle/) e [`db/migration-h2/`](src/main/resources/db/migration-h2/) têm as versões em que a sintaxe realmente diverge entre os dois bancos (ex.: a expressão de `DEFAULT` da PK — `SEQ_X.NEXTVAL` no Oracle, `NEXT VALUE FOR SEQ_X` no H2) — hoje são V2, V3, V5, V12, V15, V17 e V18. Onde a sintaxe não diverge, existe um arquivo só em `db/migration/` (a V16 e a V19 são assim).
 
 ### 1.4 Diagrama Entidade-Relacionamento (Notação Barker via PlantUML)
 
@@ -108,7 +110,7 @@ Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita
 | jjwt | 0.12.6 | Geração e validação de JWT |
 | Springdoc OpenAPI | 2.5.0 | Swagger UI |
 | Caffeine | BOM | Cache in-process (espécies / raças) |
-| Flyway | BOM | Versionamento de schema (V1–V5) |
+| Flyway | BOM | Versionamento de schema (V1–V19) |
 | Oracle 19c / 23c | — | Banco de dados em produção (FIAP) |
 | H2 | BOM | Banco em memória (perfil dev) |
 | JUnit 5 · Mockito · AssertJ | BOM | Testes unitários e de integração |
@@ -324,7 +326,7 @@ bash tests/test_architecture.sh    # Valida estrutura do documento de arquitetur
 | **Ambiente Postman — Dev** | [`docs/postman/kura-tutor-dev.postman_environment.json`](docs/postman/kura-tutor-dev.postman_environment.json) | Variáveis para execução local (H2) |
 | **Ambiente Postman — Prod** | [`docs/postman/kura-tutor-prod.postman_environment.json`](docs/postman/kura-tutor-prod.postman_environment.json) | Variáveis para execução no Oracle FIAP |
 | **Cronograma de Atividades** | [`docs/timeline.md`](docs/timeline.md) | Matriz de responsabilidades e timeline semanal da sprint |
-| **Migrations do Banco** | [`src/main/resources/db/migration/`](src/main/resources/db/migration/) | Flyway V1–V5: criação de schema, constraints e dados de referência |
+| **Migrations do Banco** | [`src/main/resources/db/migration/`](src/main/resources/db/migration/) | Flyway V1–V19: criação de schema, constraints e dados de referência |
 | **Scripts de Validação** | [`tests/`](tests/) | Scripts shell para validação de arquitetura, migrations e Docker |
 | **Plano de Desenvolvimento** | [`plano.md`](plano.md) | 26 tasks detalhadas de execução da Sprint 1 |
 | **Containerização** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) | Build Docker multi-stage e configuração do Compose |
@@ -367,7 +369,7 @@ git log --format="%ad  %an  %s" --date=short
 
 **Nikolas Brisola** foi responsável pelo setup inicial do projeto Spring Boot, pela configuração base do Maven, pela primeira iteração do mapeamento das entidades de domínio (`Tutor`, `Pet`, `Especie`, `Raca`, `Agendamento`) e pelo rascunho inicial do schema do banco (v1 e v2).
 
-**Felipe Ferrete** liderou a refatoração arquitetural para a estrutura de bounded contexts (plano v5), a lógica de integração cross-API com o backend .NET (optimistic locking, onboarding por convite, boundaries `@Immutable`), a camada completa de segurança (rotação de refresh token JWT, proteção brute-force), todas as migrations Flyway (V1–V5), o DER, a collection Postman e a documentação técnica completa.
+**Felipe Ferrete** liderou a refatoração arquitetural para a estrutura de bounded contexts (plano v5), a lógica de integração cross-API com o backend .NET (optimistic locking, onboarding por convite, boundaries `@Immutable`), a camada completa de segurança (rotação de refresh token JWT, proteção brute-force), todas as migrations Flyway (V1–V19), o DER, a collection Postman e a documentação técnica completa.
 
 O detalhamento por task, incluindo a timeline semanal, está disponível em [`docs/timeline.md`](docs/timeline.md).
 
