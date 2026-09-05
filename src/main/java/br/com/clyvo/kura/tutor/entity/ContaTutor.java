@@ -118,8 +118,48 @@ public class ContaTutor {
     private static final int MAX_TENTATIVAS_LOGIN = 5;
 
     public boolean isAtiva()           { return "S".equals(stAtiva); }
-    public boolean isBloqueada()       { return dtBloqueio != null; }
     public boolean isEmailVerificado() { return "S".equals(stEmailVerificado); }
+
+    /**
+     * Checagem BRUTA de bloqueio — não considera janela de tempo nenhuma.
+     * Usada hoje só por {@code UserDetailsServiceImpl} (flag {@code accountLocked}
+     * do Spring Security), caminho que é INERTE nesta aplicação: o
+     * {@code JwtAuthenticationFilter} monta o {@code UsernamePasswordAuthenticationToken}
+     * manualmente, sem passar por {@code AuthenticationManager}/
+     * {@code DaoAuthenticationProvider} — ninguém lê esse flag hoje. Mantida
+     * inalterada de propósito (SJ3-02) para não expandir esse caminho sem
+     * config disponível; a checagem que importa de verdade é a com janela,
+     * {@link #isBloqueada(LocalDateTime, int)}, usada por {@code AuthService}.
+     */
+    public boolean isBloqueada()       { return dtBloqueio != null; }
+
+    /**
+     * Checagem de bloqueio COM janela de tempo — é esta que {@code AuthService}
+     * usa para decidir o 423. O bloqueio por excesso de tentativas é
+     * TEMPORÁRIO (defesa anti-brute-force), nunca permanente: passado
+     * {@code janelaMinutos} desde {@code dtBloqueio}, a conta deixa de estar
+     * bloqueada por este método — mesmo que {@code dtBloqueio} continue
+     * preenchido no banco. Ver {@link #limparBloqueioExpirado(LocalDateTime, int)},
+     * que deve ser chamado antes desta checagem para zerar o contador quando
+     * o bloqueio anterior já expirou.
+     */
+    public boolean isBloqueada(LocalDateTime agora, int janelaMinutos) {
+        return dtBloqueio != null && dtBloqueio.plusMinutes(janelaMinutos).isAfter(agora);
+    }
+
+    /**
+     * Se existe um bloqueio e ele já passou da janela configurada, zera o
+     * contador de tentativas e limpa {@code dtBloqueio}. Sem isto, uma única
+     * falha de senha depois da janela expirada rebloquearia a conta na hora
+     * (o contador continuaria em MAX_TENTATIVAS_LOGIN). Chamado no início do
+     * fluxo de login, antes de avaliar a tentativa atual.
+     */
+    public void limparBloqueioExpirado(LocalDateTime agora, int janelaMinutos) {
+        if (dtBloqueio != null && !dtBloqueio.plusMinutes(janelaMinutos).isAfter(agora)) {
+            this.nrTentativasLogin = 0;
+            this.dtBloqueio = null;
+        }
+    }
 
     /** Registra uma tentativa de login bem-sucedida: reseta contador e desbloqueia. */
     public void registrarLoginSucesso() {
@@ -130,7 +170,13 @@ public class ContaTutor {
 
     /**
      * Registra uma tentativa de login com falha.
-     * Ao atingir MAX_TENTATIVAS_LOGIN, seta dtBloqueio (423 Locked).
+     * Ao atingir MAX_TENTATIVAS_LOGIN, seta dtBloqueio — bloqueio TEMPORÁRIO
+     * (423 Locked), válido pela janela configurada em
+     * {@code kura.auth.janela-bloqueio-minutos} (default 15 min; ver
+     * {@link #isBloqueada(LocalDateTime, int)} e
+     * {@link #limparBloqueioExpirado(LocalDateTime, int)}). NÃO é um bloqueio
+     * permanente — a única forma de destravar não é mais exclusivamente
+     * {@link #registrarLoginSucesso()}.
      */
     public void registrarLoginFalha() {
         this.nrTentativasLogin = (nrTentativasLogin == null ? 0 : nrTentativasLogin) + 1;
