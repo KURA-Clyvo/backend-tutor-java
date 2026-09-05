@@ -278,6 +278,88 @@ class AuthServiceTest {
         assertThat(conta.getNrTentativasLogin()).isZero();
     }
 
+    // Teste B — dentro da janela, o bloqueio AINDA barra. Sem este teste, um fix
+    // que simplesmente desligasse a checagem passaria no Teste A e ninguém
+    // saberia que a proteção anti-brute-force morreu junto.
+    @Test
+    @DisplayName("SJ3-02 Teste B — bloqueio dentro da janela ainda barra, mesmo com senha correta")
+    void loginContaBloqueadaDentroDaJanelaDeveRetornar423() {
+        ContaTutor conta = contaAtiva(5);
+        conta.setDtBloqueio(LocalDateTime.now().minusMinutes(1)); // bem dentro da janela de 15 min
+        when(contaRepo.findByDsEmailLogin(EMAIL)).thenReturn(Optional.of(conta));
+
+        assertThatThrownBy(() -> service.login(loginRequest))
+                .isInstanceOf(AccountLockedException.class);
+
+        // BCrypt não deve ser chamado — a checagem de bloqueio vem antes
+        verifyNoInteractions(encoder, jwt);
+        assertThat(conta.getNrTentativasLogin()).isEqualTo(5); // contador intocado
+        assertThat(conta.getDtBloqueio()).isNotNull();
+    }
+
+    // Teste C — o contador zera junto com a janela. Depois de a janela expirar,
+    // 1 falha nova não pode rebloquear a conta contando a partir de 5.
+    @Test
+    @DisplayName("SJ3-02 Teste C — janela expirada + 1 falha nova vai para 1, não para 6")
+    void loginFalhaAposJanelaExpiradaDeveContarDeUm() {
+        ContaTutor conta = contaAtiva(5);
+        conta.setDtBloqueio(LocalDateTime.now().minusHours(1)); // janela expirada
+        when(contaRepo.findByDsEmailLogin(EMAIL)).thenReturn(Optional.of(conta));
+        when(encoder.matches(SENHA, HASH)).thenReturn(false); // senha ERRADA desta vez
+        when(contaRepo.save(any())).thenReturn(conta);
+
+        assertThatThrownBy(() -> service.login(loginRequest))
+                .isInstanceOf(BadCredentialsException.class);
+
+        assertThat(conta.getNrTentativasLogin()).isEqualTo(1); // não 6
+        assertThat(conta.isBloqueada()).isFalse();
+        assertThat(conta.getDtBloqueio()).isNull();
+        verify(contaRepo).save(conta);
+    }
+
+    // Teste D — refresh() tem o mesmo predicado: destrava depois da janela e
+    // barra dentro dela.
+    @Test
+    @DisplayName("SJ3-02 Teste D — refresh() destrava depois da janela")
+    void refreshContaBloqueadaAposJanelaExpiradaDeveSuceder() {
+        ContaTutor conta = contaAtiva(5);
+        conta.setDtBloqueio(LocalDateTime.now().minusHours(1)); // janela expirada
+        conta.setDsRefreshTokenHash("$2a$12$oldRefreshHash");
+        conta.setDtRefreshExpira(LocalDateTime.now().plusDays(7));
+
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("10");
+        when(jwt.validar("old.refresh.jwt")).thenReturn(Optional.of(claims));
+        when(contaRepo.findById(10L)).thenReturn(Optional.of(conta));
+        when(encoder.matches("old.refresh.jwt", "$2a$12$oldRefreshHash")).thenReturn(true);
+        when(jwt.gerarAccess(conta)).thenReturn("new.access.jwt");
+        when(jwt.gerarRefresh(conta)).thenReturn("new.refresh.jwt");
+        when(encoder.encode("new.refresh.jwt")).thenReturn("$2a$12$newRefreshHash");
+        when(contaRepo.save(any())).thenReturn(conta);
+
+        TokenResponse resp = service.refresh(new RefreshRequest("old.refresh.jwt"));
+
+        assertThat(resp.accessToken()).isEqualTo("new.access.jwt");
+    }
+
+    @Test
+    @DisplayName("SJ3-02 Teste D — refresh() ainda barra dentro da janela")
+    void refreshContaBloqueadaDentroDaJanelaDeveRetornar423() {
+        ContaTutor conta = contaAtiva(5);
+        conta.setDtBloqueio(LocalDateTime.now().minusMinutes(1)); // dentro da janela
+
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("10");
+        when(jwt.validar("refresh.jwt")).thenReturn(Optional.of(claims));
+        when(contaRepo.findById(10L)).thenReturn(Optional.of(conta));
+
+        assertThatThrownBy(() -> service.refresh(new RefreshRequest("refresh.jwt")))
+                .isInstanceOf(AccountLockedException.class);
+
+        verifyNoInteractions(encoder);
+        verify(contaRepo, never()).save(any());
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private ContaTutor contaAtiva(int tentativas) {
