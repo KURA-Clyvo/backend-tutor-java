@@ -245,6 +245,31 @@ class AuthServiceTest {
         verify(contaRepo, never()).save(any());
     }
 
+    // ─── SJ3-02: janela de bloqueio temporário (423 deixa de ser permanente) ──
+
+    // Teste A — controle positivo do bug: contra o código NÃO modificado, este
+    // teste FALHA com AccountLockedException, porque isBloqueada() hoje é só
+    // "dtBloqueio != null", sem considerar quanto tempo se passou.
+    @Test
+    @DisplayName("SJ3-02 Teste A — bloqueio antigo (fora da janela) deve destravar no login")
+    void loginContaBloqueadaAposJanelaExpiradaDeveSuceder() {
+        ContaTutor conta = contaAtiva(5);
+        conta.setDtBloqueio(LocalDateTime.now().minusHours(1)); // muito além da janela de 15 min
+        when(contaRepo.findByDsEmailLogin(EMAIL)).thenReturn(Optional.of(conta));
+        when(encoder.matches(SENHA, HASH)).thenReturn(true);
+        when(encoder.encode(anyString())).thenReturn("$2a$12$hashedRefresh");
+        when(jwt.gerarAccess(conta)).thenReturn("access.jwt");
+        when(jwt.gerarRefresh(conta)).thenReturn("refresh.jwt");
+        when(contaRepo.save(any())).thenReturn(conta);
+
+        TokenResponse resp = service.login(loginRequest);
+
+        assertThat(resp.accessToken()).isEqualTo("access.jwt");
+        assertThat(conta.isBloqueada()).isFalse();
+        assertThat(conta.getDtBloqueio()).isNull();
+        assertThat(conta.getNrTentativasLogin()).isZero();
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private ContaTutor contaAtiva(int tentativas) {
