@@ -126,7 +126,7 @@ As migrations vivem em três diretórios: [`db/migration/`](src/main/resources/d
 ### 3.1 Docker Compose (recomendado)
 
 ```bash
-git clone https://github.com/FelipeFerrete/backend-tutor-java.git
+git clone https://github.com/KURA-Clyvo/backend-tutor-java.git
 cd backend-tutor-java
 
 # Copie o exemplo e preencha JWT_SECRET (mín. 64 bytes) e credenciais do banco
