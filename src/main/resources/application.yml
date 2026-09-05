@@ -49,3 +49,8 @@ kura:
     # Expiration em ms — T11 irá introduzir conversão de JWT_ACCESS_EXPIRATION_MINUTES
     access-expiration-minutes: ${JWT_ACCESS_EXPIRATION_MINUTES:15}
     refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:7}
+  auth:
+    # SJ3-02: janela de bloqueio TEMPORÁRIO após MAX_TENTATIVAS_LOGIN (5) falhas
+    # consecutivas — defesa anti-brute-force, não deve ser permanente. Passada
+    # esta janela, o próximo login zera o contador e destranca a conta.
+    janela-bloqueio-minutos: ${AUTH_JANELA_BLOQUEIO_MINUTOS:15}

@@ -7,6 +7,7 @@ import br.com.clyvo.kura.tutor.entity.ContaTutor;
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.AccountInactiveException;
 import br.com.clyvo.kura.tutor.shared.exception.AccountLockedException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,8 @@ import java.time.LocalDateTime;
  * Semântica HTTP correta:
  *   401 — email inexistente ou senha errada (mensagem genérica — anti-enumeração)
  *   403 — conta desativada
- *   423 — conta bloqueada (≥5 falhas consecutivas)
+ *   423 — conta bloqueada (≥5 falhas consecutivas, bloqueio TEMPORÁRIO — ver
+ *         {@code kura.auth.janela-bloqueio-minutos}, default 15 min)
  *
  * Sucesso → access + refresh token; refresh hasheado e armazenado em CONTA_TUTOR.
  */
@@ -33,13 +35,16 @@ public class AuthService {
     private final ContaTutorRepository contaRepo;
     private final PasswordEncoder      encoder;
     private final JwtTokenProvider     jwt;
+    private final int                  janelaBloqueioMinutos;
 
     public AuthService(ContaTutorRepository contaRepo,
                        PasswordEncoder encoder,
-                       JwtTokenProvider jwt) {
+                       JwtTokenProvider jwt,
+                       @Value("${kura.auth.janela-bloqueio-minutos:15}") int janelaBloqueioMinutos) {
         this.contaRepo = contaRepo;
         this.encoder   = encoder;
         this.jwt       = jwt;
+        this.janelaBloqueioMinutos = janelaBloqueioMinutos;
     }
 
     @Transactional
@@ -55,7 +60,11 @@ public class AuthService {
         }
 
         // 3. Conta bloqueada → 423 (verificado ANTES da senha para não processar BCrypt desnecessariamente)
-        if (conta.isBloqueada()) {
+        //    O bloqueio é TEMPORÁRIO: se a janela já passou, limpa o contador antes de
+        //    avaliar — senão a próxima falha rebloquearia na hora, partindo de 5.
+        LocalDateTime agora = LocalDateTime.now();
+        conta.limparBloqueioExpirado(agora, janelaBloqueioMinutos);
+        if (conta.isBloqueada(agora, janelaBloqueioMinutos)) {
             throw new AccountLockedException();
         }
 
@@ -113,8 +122,8 @@ public class AuthService {
                 .orElseThrow(() -> new BadCredentialsException("Token de refresh invalido ou expirado."));
 
         // 3-4. Estado da conta (antes do BCrypt — evita CPU desnecessário)
-        if (!conta.isAtiva())    throw new AccountInactiveException();
-        if (conta.isBloqueada()) throw new AccountLockedException();
+        if (!conta.isAtiva()) throw new AccountInactiveException();
+        if (conta.isBloqueada(LocalDateTime.now(), janelaBloqueioMinutos)) throw new AccountLockedException();
 
         // 5. Valida hash armazenado — cobre: hash nulo, expiração DB e token rotacionado
         if (conta.getDsRefreshTokenHash() == null
