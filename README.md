@@ -306,15 +306,29 @@ Collection Postman: [`docs/postman/kura-tutor.postman_collection.json`](docs/pos
 
 Todo DDL é gerenciado pelo **Flyway**. Nenhum `ALTER TABLE` é aplicado diretamente.
 
-| Migration | Conteúdo |
-|---|---|
-| `V1__initial_schema.sql` | Schema base completo — 14 tabelas, 4 sequences, 2 views Oracle |
-| `V2__concurrency_idempotency.sql` | Índice de limpeza em `IDEMPOTENCY_KEY(DT_CRIACAO)` para o job de TTL |
-| `V3__invite_based_compatibility.sql` | DDL idempotente — garante `UK_CONTA_INVITE_USED` e `IDX_INVITE_TOKEN_ATIVO` |
-| `V4__lgpd_evidencia_consentimento.sql` | Placeholder de decisão arquitetural (campos de evidência LGPD) |
-| `V5__agendamento_observacoes.sql` | Colunas adicionais em `AGENDAMENTO` (observações, timestamps, FK para `EVENTO_CLINICO`) |
+| Migration | Diretório | Conteúdo |
+|---|---|---|
+| `V1__initial_schema.sql` | `db/migration/` | Schema base completo — 14 tabelas, 4 sequences, 2 views Oracle |
+| `V2__concurrency_idempotency.sql` | `db/migration-oracle/` + `-h2/` | Índice de limpeza em `IDEMPOTENCY_KEY(DT_CRIACAO)` para o job de TTL |
+| `V3__invite_based_compatibility.sql` | `db/migration-oracle/` + `-h2/` | DDL idempotente — garante `UK_CONTA_INVITE_USED` e `IDX_INVITE_TOKEN_ATIVO` |
+| `V4__lgpd_evidencia_consentimento.sql` | `db/migration/` | Placeholder de decisão arquitetural (campos de evidência LGPD) |
+| `V5__agendamento_observacoes.sql` | `db/migration-oracle/` + `-h2/` | Colunas adicionais em `AGENDAMENTO` (observações, timestamps, FK para `EVENTO_CLINICO`) |
+| `V6__views_timeline_vacinas.sql` | `db/migration/` | Renomeia colunas de `VW_TIMELINE_PET`/`VW_VACINAS_VENCENDO` para os nomes canônicos usados pelas entities Java |
+| `V7__conta_tutor_push_token.sql` | `db/migration/` | Colunas de push notification (`DS_PUSH_TOKEN`, `DS_PLATAFORMA_PUSH`) em `CONTA_TUTOR` |
+| `V8__clinica_razao_social.sql` | `db/migration/` | Corrige schema drift: adiciona `CLINICA.NM_RAZAO_SOCIAL`, presente no EF/.NET mas nunca espelhada aqui |
+| `V9__schema_drift_clinico.sql` | `db/migration/` | Corrige schema drift sistêmico .NET↔Flyway em toda a superfície clínica/IoT/notificação (consultas, exames, vacinas, prescrições, documentos, dispositivos IoT, triagem Luna) |
+| `V10__agendamento_teleconsulta.sql` | `db/migration/` | Campos de teleconsulta (Daily.co) em `AGENDAMENTO` — `DS_SALA_URL`, `DS_PROVEDOR_VIDEO`, `ST_TELECONSULTA` |
+| `V11__evento_clinico_soap.sql` | `db/migration/` | Draft de transcrição de áudio (Whisper) e SOAP revisável pelo vet em `EVENTO_CLINICO` |
+| `V12__sequences_dotnet.sql` | `db/migration-oracle/` + `-h2/` | Cria as 20 sequences do domínio .NET (`SEQ_x.NEXTVAL`) e converte as PKs das tabelas .NET-owned de `IDENTITY` para sequence |
+| `V13__log_erro.sql` | `db/migration/` | Recria `LOG_ERRO`/`SEQ_LOG_ERRO` (só existia no bootstrap SQL aposentado) — escrita real pela Luna (`log_erro_repo.py`) |
+| `V14__seed_referencia.sql` | `db/migration/` | Semeia o catálogo de referência (`ESPECIE`, `RACA`, `TIPO_EVENTO`, `MEDICAMENTO`) nos dois profiles, via `MERGE` idempotente |
+| `V15__interacao_canal.sql` | `db/migration-oracle/` + `-h2/` | Cria `INTERACAO_CANAL`, tabela .NET-owned que faltava para a Luna gravar interação de canal (WhatsApp) |
+| `V16__interacao_canal_clinica_nullable.sql` | `db/migration/` | Torna `INTERACAO_CANAL.ID_CLINICA` nullable — interação de tutor desconhecido passa a ser gravada em vez de rejeitada |
+| `V17__usuario_clinica.sql` | `db/migration-oracle/` + `-h2/` | Cria `USUARIO_CLINICA` — introduz identidade individual (papéis `GESTOR`/`VETERINARIO`) no login da clínica, hoje por clínica, não por pessoa |
+| `V18__financeiro.sql` | `db/migration-oracle/` + `-h2/` | Cria `SERVICO_PRECO` (catálogo de preço) e `COBRANCA` (lançamento financeiro), base do ciclo financeiro |
+| `V19__usuario_clinica_fk_composta.sql` | `db/migration/` | Fecha furo de multi-tenancy: FK composta garante que `USUARIO_CLINICA.ID_VETERINARIO` pertence à mesma `ID_CLINICA` do usuário |
 
-Arquivos em [`src/main/resources/db/migration/`](src/main/resources/db/migration/).
+Tabela derivada de `ls src/main/resources/db/migration*/*.sql` (as 19 versões, sem buraco). Split entre `db/migration/` (portável, roda nos 2 perfis) e `db/migration-oracle/` + `db/migration-h2/` (mesma versão, sintaxe divergente por banco) segue a mesma convenção documentada na §1.3 acima — a coluna "Diretório" torna a frase antiga (*"arquivos em `db/migration/`"*) redundante, por isso ela foi removida em vez de reescrita.
 
 No perfil **dev**, o callback [`db/callback/afterMigrate__seeds_dev.sql`](src/main/resources/db/callback/) insere dados de referência (espécies, raças, clínica, tutor de teste, token de convite) usando instruções `MERGE` idempotentes.
 
