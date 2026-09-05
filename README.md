@@ -5,7 +5,7 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2.5-6DB33F?logo=springboot&logoColor=white)
 ![Oracle](https://img.shields.io/badge/Oracle-19c%20%2F%2023c-F80000?logo=oracle&logoColor=white)
-![Flyway](https://img.shields.io/badge/Flyway-V1--V5-CC0200?logo=flyway&logoColor=white)
+![Flyway](https://img.shields.io/badge/Flyway-V1--V19-CC0200?logo=flyway&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![FIAP](https://img.shields.io/badge/FIAP-Challenge_2026-ED1C24)
 
@@ -60,9 +60,46 @@ br.com.clyvo.kura.tutor/
 ├── tutor/          Tutor · Pet · Espécie · Raça (leitura de dados do .NET)
 ├── timeline/       VW_TIMELINE_PET · VW_VACINAS_VENCENDO (views Oracle, read-only)
 ├── consentimento/  Rastreamento de consentimentos LGPD · Chave de idempotência
+├── notificacao/    Notificações (push, e-mail) do tutor
 ├── agendamento/    Agendamentos (shared-write com .NET via @Version)
-└── shared/         SecurityConfig · GlobalExceptionHandler · CorrelationIdFilter · CacheConfig
+└── shared/         SecurityConfig · CorsConfig · GlobalExceptionHandler · CorrelationIdFilter · CacheConfig
 ```
+
+Cada contexto acima segue `api/` (controllers + DTOs) → `application/` (services) → `domain/` (entidades + repositórios).
+
+**Estrutura legada** — ainda existe no disco, não apagar sem checar quem referencia. Serve a collection Postman, testes mais antigos e um healthcheck com rotas id-scoped:
+
+```
+br.com.clyvo.kura.tutor/
+├── controller/  Só sobrou AutenticacaoController.java — stub @Deprecated vazio, mantido para não quebrar import legado
+├── entity/      Entidades @Immutable das tabelas .NET-owned (Tutor, Pet, Clinica, Especie, Raca, Veterinario, TutorPet) + ContaTutor (Java-owned)
+├── repository/  Repositórios Spring Data para as entidades acima
+├── dto/         Request/Response da era pré-bounded-context
+├── service/     AuthService.java legado
+├── config/      Só sobrou SwaggerConfig.java — stub @Deprecated vazio (substituído por shared/config/OpenApiConfig)
+└── exception/   GerenciadorExcecoes.java é stub @Deprecated vazio, MAS RecursoNaoEncontradoException e
+                 RegraDeNegocioException no mesmo pacote são aliases de compatibilidade ATIVOS — usados
+                 de verdade pelos services novos (agendamento, consentimento, onboarding, tutor, bff)
+```
+
+**`bff/api/`** — o que o app mobile realmente chama, e que não tem seção própria neste índice até esta revisão:
+
+```
+br.com.clyvo.kura.tutor/
+└── bff/api/
+    ├── AuthBffController.java
+    ├── AgendamentoBffController.java
+    ├── ConsentimentoBffController.java
+    ├── NotificacaoBffController.java
+    └── TutorBffController.java
+```
+
+Os 5 controllers expõem `/v1/**` e são **sempre auto-escopados pelo JWT** — nunca recebem `idTutor` no path, porque o tutor logado é quem o token diz que é (evita IDOR: `{id}`/`{idPet}` no path identificam o recurso, nunca o tutor).
+
+**Duas perguntas frequentes sobre esta estrutura:**
+
+- *Por que existem dois `AuthController`?* `controller/AutenticacaoController` é o nome antigo, renomeado para `auth/api/AuthController` — o antigo ficou como stub `@Deprecated` vazio só para não quebrar import de código legado, não tem lógica.
+- *Por que `Tutor.java` (em `entity/`) é `@Immutable`?* `TUTOR` é tabela **.NET-owned** — este backend Java lê mas não escreve nela. O `@Immutable` do Hibernate transforma esse acordo em erro de runtime em vez de depender de disciplina de código. A única tabela de escrita compartilhada é `AGENDAMENTO`, e é por isso que ela (`agendamento/domain/Agendamento.java`) tem lock otimista via `@Version`/`NR_VERSION`.
 
 Documentação completa das decisões arquiteturais em [`docs/architecture.md`](docs/architecture.md).
 
@@ -89,7 +126,9 @@ Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita
 | **Idempotência** | Tabela `IDEMPOTENCY_KEY` (sem Redis) | Segura em rollback — a chave é gravada na mesma transação que a operação protegida |
 | **Cache** | Caffeine in-process apenas para `ESPECIE` / `RACA` | São catálogos estáticos; entidades mutáveis (`Tutor`, `Pet`) nunca são cacheadas |
 | **Envelope de erro** | Subconjunto do RFC 7807 (`status`, `error`, `message`, `path`, `correlationId`) | Contrato consistente; cada request recebe `X-Correlation-Id` para rastreamento no servidor |
-| **Gestão de schema** | Flyway V1–V5 (idempotentes, compatíveis com Oracle 19c) | Java e .NET escrevem no mesmo schema; todo DDL deve ser versionado para evitar drift |
+| **Gestão de schema** | Flyway V1–V19 (idempotentes, compatíveis com Oracle 19c) | Java e .NET escrevem no mesmo schema; todo DDL deve ser versionado para evitar drift |
+
+As migrations vivem em três diretórios: [`db/migration/`](src/main/resources/db/migration/) tem SQL portável que roda nos dois perfis (`dev` e `prod`); [`db/migration-oracle/`](src/main/resources/db/migration-oracle/) e [`db/migration-h2/`](src/main/resources/db/migration-h2/) têm as versões em que a sintaxe realmente diverge entre os dois bancos (ex.: a expressão de `DEFAULT` da PK — `SEQ_X.NEXTVAL` no Oracle, `NEXT VALUE FOR SEQ_X` no H2) — hoje são V2, V3, V5, V12, V15, V17 e V18. Onde a sintaxe não diverge, existe um arquivo só em `db/migration/` (a V16 e a V19 são assim).
 
 ### 1.4 Diagrama Entidade-Relacionamento (Notação Barker via PlantUML)
 
@@ -108,7 +147,7 @@ Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita
 | jjwt | 0.12.6 | Geração e validação de JWT |
 | Springdoc OpenAPI | 2.5.0 | Swagger UI |
 | Caffeine | BOM | Cache in-process (espécies / raças) |
-| Flyway | BOM | Versionamento de schema (V1–V5) |
+| Flyway | BOM | Versionamento de schema (V1–V19) |
 | Oracle 19c / 23c | — | Banco de dados em produção (FIAP) |
 | H2 | BOM | Banco em memória (perfil dev) |
 | JUnit 5 · Mockito · AssertJ | BOM | Testes unitários e de integração |
@@ -121,27 +160,7 @@ Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita
 
 ## 3. Como Executar
 
-### 3.1 Docker Compose (recomendado)
-
-```bash
-git clone https://github.com/FelipeFerrete/backend-tutor-java.git
-cd backend-tutor-java
-
-# Copie o exemplo e preencha JWT_SECRET (mín. 64 bytes) e credenciais do banco
-cp docker-compose.override.yml.example docker-compose.override.yml
-
-docker compose up --build
-```
-
-Aguarde ~90 segundos para o health-check do Spring passar. Acesse:
-
-| Recurso | URL |
-|---|---|
-| API base | `http://localhost:8081/api` |
-| Swagger UI | `http://localhost:8081/api/swagger-ui/index.html` |
-| Health | `http://localhost:8081/api/actuator/health` |
-
-### 3.2 Maven local — Perfil dev (H2 em memória, sem Oracle)
+### 3.1 Maven local — Perfil dev (H2 em memória, sem Oracle) — quero só ver funcionando
 
 ```bash
 # Requer Java 21 e Maven 3.9+
@@ -160,6 +179,26 @@ O Flyway cria o schema e executa os seeds automaticamente. Um **token de convite
 ```
 550e8400-e29b-41d4-a716-446655440000
 ```
+
+### 3.2 Docker Compose — modo produção / Oracle real
+
+```bash
+git clone https://github.com/KURA-Clyvo/backend-tutor-java.git
+cd backend-tutor-java
+
+# Copie o exemplo e preencha JWT_SECRET (mín. 64 bytes) e credenciais do banco
+cp docker-compose.override.yml.example docker-compose.override.yml
+
+docker compose up --build
+```
+
+Aguarde ~90 segundos para o health-check do Spring passar. Acesse:
+
+| Recurso | URL |
+|---|---|
+| API base | `http://localhost:8081/api` |
+| Swagger UI | `http://localhost:8081/api/swagger-ui/index.html` |
+| Health | `http://localhost:8081/api/actuator/health` |
 
 ### 3.3 Produção — Oracle FIAP
 
@@ -227,6 +266,8 @@ Collection Postman: [`docs/postman/kura-tutor.postman_collection.json`](docs/pos
 | `POST` | `/tutores/{idTutor}/consentimentos` | JWT | Registrar aceite ou revogação (header `Idempotency-Key` obrigatório) |
 | `GET` | `/tutores/{idTutor}/lgpd/relatorio` | JWT | Relatório de dados pessoais (LGPD art. 18, I) |
 | `GET` | `/tutores/{idTutor}/lgpd/consentimentos` | JWT | Histórico completo de consentimentos |
+| `GET` | `/tutores/{idTutor}/lgpd/consentimentos/{tipo}/ativo` | JWT | Consentimento ativo de um tipo específico |
+| `POST` | `/tutores/{idTutor}/lgpd/consentimentos` | JWT | Registrar consentimento pela via LGPD (mesmo recurso do `POST` acima, endpoint irmão) |
 
 ### Agendamentos
 
@@ -244,6 +285,52 @@ Collection Postman: [`docs/postman/kura-tutor.postman_collection.json`](docs/pos
 |---|---|---|---|
 | `GET` | `/especies` | Pública | Lista de espécies (cache Caffeine, TTL 6h) |
 | `GET` | `/racas` | Pública | Lista de raças (cache Caffeine, TTL 6h, `?especieId=`) |
+
+### BFF Mobile (`/v1/**`) — o que o app `mobile-tutor-rn` realmente chama
+
+As tabelas acima documentam a estrutura de rotas **id-scoped** (`/tutores/{idTutor}/...`), útil para Postman/testes/healthcheck. Os 5 controllers de `bff/api/` (ver §1.1) expõem a mesma funcionalidade sob `/v1/**`, **auto-escopada pelo JWT** — nenhuma dessas rotas recebe `idTutor` no path (o `idTutor` é sempre derivado de `Authentication auth`, para evitar IDOR); é essa superfície que o app mobile consome de fato.
+
+**`AuthBffController` — `/v1/auth`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/v1/auth/login` | Pública | Login do tutor (alias BFF, delega a `/auth/login`) |
+| `POST` | `/v1/auth/refresh` | Pública | Renovar tokens (alias BFF, delega a `/auth/refresh`) |
+| `POST` | `/v1/auth/register-invite` | Pública | Criar conta por convite (alias BFF, delega a `/onboarding/register-invite`) |
+
+**`TutorBffController` — `/v1/tutor`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/tutor/pets` | JWT | Lista pets ativos do tutor autenticado (paginado, size 20, sort `nmPet` asc) |
+| `GET` | `/v1/tutor/pets/{id}` | JWT | Detalhe do pet — posse verificada via vínculo tutor-pet |
+| `GET` | `/v1/tutor/pets/{id}/timeline` | JWT | Linha do tempo de atendimentos do pet (paginada, `dtEvento` desc) |
+| `GET` | `/v1/tutor/pets/{id}/timeline/{idEvento}` | JWT | Detalhe de um evento da timeline (`ID_EVENTO`, `VW_TIMELINE_PET`) |
+| `GET` | `/v1/tutor/pets/{id}/vacinas` | JWT | Vacinas pendentes do pet nos próximos 30 dias (`VW_VACINAS_VENCENDO`) |
+| `GET` | `/v1/tutor/pets/{id}/vacinas/status` | JWT | Resumo de vacinação pendente do pet |
+| `PATCH` | `/v1/tutor/me/push-token` | JWT | Atualiza push token do tutor autenticado (valor nunca logado, LGPD) |
+
+**`AgendamentoBffController` — `/v1/tutor/agendamentos`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/tutor/agendamentos` | JWT | Lista agendamentos do tutor autenticado (filtros: status, dataInicio, dataFim, tipo) |
+| `POST` | `/v1/tutor/agendamentos` | JWT | Cria agendamento — pet deve pertencer ao tutor, status inicial `AGENDADO` |
+| `DELETE` | `/v1/tutor/agendamentos/{id}` | JWT | Cancela agendamento (soft delete, `ST_STATUS → CANCELADO`) |
+
+**`ConsentimentoBffController` — `/v1/tutor/consentimentos`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/tutor/consentimentos` | JWT | Estado atual de cada tipo de consentimento do tutor autenticado (último por tipo) |
+| `POST` | `/v1/tutor/consentimentos` | JWT | Registra aceite ou revogação (header `Idempotency-Key` UUID v4 obrigatório) |
+| `DELETE` | `/v1/tutor/consentimentos/{id}` | JWT | Stub — consentimento é insert-only, `DELETE` não implementado (pendente INT-01) |
+
+**`NotificacaoBffController` — `/v1/tutor/notificacoes`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/tutor/notificacoes` | JWT | Lista notificações do tutor autenticado (paginado, mais recente primeiro; leitura de `NOTIFICACAO`, tabela .NET-owned) |
 
 ### Códigos HTTP
 
@@ -267,15 +354,29 @@ Collection Postman: [`docs/postman/kura-tutor.postman_collection.json`](docs/pos
 
 Todo DDL é gerenciado pelo **Flyway**. Nenhum `ALTER TABLE` é aplicado diretamente.
 
-| Migration | Conteúdo |
-|---|---|
-| `V1__initial_schema.sql` | Schema base completo — 14 tabelas, 4 sequences, 2 views Oracle |
-| `V2__concurrency_idempotency.sql` | Índice de limpeza em `IDEMPOTENCY_KEY(DT_CRIACAO)` para o job de TTL |
-| `V3__invite_based_compatibility.sql` | DDL idempotente — garante `UK_CONTA_INVITE_USED` e `IDX_INVITE_TOKEN_ATIVO` |
-| `V4__lgpd_evidencia_consentimento.sql` | Placeholder de decisão arquitetural (campos de evidência LGPD) |
-| `V5__agendamento_observacoes.sql` | Colunas adicionais em `AGENDAMENTO` (observações, timestamps, FK para `EVENTO_CLINICO`) |
+| Migration | Diretório | Conteúdo |
+|---|---|---|
+| `V1__initial_schema.sql` | `db/migration/` | Schema base completo — 14 tabelas, 4 sequences, 2 views Oracle |
+| `V2__concurrency_idempotency.sql` | `db/migration-oracle/` + `-h2/` | Índice de limpeza em `IDEMPOTENCY_KEY(DT_CRIACAO)` para o job de TTL |
+| `V3__invite_based_compatibility.sql` | `db/migration-oracle/` + `-h2/` | DDL idempotente — garante `UK_CONTA_INVITE_USED` e `IDX_INVITE_TOKEN_ATIVO` |
+| `V4__lgpd_evidencia_consentimento.sql` | `db/migration/` | Placeholder de decisão arquitetural (campos de evidência LGPD) |
+| `V5__agendamento_observacoes.sql` | `db/migration-oracle/` + `-h2/` | Colunas adicionais em `AGENDAMENTO` (observações, timestamps, FK para `EVENTO_CLINICO`) |
+| `V6__views_timeline_vacinas.sql` | `db/migration/` | Renomeia colunas de `VW_TIMELINE_PET`/`VW_VACINAS_VENCENDO` para os nomes canônicos usados pelas entities Java |
+| `V7__conta_tutor_push_token.sql` | `db/migration/` | Colunas de push notification (`DS_PUSH_TOKEN`, `DS_PLATAFORMA_PUSH`) em `CONTA_TUTOR` |
+| `V8__clinica_razao_social.sql` | `db/migration/` | Corrige schema drift: adiciona `CLINICA.NM_RAZAO_SOCIAL`, presente no EF/.NET mas nunca espelhada aqui |
+| `V9__schema_drift_clinico.sql` | `db/migration/` | Corrige schema drift sistêmico .NET↔Flyway em toda a superfície clínica/IoT/notificação (consultas, exames, vacinas, prescrições, documentos, dispositivos IoT, triagem Luna) |
+| `V10__agendamento_teleconsulta.sql` | `db/migration/` | Campos de teleconsulta (Daily.co) em `AGENDAMENTO` — `DS_SALA_URL`, `DS_PROVEDOR_VIDEO`, `ST_TELECONSULTA` |
+| `V11__evento_clinico_soap.sql` | `db/migration/` | Draft de transcrição de áudio (Whisper) e SOAP revisável pelo vet em `EVENTO_CLINICO` |
+| `V12__sequences_dotnet.sql` | `db/migration-oracle/` + `-h2/` | Cria as 20 sequences do domínio .NET (`SEQ_x.NEXTVAL`) e converte as PKs das tabelas .NET-owned de `IDENTITY` para sequence |
+| `V13__log_erro.sql` | `db/migration/` | Recria `LOG_ERRO`/`SEQ_LOG_ERRO` (só existia no bootstrap SQL aposentado) — escrita real pela Luna (`log_erro_repo.py`) |
+| `V14__seed_referencia.sql` | `db/migration/` | Semeia o catálogo de referência (`ESPECIE`, `RACA`, `TIPO_EVENTO`, `MEDICAMENTO`) nos dois profiles, via `MERGE` idempotente |
+| `V15__interacao_canal.sql` | `db/migration-oracle/` + `-h2/` | Cria `INTERACAO_CANAL`, tabela .NET-owned que faltava para a Luna gravar interação de canal (WhatsApp) |
+| `V16__interacao_canal_clinica_nullable.sql` | `db/migration/` | Torna `INTERACAO_CANAL.ID_CLINICA` nullable — interação de tutor desconhecido passa a ser gravada em vez de rejeitada |
+| `V17__usuario_clinica.sql` | `db/migration-oracle/` + `-h2/` | Cria `USUARIO_CLINICA` — introduz identidade individual (papéis `GESTOR`/`VETERINARIO`) no login da clínica, hoje por clínica, não por pessoa |
+| `V18__financeiro.sql` | `db/migration-oracle/` + `-h2/` | Cria `SERVICO_PRECO` (catálogo de preço) e `COBRANCA` (lançamento financeiro), base do ciclo financeiro |
+| `V19__usuario_clinica_fk_composta.sql` | `db/migration/` | Fecha furo de multi-tenancy: FK composta garante que `USUARIO_CLINICA.ID_VETERINARIO` pertence à mesma `ID_CLINICA` do usuário |
 
-Arquivos em [`src/main/resources/db/migration/`](src/main/resources/db/migration/).
+Tabela derivada de `ls src/main/resources/db/migration*/*.sql` (as 19 versões, sem buraco). Split entre `db/migration/` (portável, roda nos 2 perfis) e `db/migration-oracle/` + `db/migration-h2/` (mesma versão, sintaxe divergente por banco) segue a mesma convenção documentada na §1.3 acima — a coluna "Diretório" torna a frase antiga (*"arquivos em `db/migration/`"*) redundante, por isso ela foi removida em vez de reescrita.
 
 No perfil **dev**, o callback [`db/callback/afterMigrate__seeds_dev.sql`](src/main/resources/db/callback/) insere dados de referência (espécies, raças, clínica, tutor de teste, token de convite) usando instruções `MERGE` idempotentes.
 
@@ -324,9 +425,8 @@ bash tests/test_architecture.sh    # Valida estrutura do documento de arquitetur
 | **Ambiente Postman — Dev** | [`docs/postman/kura-tutor-dev.postman_environment.json`](docs/postman/kura-tutor-dev.postman_environment.json) | Variáveis para execução local (H2) |
 | **Ambiente Postman — Prod** | [`docs/postman/kura-tutor-prod.postman_environment.json`](docs/postman/kura-tutor-prod.postman_environment.json) | Variáveis para execução no Oracle FIAP |
 | **Cronograma de Atividades** | [`docs/timeline.md`](docs/timeline.md) | Matriz de responsabilidades e timeline semanal da sprint |
-| **Migrations do Banco** | [`src/main/resources/db/migration/`](src/main/resources/db/migration/) | Flyway V1–V5: criação de schema, constraints e dados de referência |
+| **Migrations do Banco** | [`src/main/resources/db/migration/`](src/main/resources/db/migration/) | Flyway V1–V19: criação de schema, constraints e dados de referência |
 | **Scripts de Validação** | [`tests/`](tests/) | Scripts shell para validação de arquitetura, migrations e Docker |
-| **Plano de Desenvolvimento** | [`plano.md`](plano.md) | 26 tasks detalhadas de execução da Sprint 1 |
 | **Containerização** | [`Dockerfile`](Dockerfile) · [`docker-compose.yml`](docker-compose.yml) | Build Docker multi-stage e configuração do Compose |
 
 ### Histórico de Contribuições
@@ -367,7 +467,7 @@ git log --format="%ad  %an  %s" --date=short
 
 **Nikolas Brisola** foi responsável pelo setup inicial do projeto Spring Boot, pela configuração base do Maven, pela primeira iteração do mapeamento das entidades de domínio (`Tutor`, `Pet`, `Especie`, `Raca`, `Agendamento`) e pelo rascunho inicial do schema do banco (v1 e v2).
 
-**Felipe Ferrete** liderou a refatoração arquitetural para a estrutura de bounded contexts (plano v5), a lógica de integração cross-API com o backend .NET (optimistic locking, onboarding por convite, boundaries `@Immutable`), a camada completa de segurança (rotação de refresh token JWT, proteção brute-force), todas as migrations Flyway (V1–V5), o DER, a collection Postman e a documentação técnica completa.
+**Felipe Ferrete** liderou a refatoração arquitetural para a estrutura de bounded contexts (plano v5), a lógica de integração cross-API com o backend .NET (optimistic locking, onboarding por convite, boundaries `@Immutable`), a camada completa de segurança (rotação de refresh token JWT, proteção brute-force), todas as migrations Flyway (V1–V19), o DER, a collection Postman e a documentação técnica completa.
 
 O detalhamento por task, incluindo a timeline semanal, está disponível em [`docs/timeline.md`](docs/timeline.md).
 
