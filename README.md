@@ -266,6 +266,8 @@ Collection Postman: [`docs/postman/kura-tutor.postman_collection.json`](docs/pos
 | `POST` | `/tutores/{idTutor}/consentimentos` | JWT | Registrar aceite ou revogação (header `Idempotency-Key` obrigatório) |
 | `GET` | `/tutores/{idTutor}/lgpd/relatorio` | JWT | Relatório de dados pessoais (LGPD art. 18, I) |
 | `GET` | `/tutores/{idTutor}/lgpd/consentimentos` | JWT | Histórico completo de consentimentos |
+| `GET` | `/tutores/{idTutor}/lgpd/consentimentos/{tipo}/ativo` | JWT | Consentimento ativo de um tipo específico |
+| `POST` | `/tutores/{idTutor}/lgpd/consentimentos` | JWT | Registrar consentimento pela via LGPD (mesmo recurso do `POST` acima, endpoint irmão) |
 
 ### Agendamentos
 
@@ -283,6 +285,52 @@ Collection Postman: [`docs/postman/kura-tutor.postman_collection.json`](docs/pos
 |---|---|---|---|
 | `GET` | `/especies` | Pública | Lista de espécies (cache Caffeine, TTL 6h) |
 | `GET` | `/racas` | Pública | Lista de raças (cache Caffeine, TTL 6h, `?especieId=`) |
+
+### BFF Mobile (`/v1/**`) — o que o app `mobile-tutor-rn` realmente chama
+
+As tabelas acima documentam a estrutura de rotas **id-scoped** (`/tutores/{idTutor}/...`), útil para Postman/testes/healthcheck. Os 5 controllers de `bff/api/` (ver §1.1) expõem a mesma funcionalidade sob `/v1/**`, **auto-escopada pelo JWT** — nenhuma dessas rotas recebe `idTutor` no path (o `idTutor` é sempre derivado de `Authentication auth`, para evitar IDOR); é essa superfície que o app mobile consome de fato.
+
+**`AuthBffController` — `/v1/auth`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/v1/auth/login` | Pública | Login do tutor (alias BFF, delega a `/auth/login`) |
+| `POST` | `/v1/auth/refresh` | Pública | Renovar tokens (alias BFF, delega a `/auth/refresh`) |
+| `POST` | `/v1/auth/register-invite` | Pública | Criar conta por convite (alias BFF, delega a `/onboarding/register-invite`) |
+
+**`TutorBffController` — `/v1/tutor`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/tutor/pets` | JWT | Lista pets ativos do tutor autenticado (paginado, size 20, sort `nmPet` asc) |
+| `GET` | `/v1/tutor/pets/{id}` | JWT | Detalhe do pet — posse verificada via vínculo tutor-pet |
+| `GET` | `/v1/tutor/pets/{id}/timeline` | JWT | Linha do tempo de atendimentos do pet (paginada, `dtEvento` desc) |
+| `GET` | `/v1/tutor/pets/{id}/timeline/{idEvento}` | JWT | Detalhe de um evento da timeline (`ID_EVENTO`, `VW_TIMELINE_PET`) |
+| `GET` | `/v1/tutor/pets/{id}/vacinas` | JWT | Vacinas pendentes do pet nos próximos 30 dias (`VW_VACINAS_VENCENDO`) |
+| `GET` | `/v1/tutor/pets/{id}/vacinas/status` | JWT | Resumo de vacinação pendente do pet |
+| `PATCH` | `/v1/tutor/me/push-token` | JWT | Atualiza push token do tutor autenticado (valor nunca logado, LGPD) |
+
+**`AgendamentoBffController` — `/v1/tutor/agendamentos`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/tutor/agendamentos` | JWT | Lista agendamentos do tutor autenticado (filtros: status, dataInicio, dataFim, tipo) |
+| `POST` | `/v1/tutor/agendamentos` | JWT | Cria agendamento — pet deve pertencer ao tutor, status inicial `AGENDADO` |
+| `DELETE` | `/v1/tutor/agendamentos/{id}` | JWT | Cancela agendamento (soft delete, `ST_STATUS → CANCELADO`) |
+
+**`ConsentimentoBffController` — `/v1/tutor/consentimentos`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/tutor/consentimentos` | JWT | Estado atual de cada tipo de consentimento do tutor autenticado (último por tipo) |
+| `POST` | `/v1/tutor/consentimentos` | JWT | Registra aceite ou revogação (header `Idempotency-Key` UUID v4 obrigatório) |
+| `DELETE` | `/v1/tutor/consentimentos/{id}` | JWT | Stub — consentimento é insert-only, `DELETE` não implementado (pendente INT-01) |
+
+**`NotificacaoBffController` — `/v1/tutor/notificacoes`**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/tutor/notificacoes` | JWT | Lista notificações do tutor autenticado (paginado, mais recente primeiro; leitura de `NOTIFICACAO`, tabela .NET-owned) |
 
 ### Códigos HTTP
 
