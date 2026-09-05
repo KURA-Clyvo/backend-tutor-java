@@ -13,7 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -34,7 +33,15 @@ class AuthServiceTest {
     @Mock PasswordEncoder      encoder;
     @Mock JwtTokenProvider     jwt;
 
-    @InjectMocks AuthService service;
+    // SJ3-02: AuthService ganhou um 4º parâmetro de construtor (janela de bloqueio,
+    // int primitivo, injetado via @Value). @InjectMocks não sabe preencher um int
+    // fora de mock — usaria 0, o que quebraria silenciosamente os testes B/C/D
+    // (janela=0 min faria QUALQUER dtBloqueio parecer sempre expirado). Construção
+    // manual explícita, valor igual ao default de produção (kura.auth.janela-
+    // bloqueio-minutos: 15).
+    private static final int JANELA_BLOQUEIO_MINUTOS = 15;
+
+    private AuthService service;
 
     private static final String EMAIL = "tutor@clyvo.vet";
     private static final String SENHA = "Senha@123";
@@ -45,6 +52,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         loginRequest = new LoginRequest(EMAIL, SENHA);
+        service = new AuthService(contaRepo, encoder, jwt, JANELA_BLOQUEIO_MINUTOS);
     }
 
     // ─── Caminho feliz ────────────────────────────────────────────────────────
