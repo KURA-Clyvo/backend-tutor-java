@@ -160,27 +160,7 @@ As migrations vivem em três diretórios: [`db/migration/`](src/main/resources/d
 
 ## 3. Como Executar
 
-### 3.1 Docker Compose (recomendado)
-
-```bash
-git clone https://github.com/KURA-Clyvo/backend-tutor-java.git
-cd backend-tutor-java
-
-# Copie o exemplo e preencha JWT_SECRET (mín. 64 bytes) e credenciais do banco
-cp docker-compose.override.yml.example docker-compose.override.yml
-
-docker compose up --build
-```
-
-Aguarde ~90 segundos para o health-check do Spring passar. Acesse:
-
-| Recurso | URL |
-|---|---|
-| API base | `http://localhost:8081/api` |
-| Swagger UI | `http://localhost:8081/api/swagger-ui/index.html` |
-| Health | `http://localhost:8081/api/actuator/health` |
-
-### 3.2 Maven local — Perfil dev (H2 em memória, sem Oracle)
+### 3.1 Maven local — Perfil dev (H2 em memória, sem Oracle) — quero só ver funcionando
 
 ```bash
 # Requer Java 21 e Maven 3.9+
@@ -199,6 +179,26 @@ O Flyway cria o schema e executa os seeds automaticamente. Um **token de convite
 ```
 550e8400-e29b-41d4-a716-446655440000
 ```
+
+### 3.2 Docker Compose — modo produção / Oracle real
+
+```bash
+git clone https://github.com/KURA-Clyvo/backend-tutor-java.git
+cd backend-tutor-java
+
+# Copie o exemplo e preencha JWT_SECRET (mín. 64 bytes) e credenciais do banco
+cp docker-compose.override.yml.example docker-compose.override.yml
+
+docker compose up --build
+```
+
+Aguarde ~90 segundos para o health-check do Spring passar. Acesse:
+
+| Recurso | URL |
+|---|---|
+| API base | `http://localhost:8081/api` |
+| Swagger UI | `http://localhost:8081/api/swagger-ui/index.html` |
+| Health | `http://localhost:8081/api/actuator/health` |
 
 ### 3.3 Produção — Oracle FIAP
 
