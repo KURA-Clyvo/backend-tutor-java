@@ -1,0 +1,29 @@
+<!--
+KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+Escopo isolado: depende do domínio; o domínio não depende dela.
+Ver docs/ADR-web.md.
+
+Página de acesso negado, renderizada via forward explícito de aplicação a
+partir do accessDeniedHandler (WebSecurityConfig) — não do sendError()/
+FORWARD de container padrão do Spring Security, que a fix wave da SJ3-03
+mediu quebrado (401 mascarando 403, porque o dispatch de erro do container
+cai fora de /web/** e é servido pelo chain stateless de produto).
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
+      lang="pt-br">
+<head>
+    <meta charset="UTF-8"/>
+    <title>KURA — acesso negado</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; color: #222; }
+    </style>
+</head>
+<body>
+<h1>Acesso negado</h1>
+<p>Sua conta <strong sec:authorize="isAuthenticated()" sec:authentication="name">usuário</strong>
+   não tem permissão para acessar essa página.</p>
+<p><a th:href="@{/web/painel}">Voltar ao painel</a></p>
+</body>
+</html>

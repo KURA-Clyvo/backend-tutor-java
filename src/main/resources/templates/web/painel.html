@@ -1,0 +1,39 @@
+<!--
+KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+Escopo isolado: depende do domínio; o domínio não depende dela.
+Ver docs/ADR-web.md.
+
+Painel pós-login — conteúdo condicional por perfil via sec:authorize
+(thymeleaf-extras-springsecurity6, já declarado no pom.xml). Destino de
+defaultSuccessUrl em WebSecurityConfig, para os dois perfis (TUTOR e
+SUPORTE) — cada bloco só aparece para quem tem o papel correspondente.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
+      lang="pt-br">
+<head>
+    <meta charset="UTF-8"/>
+    <title>KURA — painel</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; color: #222; }
+        section { border: 1px solid #ccc; border-radius: 6px; padding: 1rem; margin-top: 1rem; }
+        h1 { margin-bottom: 0; }
+    </style>
+</head>
+<body>
+<h1>Painel</h1>
+<p>Autenticado como <strong sec:authentication="name">usuário</strong>.</p>
+
+<section sec:authorize="hasRole('SUPORTE')" id="bloco-suporte">
+    <h2>Suporte</h2>
+    <p>Você está autenticado com o perfil de suporte.</p>
+    <p><a th:href="@{/web/suporte/contas}">Gerenciar contas</a></p>
+</section>
+
+<section sec:authorize="hasRole('TUTOR')" id="bloco-tutor">
+    <h2>Tutor</h2>
+    <p>Você está autenticado com o perfil de tutor.</p>
+</section>
+</body>
+</html>

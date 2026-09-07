@@ -3,19 +3,26 @@ KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
 Escopo isolado: depende do domínio; o domínio não depende dela.
 Ver docs/ADR-web.md.
 
-Formulário mínimo — fix do achado G2-2 (login inalcançável). Sem estilo de
-propósito: a tela de verdade é escopo da SJ3-05.
+Formulário mínimo — fix do achado G2-2 (login inalcançável, SJ3-03). SJ3-05
+acrescentou só um <style> curto e lang="pt-br" para não parecer quebrado —
+sem framework de CSS, sem JS.
 -->
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
 <head>
     <meta charset="UTF-8"/>
     <title>KURA — login painel</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; color: #222; }
+        label { display: block; margin-top: 0.75rem; }
+        input { padding: 0.3rem; }
+        .erro { color: #b00020; }
+    </style>
 </head>
 <body>
 <h1>Login — painel interno</h1>
 
-<p th:if="${param.erro}">Login ou senha inválidos.</p>
+<p class="erro" th:if="${param.erro}">Login ou senha inválidos.</p>
 
 <form th:action="@{/web/login}" method="post">
     <label>Usuário/e-mail

@@ -18,8 +18,9 @@ import org.springframework.web.bind.annotation.GetMapping;
  * POST é interceptado pelo {@code UsernamePasswordAuthenticationFilter} antes
  * de chegar aqui.
  *
- * Escopo desta task: um formulário mínimo, sem estilo — a tela de verdade é
- * a SJ3-05 (ver §3 do brief da fix wave).
+ * SJ3-05 acrescentou um {@code <style>} inline curto e {@code lang="pt-br"}
+ * ao template — continua sem framework de CSS e sem JS, por decisão
+ * explícita do brief daquela task (não é regressão de escopo).
  */
 @Controller
 public class WebLoginController {

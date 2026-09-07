@@ -96,31 +96,45 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(req -> req
                 .requestMatchers("/web/suporte/**").hasRole("SUPORTE")
                 .anyRequest().authenticated())
-            // Achado medido durante a prova HTTP real desta fix wave (não é
-            // G2-1 nem G2-2, achado à parte): o AccessDeniedHandler default
-            // chama response.sendError(403), que o Tomcat resolve com um
-            // FORWARD para "/error" — path que NÃO casa com "/web/**" e por
-            // isso é servido pelo chain[1] (produto, stateless), cujo
-            // JwtAuthenticationFilter não enxerga a sessão HTTP autenticada
-            // deste chain e devolve 401 TOKEN_AUSENTE, mascarando o 403 real.
-            // MockMvc não pega isso: não faz o dispatch de erro do container.
-            // Handler explícito evita sendError() e escreve a resposta aqui
-            // mesmo — sem sair do chain "/web/**", sem tocar produto.
+            // Achado medido durante a prova HTTP real da fix wave da SJ3-03
+            // (não é G2-1 nem G2-2, achado à parte): o AccessDeniedHandler
+            // default chama response.sendError(403), que o Tomcat resolve
+            // com um FORWARD DE CONTAINER para "/error" — path que NÃO casa
+            // com "/web/**" e por isso é servido pelo chain[1] (produto,
+            // stateless), cujo JwtAuthenticationFilter não enxerga a sessão
+            // HTTP autenticada deste chain e devolve 401 TOKEN_AUSENTE,
+            // mascarando o 403 real. MockMvc não pega isso: não faz o
+            // dispatch de erro do container.
+            //
+            // SJ3-05: o texto puro virou página renderizada (/web/403).
+            // Handler explícito NÃO usa sendError() — em vez disso seta o
+            // status e faz um FORWARD DE APLICAÇÃO (request.getRequestDispatcher,
+            // chamado diretamente pelo nosso código, não pelo container) para
+            // "/web/403", que casa com "/web/**" e permanece no chain[0].
+            // Medido por HTTP real (não presumido): o dispatch FORWARD não é
+            // filtrado de novo pelo Spring Security (registrado só para
+            // REQUEST/ERROR/ASYNC), então não há recursão nem reavaliação de
+            // autorização — e o SecurityContext (ThreadLocal) sobrevive ao
+            // forward porque é a mesma thread/request, então sec:authorize e
+            // sec:authentication em web/403.html enxergam o usuário
+            // corretamente. Ver artefato da task (sj3-05-report.md) para a
+            // prova HTTP literal.
             .exceptionHandling(ex -> ex.accessDeniedHandler(
                 (request, response, accessDeniedException) -> {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    response.setContentType("text/plain;charset=UTF-8");
-                    response.getWriter().write("Acesso negado.");
+                    request.getRequestDispatcher("/web/403").forward(request, response);
                 }))
             .formLogin(form -> form
                 .loginPage("/web/login")
                 .loginProcessingUrl("/web/login")
                 // alwaysUse=false (default): se havia requisição salva pelo
                 // RequestCache (ex.: tentou /web/suporte/contas sem sessão),
-                // volta pra ela; senão cai aqui — a única rota protegida que
-                // esta task entrega. Escopo: tela de painel de verdade é a
-                // SJ3-05, não esta task.
-                .defaultSuccessUrl("/web/suporte/contas")
+                // volta pra ela; senão cai aqui. SJ3-05: destino trocado de
+                // "/web/suporte/contas" (exclusiva de SUPORTE) para
+                // "/web/painel" (comum aos dois perfis) — antes, um TUTOR
+                // que logasse com sucesso caía direto num 403, o que é
+                // "funcionalidade com erro" logo após autenticação válida.
+                .defaultSuccessUrl("/web/painel")
                 .failureUrl("/web/login?erro")
                 .permitAll());
 
