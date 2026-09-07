@@ -174,3 +174,42 @@ WHEN NOT MATCHED THEN INSERT (
     '$2a$12$18V1bJN//DK3ItGmCvkitemv2TtLLIiEBkmr1XQub1JWs0Sg8KU2O',
     'S'
 );
+
+-- ─── 12. TUTOR + CONTA_TUTOR de demonstração do painel (KURA-WEB, SJ3-05) ──────
+-- Perfil TUTOR para provar o caminho negativo do painel administrativo
+-- interno (GET /web/suporte/contas como TUTOR -> 403). Só em dev, mesma
+-- razão do item 11. Ver docs/ADR-web.md.
+--
+-- ID_TUTOR = 2, DE PROPÓSITO — NÃO usa ID_TUTOR = 1: o seed do item 7
+-- (INVITE_TUTOR) aponta para ID_TUTOR = 1 com ST_UTILIZADO = 'N', e
+-- CONTA_TUTOR tem UK_CONTA_TUTOR_TUTOR UNIQUE (ID_TUTOR) (V1:211). Semear a
+-- conta no tutor 1 faria POST /api/onboarding/register-invite com o token
+-- seed (550e8400-...) — o fluxo de demonstração documentado do produto —
+-- falhar por violação de unique. Um TUTOR novo com CONTA_TUTOR própria não
+-- toca esse fluxo. Controle positivo desta mudança: sj3-05-report.md (repo
+-- de planejamento) registra POST /api/onboarding/register-invite com o
+-- token seed continuando 201 depois deste INSERT.
+MERGE INTO TUTOR t
+USING (SELECT 1 FROM DUAL) SRC ON (t.ID_TUTOR = 2)
+WHEN NOT MATCHED THEN INSERT (
+    ID_TUTOR, ID_CLINICA, NM_TUTOR, NR_CPF, DS_EMAIL,
+    DS_TELEFONE, DS_WHATSAPP, DT_CADASTRO,
+    ST_AVISO_PRIVACIDADE, DT_AVISO_PRIVACIDADE, DS_VERSAO_AVISO, ST_ATIVO
+) VALUES (
+    2, 1, 'Tutor Demonstração Painel', '98765432100', 'tutor2.web@kura.demo',
+    '11999990002', '11999990002', CURRENT_TIMESTAMP,
+    'S', CURRENT_TIMESTAMP, 'v1.0', 'S'
+);
+
+-- Senha em texto claro NÃO fica neste arquivo público: vive no artefato de
+-- entrega (.superpowers/sdd/KURA_BACKLOG_SPRINT3_JAVA/, repo privado) e no
+-- material do vídeo, exatamente como o item 11 (WEB_USUARIO_SUPORTE) já faz.
+MERGE INTO CONTA_TUTOR t
+USING (SELECT 1 FROM DUAL) SRC ON (t.ID_TUTOR = 2)
+WHEN NOT MATCHED THEN INSERT (
+    ID_TUTOR, DS_EMAIL_LOGIN, DS_SENHA_HASH, ST_ATIVA, ST_EMAIL_VERIFICADO
+) VALUES (
+    2, 'tutor@kura.demo',
+    '$2a$12$24pY1/6uKhM5WKd7EMqN8OlGV0eVph993dQ4Z11PqbhscaqyG2m4q',
+    'S', 'S'
+);
