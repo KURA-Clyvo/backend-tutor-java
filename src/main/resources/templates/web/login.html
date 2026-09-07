@@ -1,0 +1,31 @@
+<!--
+KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+Escopo isolado: depende do domínio; o domínio não depende dela.
+Ver docs/ADR-web.md.
+
+Formulário mínimo — fix do achado G2-2 (login inalcançável). Sem estilo de
+propósito: a tela de verdade é escopo da SJ3-05.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>KURA — login painel</title>
+</head>
+<body>
+<h1>Login — painel interno</h1>
+
+<p th:if="${param.erro}">Login ou senha inválidos.</p>
+
+<form th:action="@{/web/login}" method="post">
+    <label>Usuário/e-mail
+        <input type="text" name="username"/>
+    </label>
+    <label>Senha
+        <input type="password" name="password"/>
+    </label>
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <button type="submit">Entrar</button>
+</form>
+</body>
+</html>

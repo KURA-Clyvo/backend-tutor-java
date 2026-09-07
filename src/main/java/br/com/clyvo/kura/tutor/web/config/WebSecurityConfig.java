@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -65,16 +67,45 @@ public class WebSecurityConfig {
         WebAuthenticationProvider webAuthenticationProvider = new WebAuthenticationProvider(
                 contaTutorRepository, suporteRepository, passwordEncoder, janelaBloqueioMinutos);
 
+        // Fix do achado G2-1 (sj3-03-revisao.md, M4): SEM isto, o
+        // AuthenticationManagerBuilder compartilhado que o Spring Boot
+        // registra por padrão herda o AuthenticationManager GLOBAL como
+        // parent. Quando webAuthenticationProvider lança
+        // BadCredentialsException (que não é AccountStatusException), o
+        // ProviderManager cai no parent — que contém o DaoAuthenticationProvider
+        // autoconfigurado sobre UserDetailsServiceImpl (produto), e esse
+        // resolve idConta usando ContaTutor.isBloqueada() SEM JANELA,
+        // ressuscitando a trava permanente que a SJ3-02 fechou. Isolando o
+        // parent como null, o AuthenticationManager deste chain SÓ conhece
+        // webAuthenticationProvider — não há fall-through possível.
+        // Regressão travada em WebAuthenticationManagerParentIsolationTest.
+        AuthenticationManagerBuilder authenticationManagerBuilder =
+                http.getSharedObject(AuthenticationManagerBuilder.class);
+        authenticationManagerBuilder
+                .parentAuthenticationManager(null)
+                .authenticationProvider(webAuthenticationProvider);
+        AuthenticationManager webAuthenticationManager = authenticationManagerBuilder.build();
+
         http
             .securityMatcher("/web/**")
-            .authenticationProvider(webAuthenticationProvider)
+            .authenticationManager(webAuthenticationManager)
             .csrf(Customizer.withDefaults())
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(req -> req
                 .requestMatchers("/web/suporte/**").hasRole("SUPORTE")
                 .anyRequest().authenticated())
-            .formLogin(Customizer.withDefaults());
+            .formLogin(form -> form
+                .loginPage("/web/login")
+                .loginProcessingUrl("/web/login")
+                // alwaysUse=false (default): se havia requisição salva pelo
+                // RequestCache (ex.: tentou /web/suporte/contas sem sessão),
+                // volta pra ela; senão cai aqui — a única rota protegida que
+                // esta task entrega. Escopo: tela de painel de verdade é a
+                // SJ3-05, não esta task.
+                .defaultSuccessUrl("/web/suporte/contas")
+                .failureUrl("/web/login?erro")
+                .permitAll());
 
         return http.build();
     }
