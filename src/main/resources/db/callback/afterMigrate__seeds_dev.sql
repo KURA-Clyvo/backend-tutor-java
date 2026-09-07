@@ -158,3 +158,19 @@ WHEN NOT MATCHED THEN INSERT (
     30, 'CONSULTA',
     'AGENDADO', 'PORTAL', 0
 );
+
+-- ─── 11. WEB_USUARIO_SUPORTE (KURA-WEB — Sprint 3, Java Advanced) ─────────────
+-- Usuário de demonstração do painel Thymeleaf descartável (branch web-rubrica,
+-- SJ3-04). Só em dev de propósito — este callback não roda em prod. Ver
+-- docs/ADR-web.md. A senha em texto claro NÃO fica neste arquivo público: vive
+-- no artefato de entrega (.superpowers/sdd/KURA_BACKLOG_SPRINT3_JAVA/, repo
+-- privado) e no material do vídeo.
+MERGE INTO WEB_USUARIO_SUPORTE t
+USING (SELECT 1 FROM DUAL) SRC ON (t.DS_LOGIN = 'suporte@kura.demo')
+WHEN NOT MATCHED THEN INSERT (
+    DS_LOGIN, DS_SENHA_HASH, ST_ATIVA
+) VALUES (
+    'suporte@kura.demo',
+    '$2a$12$18V1bJN//DK3ItGmCvkitemv2TtLLIiEBkmr1XQub1JWs0Sg8KU2O',
+    'S'
+);

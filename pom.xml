@@ -94,6 +94,22 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!--
+        ═══════════════════════════════════════════════════════════════════
+        KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+        Escopo isolado: depende do domínio; o domínio não depende dela.
+        Ver docs/ADR-web.md.
+        ═══════════════════════════════════════════════════════════════════
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.thymeleaf.extras</groupId>
+            <artifactId>thymeleaf-extras-springsecurity6</artifactId>
+        </dependency>
+
         <!-- ── JWT ───────────────────────────────────────────────────── -->
         <!-- Versão alinhada com o projeto de aula: 0.12.6 -->
         <dependency>
