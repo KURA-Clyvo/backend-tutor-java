@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -95,6 +96,22 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(req -> req
                 .requestMatchers("/web/suporte/**").hasRole("SUPORTE")
                 .anyRequest().authenticated())
+            // Achado medido durante a prova HTTP real desta fix wave (não é
+            // G2-1 nem G2-2, achado à parte): o AccessDeniedHandler default
+            // chama response.sendError(403), que o Tomcat resolve com um
+            // FORWARD para "/error" — path que NÃO casa com "/web/**" e por
+            // isso é servido pelo chain[1] (produto, stateless), cujo
+            // JwtAuthenticationFilter não enxerga a sessão HTTP autenticada
+            // deste chain e devolve 401 TOKEN_AUSENTE, mascarando o 403 real.
+            // MockMvc não pega isso: não faz o dispatch de erro do container.
+            // Handler explícito evita sendError() e escreve a resposta aqui
+            // mesmo — sem sair do chain "/web/**", sem tocar produto.
+            .exceptionHandling(ex -> ex.accessDeniedHandler(
+                (request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("text/plain;charset=UTF-8");
+                    response.getWriter().write("Acesso negado.");
+                }))
             .formLogin(form -> form
                 .loginPage("/web/login")
                 .loginProcessingUrl("/web/login")
