@@ -21,9 +21,9 @@ import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * Segundo {@link SecurityFilterChain}, exclusivo de {@code /web/**} — o
- * painel Thymeleaf descartável da rubrica de Spring Security (SJ3-03,
- * branch {@code web-rubrica}). Ver {@code docs/ADR-web.md} para o porquê de
- * dois chains em vez de editar {@code SecurityConfig} de produto.
+ * painel administrativo interno de Spring Security (SJ3-03, escopo isolado
+ * desta branch). Ver {@code docs/ADR-web.md} para o porquê de dois chains
+ * em vez de editar {@code SecurityConfig} de produto.
  *
  * Ao contrário do chain de produto ({@code SecurityConfig}: stateless, sem
  * sessão, CSRF desligado — é API JSON pura), este chain é o oposto nos três

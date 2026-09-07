@@ -1,19 +1,21 @@
 -- =============================================================================
 -- V20__web_usuario_suporte.sql
 -- KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
--- Ver docs/ADR-web.md. Tabela nasce e morre com a branch `web-rubrica`
--- (ruling D-J4, KURA_BACKLOG_SPRINT3_JAVA.md §1.1) — o número V20 NÃO é
--- queimado em `main`, porque esta branch nunca mescla.
+-- Ver docs/ADR-web.md. Tabela nasce e morre com esta branch (escopo isolado,
+-- ver docs/ADR-web.md) — o número V20 NÃO é queimado em `main`, porque esta
+-- branch nunca mescla.
 --
--- WEB_USUARIO_SUPORTE guarda o segundo perfil exigido pela rubrica de
--- Spring Security (SUPORTE, ao lado de TUTOR). Prefixo WEB_ de propósito
--- (§0.5 D-J1 do backlog): não é USUARIO_CLINICA (rejeitada — é .NET-owned,
--- contexto B2B) nem CONTA_TUTOR (é o outro perfil). Zero FK saindo para
--- tabela de produto (§3.1.4 da dívida acadêmica): FK de saída transformaria
--- o DROP desta tabela, na demolição pós-oral, em negociação com o schema de
--- produto — o objetivo aqui é o oposto, um `DROP TABLE` de uma linha só.
+-- WEB_USUARIO_SUPORTE guarda o segundo perfil de acesso ao painel
+-- administrativo interno (SUPORTE, ao lado de TUTOR). Prefixo WEB_ de
+-- propósito (§0.5 D-J1 do backlog): não é USUARIO_CLINICA (rejeitada — é
+-- .NET-owned, contexto B2B) nem CONTA_TUTOR (é o outro perfil). Zero FK
+-- saindo para tabela de produto: FK de saída transformaria o DROP desta
+-- tabela, na demolição pós-oral, em negociação com o schema de produto — o
+-- objetivo aqui é o oposto, um `DROP TABLE` de uma linha só.
 --
--- ARQUIVO ÚNICO, SEM SPLIT -oracle/-h2 — MEDIDO, NÃO PRESUMIDO.
+-- ARQUIVO ÚNICO, SEM SPLIT -oracle/-h2. H2 medido nesta sessão (ver abaixo);
+-- Oracle sustentado por PRECEDENTE da V13, não executado (ver ressalva de
+-- alcance no fim deste bloco).
 -- A V13 (LOG_ERRO) já provou que `NUMBER(n) DEFAULT SEQ_x.NEXTVAL NOT NULL`
 -- dentro de um CREATE TABLE roda sem ajuste no H2 2.2.224 MODE=Oracle desta
 -- suíte, e a V16 provou o mesmo para `ALTER TABLE ... MODIFY`. Esta migration
@@ -22,8 +24,9 @@
 -- sintaxe nova em relação à V13). A prova empírica é a suíte completa rodando
 -- Flyway do profile dev sobre este arquivo único: se
 -- `./mvnw test -Dspring.profiles.active=dev` continuar verde, o H2 aceitou a
--- sintaxe Oracle sem split — registrado literalmente no artefato desta task
--- (sj3-03-report.md), não deduzido do DDL.
+-- sintaxe Oracle sem split. O que isso prova é H2 (MODE=Oracle) — NÃO Oracle
+-- real, que não foi subido para esta task (ver sj3-03-revisao.md, achado
+-- G2-7). Registrado literalmente no artefato desta task, não deduzido do DDL.
 --
 -- PK POR SEQUENCE, NÃO IDENTITY — mesma convenção .NET-owned/Java-owned do
 -- resto do schema não se aplica aqui (esta tabela não é escrita por nenhum
@@ -47,4 +50,4 @@ CREATE TABLE WEB_USUARIO_SUPORTE (
     CONSTRAINT CHK_WEB_USUARIO_SUPORTE_ATIVA CHECK (ST_ATIVA IN ('S', 'N'))
 );
 
-COMMENT ON TABLE WEB_USUARIO_SUPORTE IS 'KURA-WEB — usuário do perfil SUPORTE do painel Thymeleaf descartável (Sprint 3 Java Advanced, branch web-rubrica). Sem FK de/para tabela de produto de propósito. Ver docs/ADR-web.md.';
+COMMENT ON TABLE WEB_USUARIO_SUPORTE IS 'KURA-WEB — usuário do perfil SUPORTE do painel administrativo interno (Sprint 3, Java Advanced). Sem FK de/para tabela de produto de propósito. Ver docs/ADR-web.md.';

@@ -12,8 +12,8 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 /**
- * Segundo perfil da rubrica (SUPORTE), exclusivo do painel Thymeleaf
- * descartável — ver V20__web_usuario_suporte.sql. Sem relação de entidade
+ * Segundo perfil de acesso ao painel administrativo interno (SUPORTE) —
+ * ver V20__web_usuario_suporte.sql. Sem relação de entidade
  * (sem {@code @ManyToOne}/{@code @OneToOne}) com nenhuma tabela de produto.
  */
 @Entity

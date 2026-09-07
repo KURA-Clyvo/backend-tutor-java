@@ -35,8 +35,10 @@ import java.util.Optional;
  * ({@code AuthenticationConfiguration.getAuthenticationManager()}, usada
  * pelo bean {@code authenticationManager} de {@code SecurityConfig} de
  * produto) o incluiria no {@code AuthenticationManager} GLOBAL, contaminando
- * um caminho de produto sem editar nenhum arquivo dele — exatamente o que a
- * branch descartável existe para evitar.
+ * um caminho de produto sem editar nenhum arquivo dele — exatamente o que
+ * este isolamento existe para evitar. (Reforçado desde o fix do achado
+ * {@code G2-1}: o {@code AuthenticationManager} do chain {@code /web/**}
+ * também não tem parent — ver {@link br.com.clyvo.kura.tutor.web.config.WebSecurityConfig}.)
  *
  * SÓ LEITURA (§3.1 do brief): não chama nenhum método que persista estado em
  * {@code ContaTutor} (nem {@code registrarLoginFalha}, nem
