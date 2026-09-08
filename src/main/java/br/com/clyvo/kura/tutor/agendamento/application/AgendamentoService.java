@@ -14,7 +14,6 @@ import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
-import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import br.com.clyvo.kura.tutor.shared.exception.NotFoundException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -135,8 +134,11 @@ public class AgendamentoService {
         }
 
         // FD-06: mesma regra do dominio (StatusAgendamento.isFinal()), agora com NAO_COMPARECEU.
+        // SJ3-08 (ruling do Felipe): unificado de ConflictException (409) para RegraDeNegocioException
+        // (422) -- 409 neste código passa a significar só conflito de versão otimista (nrVersion),
+        // igual ao atualizar()/cancelar(), que já usavam 422 para a mesma classe de regra de negócio.
         if (ag.getStStatus() != null && ag.getStStatus().isFinal()) {
-            throw new ConflictException(
+            throw new RegraDeNegocioException(
                 "Não é possível cancelar agendamento com status " + ag.getStStatus().name() + ".");
         }
 

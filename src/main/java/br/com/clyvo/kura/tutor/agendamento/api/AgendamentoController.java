@@ -116,7 +116,9 @@ public class AgendamentoController {
      * Soft-delete: muda status para CANCELADO.
      *
      * Retorna 403 se o agendamento não pertencer ao tutor.
-     * Retorna 409 se o status for final (REALIZADO, CANCELADO ou NAO_COMPARECEU).
+     * Retorna 422 se o status for final (REALIZADO, CANCELADO ou NAO_COMPARECEU) — unificado
+     * com atualizar()/cancelar() na SJ3-08 (ruling do Felipe); 409 aqui volta a significar só
+     * conflito de versão otimista (nrVersion), que este endpoint não usa.
      */
     @DeleteMapping("/{id}")
     @Operation(
@@ -125,7 +127,7 @@ public class AgendamentoController {
     )
     @ApiResponse(responseCode = "204", description = "Agendamento cancelado (soft delete)")
     @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor")
-    @ApiResponse(responseCode = "409", description = "Agendamento em estado final (REALIZADO, CANCELADO ou NAO_COMPARECEU)")
+    @ApiResponse(responseCode = "422", description = "Agendamento em estado final (REALIZADO, CANCELADO ou NAO_COMPARECEU)")
     public ResponseEntity<Void> excluir(
             Authentication auth,
             @PathVariable Long id) {

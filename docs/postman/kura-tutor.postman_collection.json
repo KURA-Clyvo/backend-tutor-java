@@ -673,7 +673,7 @@
                 { "key": "motivo", "value": "Cancelado via Postman" }
               ]
             },
-            "description": "Cancela com motivo explícito. 409 se status for REALIZADO ou já CANCELADO."
+            "description": "Cancela com motivo explícito. 422 se status for REALIZADO ou já CANCELADO."
           }
         },
         {
@@ -699,7 +699,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["agendamentos", "{{idAgendamento}}"]
             },
-            "description": "Soft delete — muda ST_STATUS para CANCELADO. Nunca executa DELETE SQL.\n\n204 em sucesso. 409 se status for REALIZADO ou já CANCELADO."
+            "description": "Soft delete — muda ST_STATUS para CANCELADO. Nunca executa DELETE SQL.\n\n204 em sucesso. 422 se status for REALIZADO ou já CANCELADO (unificado com o PATCH /cancelar na SJ3-08; 409 aqui volta a significar só conflito de versão otimista)."
           }
         }
       ]

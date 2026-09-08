@@ -15,7 +15,6 @@ import br.com.clyvo.kura.tutor.entity.TutorPet;
 import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
-import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
@@ -156,23 +155,27 @@ class AgendamentoServiceTest {
     // (FD-03) o que estava destravado era um vazamento cross-tenant explorável.
     //
     // ⚠️ `excluir()` NÃO delega a decisão ao domínio: ele decide antes, para
-    // preservar o 409 CONFLITO que o endpoint DELETE já devolvia. Sem esta
-    // pré-checagem o `ag.cancelar()` lá embaixo lançaria IllegalStateException, que
-    // o GlobalExceptionHandler mapeia para 409 ESTADO_INVALIDO — mesmo status,
-    // mesma mensagem, `codigo` diferente. É por isso que a guarda é duplicada de
-    // propósito, e por isso ela precisa de teste próprio: o teste de domínio
-    // (AgendamentoTest) não passa por aqui.
+    // controlar o status devolvido pelo endpoint DELETE. Sem esta pré-checagem o
+    // `ag.cancelar()` lá embaixo lançaria IllegalStateException, que o
+    // GlobalExceptionHandler mapeia para 409 ESTADO_INVALIDO — status diferente do
+    // que queremos aqui. É por isso que a guarda é duplicada de propósito, e por
+    // isso ela precisa de teste próprio: o teste de domínio (AgendamentoTest) não
+    // passa por aqui.
+    //
+    // SJ3-08 (ruling do Felipe): a guarda passou de ConflictException (409) para
+    // RegraDeNegocioException (422) — 409 neste código agora significa só conflito
+    // de versão otimista (nrVersion), igual a atualizar()/cancelar() logo abaixo.
 
     @Test
-    @DisplayName("excluir agendamento em NAO_COMPARECEU — rejeita com ConflictException e NÃO grava")
-    void excluirAgendamentoEmNaoCompareceu_rejeitaComConflict() throws Exception {
+    @DisplayName("excluir agendamento em NAO_COMPARECEU — rejeita com RegraDeNegocioException e NÃO grava")
+    void excluirAgendamentoEmNaoCompareceu_rejeitaComRegraDeNegocio() throws Exception {
         Agendamento ag = agendamentoDoTutor(StatusAgendamento.NAO_COMPARECEU);
 
         when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
         when(agendamentoRepository.findById(ID_AGENDAMENTO)).thenReturn(Optional.of(ag));
 
         assertThatThrownBy(() -> service.excluir(EMAIL, ID_AGENDAMENTO))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("NAO_COMPARECEU");
 
         // A prova de que a guarda mordeu, e não só de que uma exceção apareceu:
@@ -182,15 +185,15 @@ class AgendamentoServiceTest {
     }
 
     @Test
-    @DisplayName("excluir agendamento REALIZADO — rejeita com ConflictException (comportamento anterior à FD-06)")
-    void excluirAgendamentoRealizado_rejeitaComConflict() throws Exception {
+    @DisplayName("excluir agendamento REALIZADO — rejeita com RegraDeNegocioException (unificado 409→422 na SJ3-08)")
+    void excluirAgendamentoRealizado_rejeitaComRegraDeNegocio() throws Exception {
         Agendamento ag = agendamentoDoTutor(StatusAgendamento.REALIZADO);
 
         when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
         when(agendamentoRepository.findById(ID_AGENDAMENTO)).thenReturn(Optional.of(ag));
 
         assertThatThrownBy(() -> service.excluir(EMAIL, ID_AGENDAMENTO))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("REALIZADO");
 
         verify(agendamentoRepository, never()).save(any(Agendamento.class));

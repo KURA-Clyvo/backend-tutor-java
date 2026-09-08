@@ -2,7 +2,7 @@ package br.com.clyvo.kura.tutor.agendamento.api;
 
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoResponse;
 import br.com.clyvo.kura.tutor.agendamento.application.AgendamentoService;
-import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
+import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -111,17 +111,20 @@ class AgendamentoT20Test {
         verify(agendamentoService).excluir(EMAIL, ID_AG);
     }
 
-    // ─── deleteDeAgendamentoREALIZADORetorna409 ──────────────────────────────
+    // ─── deleteDeAgendamentoREALIZADORetorna422 ──────────────────────────────
+    // SJ3-08 (ruling do Felipe): unificado de ConflictException (409) para
+    // RegraDeNegocioException (422) -- 409 neste código passa a significar só
+    // conflito de versão otimista (nrVersion), igual a atualizar()/cancelar().
 
     @Test
-    @DisplayName("deleteDeAgendamentoREALIZADORetorna409 — status REALIZADO levanta ConflictException → 409")
+    @DisplayName("deleteDeAgendamentoREALIZADORetorna422 — status REALIZADO levanta RegraDeNegocioException → 422")
     @WithMockUser(username = EMAIL)
-    void deleteDeAgendamentoREALIZADORetorna409() throws Exception {
-        doThrow(new ConflictException("Não é possível cancelar agendamento com status REALIZADO."))
+    void deleteDeAgendamentoREALIZADORetorna422() throws Exception {
+        doThrow(new RegraDeNegocioException("Não é possível cancelar agendamento com status REALIZADO."))
                 .when(agendamentoService).excluir(EMAIL, ID_AG);
 
         mockMvc.perform(delete("/agendamentos/{id}", ID_AG))
-            .andExpect(status().isConflict());
+            .andExpect(status().isUnprocessableEntity());
     }
 
     // ─── deleteDeOutroTutorRetorna403 ────────────────────────────────────────

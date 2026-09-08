@@ -111,7 +111,7 @@ public class AgendamentoBffController {
         @ApiResponse(responseCode = "204", description = "Agendamento cancelado"),
         @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor"),
         @ApiResponse(responseCode = "404", description = "Agendamento não encontrado"),
-        @ApiResponse(responseCode = "409", description = "Agendamento REALIZADO ou já CANCELADO")
+        @ApiResponse(responseCode = "422", description = "Agendamento em status final (REALIZADO/CANCELADO) — não pode ser cancelado")
     })
     public ResponseEntity<Void> excluir(
             Authentication auth,
