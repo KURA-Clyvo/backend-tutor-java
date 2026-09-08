@@ -47,7 +47,7 @@ public class AuthService {
         this.janelaBloqueioMinutos = janelaBloqueioMinutos;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public TokenResponse login(LoginRequest request) {
 
         // 1. Email inexistente → 401 genérico (não revela se o e-mail existe no sistema)
