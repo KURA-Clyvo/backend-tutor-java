@@ -6,6 +6,8 @@ package br.com.clyvo.kura.tutor.web.security;
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
 import br.com.clyvo.kura.tutor.entity.Tutor;
+import br.com.clyvo.kura.tutor.web.domain.WebUsuarioSuporte;
+import br.com.clyvo.kura.tutor.web.domain.WebUsuarioSuporteRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.Filter;
@@ -59,6 +61,7 @@ class WebAuthenticationManagerParentIsolationTest {
 
     @Autowired private FilterChainProxy filterChainProxy;
     @Autowired private ContaTutorRepository contaTutorRepository;
+    @Autowired private WebUsuarioSuporteRepository webUsuarioSuporteRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @PersistenceContext private EntityManager em;
 
@@ -146,14 +149,37 @@ class WebAuthenticationManagerParentIsolationTest {
     }
 
     @Test
+    @Transactional
     @DisplayName("Controle positivo — SUPORTE continua autenticando pelo WebAuthenticationProvider")
     void suporteContinuaAutenticando() throws Exception {
+        // A conta SUPORTE deste controle positivo é criada AQUI, com a senha de
+        // teste desta classe — NÃO usa a conta de demonstração do seed
+        // (db/callback/afterMigrate__seeds_dev.sql, seção 11). Trocado na fix
+        // wave da SJ3-05 (achado G2-C): a versão anterior embutia a senha em
+        // texto claro da conta de demonstração neste arquivo, num repositório
+        // PÚBLICO — contradizendo, a 100 linhas de distância, a política que o
+        // próprio seed declara ("a senha em texto claro NÃO fica neste arquivo
+        // público"). O que este controle positivo precisa provar é que UM
+        // usuário SUPORTE autentica pelo WebAuthenticationProvider e recebe
+        // ROLE_SUPORTE; a identidade da conta é irrelevante para isso, e
+        // WebAuthenticationProvider.autenticarSuporte não distingue conta de
+        // seed de conta criada em teste (resolve por findByDsLogin).
+        //
+        // ⚠️ LIMITAÇÃO DECLARADA: com esta troca, o par (hash do seed ↔ senha
+        // de demonstração) deixa de ter gate automatizado. Ele passa a ser
+        // provado por HTTP real (POST /api/web/login como SUPORTE -> 302
+        // /api/web/painel) e registrado em sj3-05-report.md e
+        // sj3-05-fixwave.md, no repo de planejamento (privado).
+        WebUsuarioSuporte suporte = new WebUsuarioSuporte();
+        suporte.setDsLogin("g2-c-controle-positivo@kura.demo");
+        suporte.setDsSenhaHash(passwordEncoder.encode(SENHA));
+        suporte.setStAtiva("S");
+        webUsuarioSuporteRepository.saveAndFlush(suporte);
+
         AuthenticationManager authenticationManager = authenticationManagerDoChainWeb(webChain(filterChainProxy));
 
-        // Login/senha do seed de dev (db/callback/afterMigrate__seeds_dev.sql,
-        // seção 11 — hash conferido em sj3-03-revisao.md, M3 caso A2.g).
         Authentication resultado = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken("suporte@kura.demo", "Suporte@2026"));
+                new UsernamePasswordAuthenticationToken("g2-c-controle-positivo@kura.demo", SENHA));
 
         assertThat(resultado.isAuthenticated()).isTrue();
         assertThat(resultado.getAuthorities())
