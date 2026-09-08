@@ -5,7 +5,9 @@ import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoResponse;
 import br.com.clyvo.kura.tutor.agendamento.application.AgendamentoService;
 import br.com.clyvo.kura.tutor.auth.application.JwtTokenProvider;
 import br.com.clyvo.kura.tutor.auth.security.JwtAuthenticationEntryPoint;
+import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
 import br.com.clyvo.kura.tutor.shared.config.SecurityConfig;
+import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
@@ -36,6 +39,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -63,7 +67,8 @@ class AgendamentoBffControllerTest {
                 1L, 42L, 10L, "Rex", 2L, 3L,
                 LocalDateTime.of(2026, 8, 1, 10, 0), 30,
                 "CONSULTA", "AGENDADO", "PORTAL", null,
-                LocalDateTime.now(), null, null, 0L, null);
+                LocalDateTime.now(), null, null, 0L, null,
+                "Cão", "Labrador", "Clyvo Vet São Paulo");
     }
 
     // ─── GET ─────────────────────────────────────────────────────────────────
@@ -79,7 +84,36 @@ class AgendamentoBffControllerTest {
         mockMvc.perform(get("/v1/tutor/agendamentos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].idAgendamento").value(1))
+                .andExpect(jsonPath("$.content[0].nmEspecie").value("Cão"))
+                .andExpect(jsonPath("$.content[0].nmRaca").value("Labrador"))
+                .andExpect(jsonPath("$.content[0].nmClinica").value("Clyvo Vet São Paulo"))
                 .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    // SJ3-10 critério 2 — caso discriminante: prova que o campo serializa a STRING "SRD"
+    // (não o literal JSON null) quando é isso que o service devolve. O caso em que a
+    // MAPEAMENTO real (pet.getRaca() == null → "SRD") acontece é responsabilidade de
+    // AgendamentoResponse.fromEntity, coberto por AgendamentoServiceTest#listarPetSemRaca_...
+    // — aqui o service é mockado, então este teste prova SÓ a serialização JSON do nome do
+    // campo, não a lógica de mapeamento (esse teste está em outra camada, ver report §M).
+    @Test
+    @DisplayName("GET /v1/tutor/agendamentos com nmRaca 'SRD' serializa a string, não null")
+    @WithMockUser(username = EMAIL)
+    void listar_comRacaSrd_serializaStringNaoNull() throws Exception {
+        AgendamentoResponse comSrd = new AgendamentoResponse(
+                1L, 42L, 10L, "Rex", 2L, 3L,
+                LocalDateTime.of(2026, 8, 1, 10, 0), 30,
+                "CONSULTA", "AGENDADO", "PORTAL", null,
+                LocalDateTime.now(), null, null, 0L, null,
+                "Cão", "SRD", "Clyvo Vet São Paulo");
+        Page<AgendamentoResponse> page = new PageImpl<>(List.of(comSrd));
+        when(agendamentoService.listar(eq(EMAIL), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/v1/tutor/agendamentos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].nmRaca").value("SRD"))
+                .andExpect(jsonPath("$.content[0].nmRaca").isNotEmpty());
     }
 
     @Test
@@ -149,6 +183,100 @@ class AgendamentoBffControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.idAgendamento").value(1));
+    }
+
+    // ─── PUT (SJ3-10 / MB-06) ────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("PUT /v1/tutor/agendamentos/{id} com nrVersion correto retorna 200")
+    @WithMockUser(username = EMAIL)
+    void atualizar_comVersionCorreta_retorna200() throws Exception {
+        AgendamentoResponse resp = agendamentoFixture();
+        when(agendamentoService.atualizar(eq(EMAIL), eq(1L), any())).thenReturn(resp);
+
+        String body = """
+            {
+              "dtAgendamento": "%s",
+              "dsTipoConsulta": "RETORNO",
+              "nrVersion": 0
+            }
+            """.formatted(LocalDateTime.now().plusDays(7));
+
+        mockMvc.perform(put("/v1/tutor/agendamentos/{id}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idAgendamento").value(1));
+    }
+
+    @Test
+    @DisplayName("PUT /v1/tutor/agendamentos/{id} com nrVersion divergente retorna 409")
+    @WithMockUser(username = EMAIL)
+    void atualizar_comVersionDivergente_retorna409() throws Exception {
+        when(agendamentoService.atualizar(eq(EMAIL), eq(1L), any()))
+                .thenThrow(new ObjectOptimisticLockingFailureException("Agendamento", 1L));
+
+        String body = """
+            {
+              "dtAgendamento": "%s",
+              "dsTipoConsulta": "RETORNO",
+              "nrVersion": 999
+            }
+            """.formatted(LocalDateTime.now().plusDays(7));
+
+        mockMvc.perform(put("/v1/tutor/agendamentos/{id}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("PUT /v1/tutor/agendamentos/{id} de outro tutor retorna 403")
+    @WithMockUser(username = EMAIL)
+    void atualizar_deOutroTutor_retorna403() throws Exception {
+        when(agendamentoService.atualizar(eq(EMAIL), eq(1L), any()))
+                .thenThrow(new ForbiddenException("Agendamento não pertence a este tutor."));
+
+        String body = """
+            {
+              "dtAgendamento": "%s",
+              "dsTipoConsulta": "RETORNO",
+              "nrVersion": 0
+            }
+            """.formatted(LocalDateTime.now().plusDays(7));
+
+        mockMvc.perform(put("/v1/tutor/agendamentos/{id}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    // Critério 6 — a guarda isFinal() (SJ3-06/D-J6) morde pelo PUT do BFF também.
+    // AgendamentoService.atualizar já converte a IllegalStateException do domínio em
+    // RegraDeNegocioException → 422 (GlobalExceptionHandler:175-181); aqui provamos que o
+    // NOVO endpoint do BFF propaga essa conversão sem reimplementar nada. A prova de que a
+    // guarda de fato dispara para um Agendamento CANCELADO/REALIZADO real (não mockado) está
+    // em AgendamentoServiceTest#atualizarAgendamentoCancelado_rejeitaComRegraDeNegocio.
+    @Test
+    @DisplayName("PUT /v1/tutor/agendamentos/{id} de agendamento em estado final retorna 422")
+    @WithMockUser(username = EMAIL)
+    void atualizar_comStatusFinal_retorna422() throws Exception {
+        when(agendamentoService.atualizar(eq(EMAIL), eq(1L), any()))
+                .thenThrow(new RegraDeNegocioException(
+                        "Não é possível remarcar agendamento com status CANCELADO."));
+
+        String body = """
+            {
+              "dtAgendamento": "%s",
+              "dsTipoConsulta": "RETORNO",
+              "nrVersion": 0
+            }
+            """.formatted(LocalDateTime.now().plusDays(7));
+
+        mockMvc.perform(put("/v1/tutor/agendamentos/{id}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnprocessableEntity());
     }
 
     // ─── DELETE ───────────────────────────────────────────────────────────────

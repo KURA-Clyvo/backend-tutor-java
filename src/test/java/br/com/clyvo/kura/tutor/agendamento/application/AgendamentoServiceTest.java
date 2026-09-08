@@ -1,14 +1,18 @@
 package br.com.clyvo.kura.tutor.agendamento.application;
 
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoRequest;
+import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoResponse;
+import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoUpdateRequest;
 import br.com.clyvo.kura.tutor.agendamento.domain.Agendamento;
 import br.com.clyvo.kura.tutor.agendamento.domain.StatusAgendamento;
 import br.com.clyvo.kura.tutor.agendamento.domain.repository.AgendamentoRepository;
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.entity.Clinica;
+import br.com.clyvo.kura.tutor.entity.Especie;
 import br.com.clyvo.kura.tutor.entity.Pet;
 import br.com.clyvo.kura.tutor.entity.Tutor;
 import br.com.clyvo.kura.tutor.entity.TutorPet;
+import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ConflictException;
@@ -20,6 +24,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -211,10 +221,128 @@ class AgendamentoServiceTest {
         Agendamento ag = Agendamento.criar(
                 tutor, null, null, null, LocalDateTime.now().plusDays(3), "CONSULTA", null);
 
-        Field campo = Agendamento.class.getDeclaredField("stStatus");
-        campo.setAccessible(true);
-        campo.set(ag, status);
+        Field campoStatus = Agendamento.class.getDeclaredField("stStatus");
+        campoStatus.setAccessible(true);
+        campoStatus.set(ag, status);
+
+        // SJ3-10: atualizar() compara request.nrVersion() com ag.getNrVersion() ANTES de checar
+        // isFinal() — sem isto ag.getNrVersion() fica null (só o Hibernate popularia @Version em
+        // save() real) e o teste de PUT quebraria com NullPointerException, não com a exceção que
+        // se quer provar.
+        Field campoVersion = Agendamento.class.getDeclaredField("nrVersion");
+        campoVersion.setAccessible(true);
+        campoVersion.set(ag, 0L);
+
         return ag;
+    }
+
+    // ─── SJ3-10: AgendamentoResponse ganha nmEspecie/nmRaca/nmClinica ─────────
+    //
+    // 🔴 Por que este teste vive AQUI, e não no AgendamentoBffControllerTest: o controller BFF
+    // mocka AgendamentoService inteiro, então um teste de JSON lá só prova que o NOME do campo
+    // serializa — não que o MAPEAMENTO real (pet.getRaca() == null → "SRD") acontece. Este teste
+    // chama service.listar(...) de verdade, que chama AgendamentoResponse.fromEntity de verdade
+    // (só o repositório é mockado) — é o único ponto que exercita a lógica de mapeamento em si.
+
+    @Test
+    @DisplayName("listar — pet sem raça definida devolve nmRaca 'SRD' (não null), espelhando PetResponse.fromEntity")
+    void listarPetSemRaca_devolveNmRacaSrd() {
+        when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
+
+        Especie especie = mock(Especie.class);
+        when(especie.getNmEspecie()).thenReturn("Gato");
+
+        Pet pet = mock(Pet.class);
+        lenient().when(pet.getIdPet()).thenReturn(ID_PET);
+        when(pet.getNmPet()).thenReturn("Bidu");
+        when(pet.getEspecie()).thenReturn(especie);
+        when(pet.getRaca()).thenReturn(null); // discriminante: sem raça cadastrada
+
+        Clinica clinica = mockClinica(ID_CLINICA_DO_PET);
+        when(clinica.getNmClinica()).thenReturn("Clyvo Vet Campinas");
+
+        Tutor tutor = mockTutor(ID_TUTOR);
+        Agendamento ag = Agendamento.criar(
+                tutor, pet, clinica, null, LocalDateTime.now().plusDays(3), "CONSULTA", null);
+
+        when(agendamentoRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(ag)));
+
+        Page<AgendamentoResponse> page =
+                service.listar(EMAIL, null, null, null, null, PageRequest.of(0, 10));
+
+        AgendamentoResponse resp = page.getContent().get(0);
+        assertThat(resp.nmEspecie()).isEqualTo("Gato");
+        assertThat(resp.nmRaca()).isEqualTo("SRD").isNotNull();
+        assertThat(resp.nmClinica()).isEqualTo("Clyvo Vet Campinas");
+    }
+
+    // ─── SJ3-10 / MB-06: PUT — guarda isFinal() (SJ3-06/D-J6) morde no reagendamento ──
+    //
+    // Controle positivo: sem esta guarda, atualizar() aceitaria remarcar um CANCELADO
+    // silenciosamente (era exatamente o buraco real que a SJ3-06 fechou em Agendamento.atualizar,
+    // ver javadoc do método). Aqui provamos que AgendamentoService.atualizar (chamado pelo NOVO
+    // PUT do BFF) converte a IllegalStateException do domínio em RegraDeNegocioException (422) —
+    // e que nada é salvo.
+
+    @Test
+    @DisplayName("atualizar agendamento CANCELADO — rejeita com RegraDeNegocioException e NÃO grava")
+    void atualizarAgendamentoCancelado_rejeitaComRegraDeNegocio() throws Exception {
+        Agendamento ag = agendamentoDoTutor(StatusAgendamento.CANCELADO);
+
+        when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
+        when(agendamentoRepository.findById(ID_AGENDAMENTO)).thenReturn(Optional.of(ag));
+
+        AgendamentoUpdateRequest request = new AgendamentoUpdateRequest(
+                LocalDateTime.now().plusDays(10), "RETORNO", null, null, ag.getNrVersion());
+
+        assertThatThrownBy(() -> service.atualizar(EMAIL, ID_AGENDAMENTO, request))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("CANCELADO");
+
+        verify(agendamentoRepository, never()).save(any(Agendamento.class));
+    }
+
+    @Test
+    @DisplayName("atualizar agendamento REALIZADO — rejeita com RegraDeNegocioException")
+    void atualizarAgendamentoRealizado_rejeitaComRegraDeNegocio() throws Exception {
+        Agendamento ag = agendamentoDoTutor(StatusAgendamento.REALIZADO);
+
+        when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
+        when(agendamentoRepository.findById(ID_AGENDAMENTO)).thenReturn(Optional.of(ag));
+
+        AgendamentoUpdateRequest request = new AgendamentoUpdateRequest(
+                LocalDateTime.now().plusDays(10), "RETORNO", null, null, ag.getNrVersion());
+
+        assertThatThrownBy(() -> service.atualizar(EMAIL, ID_AGENDAMENTO, request))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("REALIZADO");
+
+        verify(agendamentoRepository, never()).save(any(Agendamento.class));
+    }
+
+    /**
+     * Controle positivo do par acima: sem a guarda a chamada abaixo TAMBÉM passaria, então uma
+     * guarda que rejeitasse tudo (inclusive AGENDADO) ficaria igualmente verde — mesmo raciocínio
+     * do controle positivo de excluir() logo acima.
+     */
+    @Test
+    @DisplayName("atualizar agendamento AGENDADO — remarca e grava (controle positivo)")
+    void atualizarAgendamentoAgendado_remarcaEGrava() throws Exception {
+        Agendamento ag = agendamentoDoTutor(StatusAgendamento.AGENDADO);
+
+        when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
+        when(agendamentoRepository.findById(ID_AGENDAMENTO)).thenReturn(Optional.of(ag));
+        when(agendamentoRepository.save(any(Agendamento.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LocalDateTime novaData = LocalDateTime.now().plusDays(10);
+        AgendamentoUpdateRequest request =
+                new AgendamentoUpdateRequest(novaData, "RETORNO", null, null, ag.getNrVersion());
+
+        AgendamentoResponse resp = service.atualizar(EMAIL, ID_AGENDAMENTO, request);
+
+        assertThat(resp.dtAgendamento()).isEqualTo(novaData);
+        verify(agendamentoRepository).save(ag);
     }
 
     // ─── helpers ────────────────────────────────────────────────────────────────
