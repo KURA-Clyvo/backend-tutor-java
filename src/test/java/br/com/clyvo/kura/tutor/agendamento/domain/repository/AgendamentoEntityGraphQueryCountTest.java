@@ -98,22 +98,34 @@ class AgendamentoEntityGraphQueryCountTest {
      * {@code @DataJpaTest}.
      */
     private void inserirSegundaLinhaComAssociacoesDistintas() {
+        // IDs na faixa 9xxx, deliberadamente FORA da sequência natural do seed.
+        //
+        // A versão original cravava ID_CLINICA/ID_PET/ID_AGENDAMENTO = 2. Isso é seguro contra o
+        // seed desta branch (afterMigrate__seeds_dev.sql em `main` cria só o AGENDAMENTO 1) e
+        // COLIDE com o de outra: a `web-rubrica` semeia os AGENDAMENTO 2 e 3 para a demonstração
+        // do painel, e este teste quebrava lá com "Unique index or primary key violation" assim
+        // que `main` foi rebaseada sobre ela.
+        //
+        // Os dois lados estavam certos isoladamente — quem escreveu o seed conferiu contra
+        // SEQ_AGENDAMENTO (começa em 100), quem escreveu o teste conferiu contra o seed que
+        // enxergava — e nenhum via o outro. A faixa alta remove a dependência de qual seed está
+        // carregado, em vez de acertar o número contra um seed específico.
         em.createNativeQuery("""
             INSERT INTO CLINICA (ID_CLINICA, NM_CLINICA, NR_CNPJ, DT_CADASTRO, ST_ATIVA)
-            VALUES (2, 'Clyvo Vet Campinas', '99999999000199', CURRENT_TIMESTAMP, 'S')
+            VALUES (9002, 'Clyvo Vet Campinas', '99999999000199', CURRENT_TIMESTAMP, 'S')
         """).executeUpdate();
 
         // ID_ESPECIE=2 (Gato) / ID_RACA=3 (Siames) já existem no seed (afterMigrate__seeds_dev.sql)
         // — distintos de ID_ESPECIE=1 (Cão) / ID_RACA=1 (Labrador) do Pet 1.
         em.createNativeQuery("""
             INSERT INTO PET (ID_PET, ID_CLINICA, ID_ESPECIE, ID_RACA, ID_VETERINARIO_RESP, NM_PET, ST_ATIVO)
-            VALUES (2, 2, 2, 3, 1, 'Bidu', 'S')
+            VALUES (9002, 9002, 2, 3, 1, 'Bidu', 'S')
         """).executeUpdate();
 
         em.createNativeQuery("""
             INSERT INTO AGENDAMENTO (ID_AGENDAMENTO, ID_CLINICA, ID_TUTOR, ID_PET, ID_VETERINARIO,
                 DT_AGENDAMENTO, NR_DURACAO_MINUTOS, DS_TIPO, ST_STATUS, DS_ORIGEM, NR_VERSION)
-            VALUES (2, 2, 1, 2, 1, CURRENT_TIMESTAMP + INTERVAL '8' DAY, 30, 'CONSULTA', 'AGENDADO', 'PORTAL', 0)
+            VALUES (9002, 9002, 1, 9002, 1, CURRENT_TIMESTAMP + INTERVAL '8' DAY, 30, 'CONSULTA', 'AGENDADO', 'PORTAL', 0)
         """).executeUpdate();
     }
 }
