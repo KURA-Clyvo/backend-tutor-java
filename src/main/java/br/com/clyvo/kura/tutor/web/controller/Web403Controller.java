@@ -30,8 +30,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
  * autenticado em {@code /web/login}) — ver {@code sj3-05-revisao.md} (frente
  * A2) e {@code sj3-05-fixwave.md} no repo de planejamento.
  *
- * Também alcançável por GET direto (bookmark, link) — nesse caso responde
- * 200, porque não passou pelo {@code AccessDeniedHandler}.
+ * Também alcançável por GET direto (bookmark, link), mas SÓ AUTENTICADO:
+ * a rota não é {@code permitAll}, então um GET anônimo é interceptado pelo
+ * chain e vira {@code 302} para {@code /web/login}. Medido nos 3 estados
+ * (fix wave da SJ3-05): anônimo {@code 302}, TUTOR {@code 200}, SUPORTE
+ * {@code 200} — nos dois autenticados responde 200, não 403, porque não
+ * passou pelo {@code AccessDeniedHandler}. A versão anterior deste javadoc
+ * dizia apenas "responde 200", sem a condição, e a medição a refutou no
+ * caso anônimo.
  */
 @Controller
 public class Web403Controller {
