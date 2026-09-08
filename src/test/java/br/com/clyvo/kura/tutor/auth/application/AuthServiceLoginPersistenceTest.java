@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * engano.
  */
 @SpringBootTest
-class AuthServiceLoginPersistenceIT {
+class AuthServiceLoginPersistenceTest {
 
     @Autowired AuthService     authService;
     @Autowired JdbcTemplate    jdbc;
