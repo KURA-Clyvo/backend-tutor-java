@@ -1,0 +1,34 @@
+<!--
+KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+Escopo isolado: depende do domínio; o domínio não depende dela.
+Ver docs/ADR-web.md.
+
+Página de erro COMPARTILHADA entre os @ExceptionHandler locais de mais de um
+@Controller — renomeada de "agendamento-erro.html" na SJ3-07 (era exclusiva
+de WebAgendamentoController: 409 conflito de versão, 403 proibido, 404 não
+encontrado, 422 regra de negócio; agora também usada por SuporteController,
+404 conta não encontrada). Existe para que NENHUMA dessas exceções escape
+para o GlobalExceptionHandler de produto (@RestControllerAdvice sem
+basePackages/assignableTypes, cobre /web/** também) e devolva JSON cru em
+vez de página. Ver §2 do brief da SJ3-06, §4 do brief da SJ3-07, e
+sj3-06-report.md/sj3-07-report.md (repo de planejamento).
+
+O link de volta aponta para /web/painel (destino comum aos dois perfis,
+TUTOR e SUPORTE) — não mais para /web/agendamentos, que só o TUTOR alcança.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
+<head>
+    <meta charset="UTF-8"/>
+    <title>KURA — não foi possível concluir</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; color: #222; }
+        .erro { color: #b00020; }
+    </style>
+</head>
+<body>
+<h1 th:text="${titulo}">Erro</h1>
+<p class="erro" th:text="${mensagemErro}">mensagem</p>
+<p><a th:href="@{/web/painel}">Voltar ao painel</a></p>
+</body>
+</html>
