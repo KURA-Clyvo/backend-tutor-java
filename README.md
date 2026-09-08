@@ -5,9 +5,38 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2.5-6DB33F?logo=springboot&logoColor=white)
 ![Oracle](https://img.shields.io/badge/Oracle-19c%20%2F%2023c-F80000?logo=oracle&logoColor=white)
-![Flyway](https://img.shields.io/badge/Flyway-V1--V19-CC0200?logo=flyway&logoColor=white)
+![Flyway](https://img.shields.io/badge/Flyway-V1--V20-CC0200?logo=flyway&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![FIAP](https://img.shields.io/badge/FIAP-Challenge_2026-ED1C24)
+
+---
+
+## Este ramo: `KURA-WEB`
+
+Este é o ramo `web-rubrica`, e ele é diferente da `main` deste repositório.
+
+1. **O que é este ramo.** Uma camada de visualização servidor (Thymeleaf, com sessão HTTP e
+   `formLogin`) sobre a mesma API e o mesmo domínio da `main` — segundo `SecurityFilterChain`
+   (`WebSecurityConfig`, `@Order(1)`, `securityMatcher("/web/**")`), isolado do chain stateless/JWT
+   de produto. Todo arquivo desta camada mora em `br.com.clyvo.kura.tutor.web` e carrega o
+   marcador `KURA-WEB`. Desenho completo, decisão a decisão, em [`docs/ADR-web.md`](docs/ADR-web.md)
+   — inclusive por que este ramo não mescla em `main`.
+2. **O que dá para ver aqui.** Login por perfil (tutor / suporte), painel do tutor, agenda com
+   cancelamento e remarcação, painel de suporte com busca e destrave de conta, e a página de
+   acesso negado (403).
+3. **Como subir (perfil `dev`, H2 em memória, sem Oracle):**
+   ```bash
+   export JAVA_HOME="/caminho/para/o/JDK/21"
+   ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+   ```
+   🔴 **O context path é `/api`** — a porta é a `8081` de sempre, mas a página de entrada é
+   `http://localhost:8081/api/web/login`, não `http://localhost:8081/web/login`.
+4. **Credenciais de acesso.** Os logins de demonstração nascem do seed do profile `dev`
+   ([`src/main/resources/db/callback/afterMigrate__seeds_dev.sql`](src/main/resources/db/callback/afterMigrate__seeds_dev.sql)):
+   `suporte@kura.demo` (perfil suporte) e `tutor@kura.demo` (perfil tutor). O arquivo versiona só
+   o hash BCrypt de cada senha, nunca o texto claro — a senha em si acompanha o link de entrega
+   deste ramo, fora deste repositório.
+5. Mais contexto de desenho e o custo de remover esta camada: [`docs/ADR-web.md`](docs/ADR-web.md).
 
 ---
 
