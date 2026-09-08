@@ -181,7 +181,7 @@ public class WebAgendamentoController {
         model.addAttribute("mensagemErro",
                 "Alguém alterou este agendamento enquanto você editava. Recarregue a página e "
                         + "tente novamente.");
-        return "web/agendamento-erro";
+        return "web/erro";
     }
 
     // ─── 403 / 404 / 422 — mesmas exceções de domínio que o advice de produto
@@ -192,7 +192,7 @@ public class WebAgendamentoController {
     public String proibido(ForbiddenException ex, Model model) {
         model.addAttribute("titulo", "Acesso negado");
         model.addAttribute("mensagemErro", ex.getMessage());
-        return "web/agendamento-erro";
+        return "web/erro";
     }
 
     @ExceptionHandler(NotFoundException.class)
@@ -200,7 +200,7 @@ public class WebAgendamentoController {
     public String naoEncontrado(NotFoundException ex, Model model) {
         model.addAttribute("titulo", "Agendamento não encontrado");
         model.addAttribute("mensagemErro", ex.getMessage());
-        return "web/agendamento-erro";
+        return "web/erro";
     }
 
     @ExceptionHandler(RegraDeNegocioException.class)
@@ -208,6 +208,6 @@ public class WebAgendamentoController {
     public String regraDeNegocio(RegraDeNegocioException ex, Model model) {
         model.addAttribute("titulo", "Não foi possível concluir");
         model.addAttribute("mensagemErro", ex.getMessage());
-        return "web/agendamento-erro";
+        return "web/erro";
     }
 }
