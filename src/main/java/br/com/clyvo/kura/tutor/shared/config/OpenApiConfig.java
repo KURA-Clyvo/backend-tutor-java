@@ -61,23 +61,21 @@ public class OpenApiConfig {
                         """)
                 .version("1.0.0")
                 .contact(new Contact()
-                        .name("KURA — FIAP Challenge 2026")
-                        .email("kura@clyvo.vet"))
+                        .name("KURA — FIAP Challenge 2026"))
                 .license(new License()
-                        .name("FIAP Academic License")
-                        .url("https://www.fiap.com.br"));
+                        .name("Proprietária — KURA")
+                        .url("https://github.com/KURA-Clyvo/backend-tutor-java/blob/main/LICENSE"));
     }
 
     private ExternalDocumentation buildExternalDocs() {
         return new ExternalDocumentation()
                 .description("Repositório — Backend Tutor Java")
-                .url("https://github.com/NikolasBrisola/backend-tutor-java");
+                .url("https://github.com/KURA-Clyvo/backend-tutor-java");
     }
 
     private List<Server> buildServers() {
         return List.of(
-                new Server().url("http://localhost:8081/api").description("Dev (H2)"),
-                new Server().url("https://kura.clyvo.vet/api").description("Prod (Oracle)")
+                new Server().url("http://localhost:8081/api").description("Dev (H2)")
         );
     }
 

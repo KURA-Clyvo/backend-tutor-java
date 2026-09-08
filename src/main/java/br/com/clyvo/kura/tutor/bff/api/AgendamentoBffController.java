@@ -91,7 +91,9 @@ public class AgendamentoBffController {
         @ApiResponse(responseCode = "200", description = "Agendamento atualizado"),
         @ApiResponse(responseCode = "400", description = "nrVersion ausente ou data inválida"),
         @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor"),
-        @ApiResponse(responseCode = "409", description = "Conflito de versão — recarregue e tente novamente")
+        @ApiResponse(responseCode = "404", description = "Agendamento não encontrado"),
+        @ApiResponse(responseCode = "409", description = "Conflito de versão — recarregue e tente novamente"),
+        @ApiResponse(responseCode = "422", description = "Agendamento em status final (REALIZADO/CANCELADO) — não pode ser atualizado")
     })
     public ResponseEntity<AgendamentoResponse> atualizar(
             Authentication auth,
@@ -108,6 +110,7 @@ public class AgendamentoBffController {
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Agendamento cancelado"),
         @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor"),
+        @ApiResponse(responseCode = "404", description = "Agendamento não encontrado"),
         @ApiResponse(responseCode = "409", description = "Agendamento REALIZADO ou já CANCELADO")
     })
     public ResponseEntity<Void> excluir(

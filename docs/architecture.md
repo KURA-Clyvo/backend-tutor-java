@@ -364,7 +364,7 @@ Todos os erros da API retornam o mesmo envelope JSON (subconjunto do RFC 7807 Pr
 }
 ```
 
-**Decisão:** RFC 7807 completo (`type`, `title`, `detail`, `instance`) foi simplificado para 6 campos porque a banca FIAP avalia consistência de formato, não aderência total ao RFC — campos extras adicionariam verbosidade sem valor para os clientes (mobile e web).
+**Decisão:** RFC 7807 completo (`type`, `title`, `detail`, `instance`) foi simplificado para 6 campos porque o que importa aqui é consistência de formato, não aderência total ao RFC — campos extras adicionariam verbosidade sem valor para os clientes (mobile e web).
 
 ### 8.2 Mapeamento de exceções
 
