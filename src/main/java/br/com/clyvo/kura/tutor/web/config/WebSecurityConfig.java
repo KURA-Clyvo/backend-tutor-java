@@ -127,14 +127,25 @@ public class WebSecurityConfig {
             .formLogin(form -> form
                 .loginPage("/web/login")
                 .loginProcessingUrl("/web/login")
-                // alwaysUse=false (default): se havia requisição salva pelo
-                // RequestCache (ex.: tentou /web/suporte/contas sem sessão),
-                // volta pra ela; senão cai aqui. SJ3-05: destino trocado de
-                // "/web/suporte/contas" (exclusiva de SUPORTE) para
-                // "/web/painel" (comum aos dois perfis) — antes, um TUTOR
-                // que logasse com sucesso caía direto num 403, o que é
-                // "funcionalidade com erro" logo após autenticação válida.
-                .defaultSuccessUrl("/web/painel")
+                // alwaysUse=true (fix wave da SJ3-05, achado G2-B): com
+                // alwaysUse=false (o default), o RequestCache GANHA de
+                // defaultSuccessUrl sempre que havia requisição salva (ex.:
+                // TUTOR deslogado tenta /web/suporte/contas, é mandado pro
+                // login, loga com sucesso) — o login volta pra rota salva em
+                // vez de ir pro destino comum, e um TUTOR cai direto num 403
+                // LOGO APÓS autenticação válida ("funcionalidade com erro").
+                // Medido por HTTP real, 4 passos, com TUTOR: GET rota
+                // protegida (deslogado) -> 302 /web/login -> login OK -> 302
+                // /web/suporte/contas?continue -> 403. Trocar só o destino
+                // para "/web/painel" (sem alwaysUse=true) NÃO fecha isso: o
+                // RequestCache continua vencendo. Com alwaysUse=true, os 4
+                // passos terminam em 200 no painel para os DOIS perfis — a
+                // contrapartida medida é o SUPORTE perder o deep link
+                // direto e cair no painel, que já tem o link "Gerenciar
+                // contas" para a mesma rota (1 clique a mais, não um bug).
+                // Ver sj3-05-revisao.md (frente C) e sj3-05-fixwave.md no
+                // repo de planejamento.
+                .defaultSuccessUrl("/web/painel", true)
                 .failureUrl("/web/login?erro")
                 .permitAll());
 
