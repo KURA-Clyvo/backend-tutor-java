@@ -213,3 +213,51 @@ WHEN NOT MATCHED THEN INSERT (
     '$2a$12$24pY1/6uKhM5WKd7EMqN8OlGV0eVph993dQ4Z11PqbhscaqyG2m4q',
     'S', 'S'
 );
+
+-- ─── 13. TUTOR_PET + AGENDAMENTO para o painel /web/agendamentos (KURA-WEB, SJ3-06) ──
+-- Sem isto a tela nasceria vazia: o único AGENDAMENTO semeado (item 10) é do
+-- ID_TUTOR=1, e o tutor de demonstração do painel (ID_TUTOR=2, item 12) não
+-- tem pet nem agendamento nenhum. Só em dev, mesma razão dos itens 11/12.
+-- Ver docs/ADR-web.md.
+--
+-- TUTOR_PET tem PK composta (ID_TUTOR, ID_PET) — existe para modelar vários
+-- tutores por pet. Vincula o PET 1 (Marley) TAMBÉM ao TUTOR 2, sem criar pet
+-- novo (evita mais uma PK explícita) e sem mexer no ST_PRINCIPAL do tutor 1.
+MERGE INTO TUTOR_PET t
+USING (SELECT 1 FROM DUAL) SRC ON (t.ID_TUTOR = 2 AND t.ID_PET = 1)
+WHEN NOT MATCHED THEN INSERT (
+    ID_TUTOR, ID_PET, DS_VINCULO, DT_VINCULO, ST_PRINCIPAL
+) VALUES (
+    2, 1, 'FAMILIAR', CURRENT_TIMESTAMP, 'N'
+);
+
+-- ID_AGENDAMENTO explícito 2 e 3 — SEGURO: SEQ_AGENDAMENTO começa em 100
+-- (V1__initial_schema.sql:306) e a entity JPA usa essa sequence, não a
+-- IDENTITY da coluna (Agendamento.java:18-19) — IDs 1 a 3 nunca colidem com
+-- o que a aplicação venha a gerar. Dois agendamentos, de propósito: o
+-- roteiro do vídeo cancela um e remarca o outro sem ficar sem dado.
+MERGE INTO AGENDAMENTO t
+USING (SELECT 1 FROM DUAL) SRC ON (t.ID_AGENDAMENTO = 2)
+WHEN NOT MATCHED THEN INSERT (
+    ID_AGENDAMENTO, ID_CLINICA, ID_TUTOR, ID_PET, ID_VETERINARIO,
+    DT_AGENDAMENTO, NR_DURACAO_MINUTOS, DS_TIPO,
+    ST_STATUS, DS_ORIGEM, NR_VERSION
+) VALUES (
+    2, 1, 2, 1, 1,
+    CURRENT_TIMESTAMP + INTERVAL '10' DAY,
+    30, 'CONSULTA',
+    'AGENDADO', 'PORTAL', 0
+);
+
+MERGE INTO AGENDAMENTO t
+USING (SELECT 1 FROM DUAL) SRC ON (t.ID_AGENDAMENTO = 3)
+WHEN NOT MATCHED THEN INSERT (
+    ID_AGENDAMENTO, ID_CLINICA, ID_TUTOR, ID_PET, ID_VETERINARIO,
+    DT_AGENDAMENTO, NR_DURACAO_MINUTOS, DS_TIPO,
+    ST_STATUS, DS_ORIGEM, NR_VERSION
+) VALUES (
+    3, 1, 2, 1, 1,
+    CURRENT_TIMESTAMP + INTERVAL '14' DAY,
+    30, 'RETORNO',
+    'AGENDADO', 'PORTAL', 0
+);
