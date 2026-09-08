@@ -1,0 +1,60 @@
+<!--
+KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+Escopo isolado: depende do domínio; o domínio não depende dela.
+Ver docs/ADR-web.md.
+
+Lista de agendamentos do TUTOR autenticado (SJ3-06) — fluxo não-CRUD: o que
+separa isso de um CRUD é o lock otimista do remarcar (NR_VERSION -> 409 em
+conflito, tratado nos @ExceptionHandler de WebAgendamentoController) e a
+validação de motivo obrigatório no cancelar. Só TUTOR autenticado alcança
+esta rota (o chain /web/** exige authenticated() para tudo fora de
+/web/suporte/**); SUPORTE não precisa de acesso e não tem link daqui — ver
+templates/web/painel.html.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
+<head>
+    <meta charset="UTF-8"/>
+    <title>KURA — meus agendamentos</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; color: #222; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+        .mensagem { color: #1a6b1a; }
+        .acoes a { margin-right: 0.75rem; }
+        .vazio { color: #666; }
+    </style>
+</head>
+<body>
+<h1>Meus agendamentos</h1>
+<p><a th:href="@{/web/painel}">Voltar ao painel</a></p>
+
+<p class="mensagem" th:if="${mensagem}" th:text="${mensagem}">mensagem</p>
+
+<p class="vazio" th:if="${#lists.isEmpty(agendamentos)}">Nenhum agendamento encontrado.</p>
+
+<table th:unless="${#lists.isEmpty(agendamentos)}">
+    <thead>
+    <tr>
+        <th>Pet</th>
+        <th>Data</th>
+        <th>Tipo</th>
+        <th>Status</th>
+        <th>Ações</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="ag : ${agendamentos}">
+        <td th:text="${ag.nmPet}">Pet</td>
+        <td th:text="${ag.dtAgendamento}">Data</td>
+        <td th:text="${ag.tipo}">Tipo</td>
+        <td th:text="${ag.status}">Status</td>
+        <td class="acoes">
+            <a th:href="@{/web/agendamentos/{id}/remarcar(id=${ag.idAgendamento})}">Remarcar</a>
+            <a th:href="@{/web/agendamentos/{id}/cancelar(id=${ag.idAgendamento})}">Cancelar</a>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

@@ -34,6 +34,7 @@ SUPORTE) — cada bloco só aparece para quem tem o papel correspondente.
 <section sec:authorize="hasRole('TUTOR')" id="bloco-tutor">
     <h2>Tutor</h2>
     <p>Você está autenticado com o perfil de tutor.</p>
+    <p><a th:href="@{/web/agendamentos}">Meus agendamentos</a></p>
 </section>
 </body>
 </html>
