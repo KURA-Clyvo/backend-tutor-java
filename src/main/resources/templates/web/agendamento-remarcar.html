@@ -39,9 +39,9 @@ nunca como JSON cru do GlobalExceptionHandler de produto.
     <input type="hidden" th:field="*{nrVersion}"/>
 
     <label>Nova data e hora
-        <input type="datetime-local" th:field="*{dtAgendamento}"/>
+        <input type="datetime-local" th:field="*{novaData}"/>
     </label>
-    <p class="erro" th:if="${#fields.hasErrors('dtAgendamento')}" th:errors="*{dtAgendamento}">erro</p>
+    <p class="erro" th:if="${#fields.hasErrors('novaData')}" th:errors="*{novaData}">erro</p>
 
     <button type="submit">Confirmar remarcação</button>
 </form>

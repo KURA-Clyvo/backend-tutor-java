@@ -21,23 +21,33 @@ import java.time.LocalDateTime;
  * {@code @Future} em vez de data literal (armadilha registrada no
  * `CLAUDE.md` — data cravada expira sozinha em teste); os testes usam
  * {@code LocalDateTime.now().plusDays(n)}.
+ *
+ * <p>🔴 <b>Campo chamado {@code novaData}, NÃO {@code dtAgendamento}, de
+ * propósito.</b> Medido nesta task: {@code messages.properties} tem
+ * {@code Future.dtAgendamento=Agendamento deve ser no futuro} (mensagem da
+ * REST API, {@code AgendamentoRequest}) — o resolvedor de códigos de
+ * mensagem do Spring/Thymeleaf ({@code th:errors}) prioriza esse código
+ * sobre a mensagem literal do {@code @Future} desta classe sempre que o
+ * NOME DO CAMPO coincide, tornando a mensagem própria morta em silêncio.
+ * Renomear evita a colisão sem tocar `messages.properties` (compartilhado
+ * com produto).
  */
 public class RemarcarAgendamentoForm {
 
     @NotNull(message = "Informe a nova data e hora.")
     @Future(message = "A nova data deve ser no futuro.")
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
-    private LocalDateTime dtAgendamento;
+    private LocalDateTime novaData;
 
     @NotNull
     private Long nrVersion;
 
-    public LocalDateTime getDtAgendamento() {
-        return dtAgendamento;
+    public LocalDateTime getNovaData() {
+        return novaData;
     }
 
-    public void setDtAgendamento(LocalDateTime dtAgendamento) {
-        this.dtAgendamento = dtAgendamento;
+    public void setNovaData(LocalDateTime novaData) {
+        this.novaData = novaData;
     }
 
     public Long getNrVersion() {
