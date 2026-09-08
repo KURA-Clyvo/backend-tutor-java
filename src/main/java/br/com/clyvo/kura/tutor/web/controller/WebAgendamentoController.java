@@ -124,7 +124,7 @@ public class WebAgendamentoController {
             return "web/agendamento-remarcar";
         }
         AgendamentoUpdateRequest request = new AgendamentoUpdateRequest(
-                form.getDtAgendamento(), null, null, null, form.getNrVersion());
+                form.getNovaData(), null, null, null, form.getNrVersion());
         agendamentoService.atualizar(authentication.getName(), id, request);
         redirectAttributes.addFlashAttribute("mensagem", "Agendamento remarcado com sucesso.");
         return "redirect:/web/agendamentos";
