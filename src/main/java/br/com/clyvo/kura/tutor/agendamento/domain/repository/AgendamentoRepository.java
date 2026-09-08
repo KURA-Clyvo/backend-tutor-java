@@ -4,6 +4,8 @@ import br.com.clyvo.kura.tutor.agendamento.domain.Agendamento;
 import br.com.clyvo.kura.tutor.agendamento.domain.StatusAgendamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +18,22 @@ import java.util.List;
 @Repository
 public interface AgendamentoRepository
         extends JpaRepository<Agendamento, Long>, JpaSpecificationExecutor<Agendamento> {
+
+    /**
+     * SJ3-10: {@code AgendamentoService.listar} é o único chamador desta sobrecarga
+     * ({@code findAll(Specification, Pageable)}, herdada de {@link JpaSpecificationExecutor}) —
+     * NÃO anotar {@code findByTutor_IdTutorAndStStatus} nem {@code findFuturosByTutorEStatus}
+     * abaixo, que existem mas não são usados por esta rota (medido antes de anotar).
+     *
+     * <p>Sem este {@code @EntityGraph}, {@code AgendamentoResponse.fromEntity} passou a disparar
+     * até 3 SELECTs extras POR LINHA da página ao ler {@code nmEspecie}/{@code nmRaca}/
+     * {@code nmClinica} — as 4 associações (pet, pet.especie, pet.raca, clinica) são
+     * {@code @ManyToOne}, então o join fetch não replica linha (ao contrário de uma coleção
+     * {@code @OneToMany}, que paginaria em memória e emitiria {@code HHH000104}).
+     */
+    @Override
+    @EntityGraph(attributePaths = {"pet", "pet.especie", "pet.raca", "clinica"})
+    Page<Agendamento> findAll(Specification<Agendamento> spec, Pageable pageable);
 
     Page<Agendamento> findByTutor_IdTutorAndStStatus(Long idTutor, StatusAgendamento stStatus,
                                                       Pageable pageable);

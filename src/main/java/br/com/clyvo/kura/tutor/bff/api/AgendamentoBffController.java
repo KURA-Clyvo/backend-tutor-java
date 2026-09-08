@@ -2,6 +2,7 @@ package br.com.clyvo.kura.tutor.bff.api;
 
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoRequest;
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoResponse;
+import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoUpdateRequest;
 import br.com.clyvo.kura.tutor.agendamento.application.AgendamentoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -79,6 +80,24 @@ public class AgendamentoBffController {
                 .buildAndExpand(response.idAgendamento())
                 .toUri();
         return ResponseEntity.created(location).body(response);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(
+        summary = "Atualiza agendamento",
+        description = "Requer nrVersion correto. Versão divergente retorna 409 (optimistic lock)."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Agendamento atualizado"),
+        @ApiResponse(responseCode = "400", description = "nrVersion ausente ou data inválida"),
+        @ApiResponse(responseCode = "403", description = "Agendamento não pertence ao tutor"),
+        @ApiResponse(responseCode = "409", description = "Conflito de versão — recarregue e tente novamente")
+    })
+    public ResponseEntity<AgendamentoResponse> atualizar(
+            Authentication auth,
+            @PathVariable Long id,
+            @Valid @RequestBody AgendamentoUpdateRequest request) {
+        return ResponseEntity.ok(agendamentoService.atualizar(auth.getName(), id, request));
     }
 
     @DeleteMapping("/{id}")

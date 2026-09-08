@@ -26,7 +26,10 @@ public record AgendamentoResponse(
     @Schema(description = "Data/hora de cancelamento") LocalDateTime dtCancelamento,
     @Schema(description = "Versão para optimistic locking — enviar no PUT para evitar conflito 409", example = "0") Long nrVersion,
     @Schema(description = "URL da sala de teleconsulta (Daily.co), preenchida pelo .NET após a criação. Null se ainda não criada.")
-        String dsSalaUrl
+        String dsSalaUrl,
+    @Schema(description = "Espécie do pet", example = "Cão") String nmEspecie,
+    @Schema(description = "Raça do pet — 'SRD' se sem raça definida", example = "Labrador") String nmRaca,
+    @Schema(description = "Nome da clínica", example = "Clyvo Vet São Paulo") String nmClinica
 ) {
     public static AgendamentoResponse fromEntity(Agendamento a) {
         return new AgendamentoResponse(
@@ -46,7 +49,10 @@ public record AgendamentoResponse(
             a.getDtConfirmacao(),
             a.getDtCancelamento(),
             a.getNrVersion(),
-            a.getDsSalaUrl()
+            a.getDsSalaUrl(),
+            a.getPet() != null && a.getPet().getEspecie() != null ? a.getPet().getEspecie().getNmEspecie() : null,
+            a.getPet() != null ? (a.getPet().getRaca() != null ? a.getPet().getRaca().getNmRaca() : "SRD") : null,
+            a.getClinica() != null ? a.getClinica().getNmClinica() : null
         );
     }
 }
