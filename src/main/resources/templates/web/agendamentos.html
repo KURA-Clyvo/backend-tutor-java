@@ -44,14 +44,20 @@ templates/web/painel.html.
     </tr>
     </thead>
     <tbody>
-    <tr th:each="ag : ${agendamentos}">
+    <tr th:each="linha : ${agendamentos}" th:with="ag=${linha.ag}">
         <td th:text="${ag.nmPet}">Pet</td>
         <td th:text="${ag.dtAgendamento}">Data</td>
         <td th:text="${ag.tipo}">Tipo</td>
         <td th:text="${ag.status}">Status</td>
-        <td class="acoes">
+        <!-- As acoes so aparecem em agendamento ainda em curso. linha.acoesDisponiveis deriva
+             de StatusAgendamento.isFinal() no controller — nao ha lista de estados repetida
+             aqui de proposito. Ver WebAgendamentoController.Linha. -->
+        <td class="acoes" th:if="${linha.acoesDisponiveis}">
             <a th:href="@{/web/agendamentos/{id}/remarcar(id=${ag.idAgendamento})}">Remarcar</a>
             <a th:href="@{/web/agendamentos/{id}/cancelar(id=${ag.idAgendamento})}">Cancelar</a>
+        </td>
+        <td class="acoes" th:unless="${linha.acoesDisponiveis}">
+            <span class="sem-acao">—</span>
         </td>
     </tr>
     </tbody>

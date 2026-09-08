@@ -6,6 +6,7 @@ package br.com.clyvo.kura.tutor.web.controller;
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoResponse;
 import br.com.clyvo.kura.tutor.agendamento.api.dto.AgendamentoUpdateRequest;
 import br.com.clyvo.kura.tutor.agendamento.application.AgendamentoService;
+import br.com.clyvo.kura.tutor.agendamento.domain.StatusAgendamento;
 import br.com.clyvo.kura.tutor.exception.RegraDeNegocioException;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
 import br.com.clyvo.kura.tutor.shared.exception.NotFoundException;
@@ -75,8 +76,32 @@ public class WebAgendamentoController {
 
     @GetMapping
     public String listar(Authentication authentication, Model model) {
-        model.addAttribute("agendamentos", buscarTodos(authentication));
+        model.addAttribute("agendamentos", buscarTodos(authentication).stream()
+                .map(Linha::de)
+                .toList());
         return "web/agendamentos";
+    }
+
+    /**
+     * Linha da lista. Existe por um motivo so: decidir se as acoes "Remarcar"/"Cancelar"
+     * aparecem, sem repetir no template a lista de estados finais.
+     *
+     * <p>A tela oferecia as duas acoes em TODA linha. Numa linha ja finalizada, "Cancelar"
+     * caia na pagina 422 e "Remarcar" — antes da guarda que subiu para a main junto com esta
+     * mudanca — movia a data e respondia sucesso. Achado na revisao G2 da SJ3-06 e reproduzido
+     * por HTTP pelo maestro em 2026-09-08.</p>
+     *
+     * <p>{@code acoesDisponiveis} deriva de {@link StatusAgendamento#isFinal()}, e nao de uma
+     * comparacao de strings no Thymeleaf, de proposito: o javadoc do proprio enum declara que
+     * {@code isFinal()} vive la "para nao ser repetida em cada guarda". Um {@code th:if} com os
+     * tres nomes de estado seria uma quarta copia da mesma regra.</p>
+     */
+    public record Linha(AgendamentoResponse ag, boolean acoesDisponiveis) {
+        static Linha de(AgendamentoResponse ag) {
+            boolean finalizado = ag.status() != null
+                    && StatusAgendamento.valueOf(ag.status()).isFinal();
+            return new Linha(ag, !finalizado);
+        }
     }
 
     @GetMapping("/{id}/cancelar")
