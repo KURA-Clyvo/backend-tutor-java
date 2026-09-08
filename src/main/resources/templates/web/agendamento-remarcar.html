@@ -1,0 +1,51 @@
+<!--
+KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+Escopo isolado: depende do domínio; o domínio não depende dela.
+Ver docs/ADR-web.md.
+
+Formulário de remarcação (SJ3-06) — a melhor cena do fluxo. nrVersion viaja
+como campo hidden, carregado com o valor ATUAL no GET
+(WebAgendamentoController.formRemarcar). Se a linha mudar entre o
+carregamento e o submit (outra aba, o app mobile, a própria API), o
+nrVersion enviado fica velho e AgendamentoService.atualizar
+(AgendamentoService.java:97-110) lança
+ObjectOptimisticLockingFailureException — capturada por
+WebAgendamentoController.conflitoDeVersao e renderizada como PÁGINA (409),
+nunca como JSON cru do GlobalExceptionHandler de produto.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
+<head>
+    <meta charset="UTF-8"/>
+    <title>KURA — remarcar agendamento</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; color: #222; }
+        label { display: block; margin-top: 0.75rem; }
+        input { padding: 0.3rem; }
+        .erro { color: #b00020; }
+        .info { color: #444; }
+    </style>
+</head>
+<body>
+<h1>Remarcar agendamento</h1>
+<p class="info">
+    Pet <strong th:text="${agendamento.nmPet}">Pet</strong> —
+    data atual <span th:text="${agendamento.dtAgendamento}">Data</span> —
+    <span th:text="${agendamento.tipo}">Tipo</span>
+</p>
+
+<form th:action="@{/web/agendamentos/{id}/remarcar(id=${agendamento.idAgendamento})}"
+      th:object="${remarcarForm}" method="post">
+    <input type="hidden" th:field="*{nrVersion}"/>
+
+    <label>Nova data e hora
+        <input type="datetime-local" th:field="*{dtAgendamento}"/>
+    </label>
+    <p class="erro" th:if="${#fields.hasErrors('dtAgendamento')}" th:errors="*{dtAgendamento}">erro</p>
+
+    <button type="submit">Confirmar remarcação</button>
+</form>
+
+<p><a th:href="@{/web/agendamentos}">Voltar à lista</a></p>
+</body>
+</html>

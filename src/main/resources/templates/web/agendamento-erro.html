@@ -1,0 +1,29 @@
+<!--
+KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+Escopo isolado: depende do domínio; o domínio não depende dela.
+Ver docs/ADR-web.md.
+
+Página de erro compartilhada pelos @ExceptionHandler locais de
+WebAgendamentoController (409 conflito de versão, 403 proibido, 404 não
+encontrado, 422 regra de negócio) — existe para que NENHUMA dessas quatro
+exceções escape para o GlobalExceptionHandler de produto
+(@RestControllerAdvice sem basePackages/assignableTypes, cobre /web/**
+também) e devolva JSON cru em vez de página. Ver §2 do brief da SJ3-06 e
+sj3-06-report.md (repo de planejamento).
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
+<head>
+    <meta charset="UTF-8"/>
+    <title>KURA — não foi possível concluir</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; color: #222; }
+        .erro { color: #b00020; }
+    </style>
+</head>
+<body>
+<h1 th:text="${titulo}">Erro</h1>
+<p class="erro" th:text="${mensagemErro}">mensagem</p>
+<p><a th:href="@{/web/agendamentos}">Voltar à lista de agendamentos</a></p>
+</body>
+</html>
