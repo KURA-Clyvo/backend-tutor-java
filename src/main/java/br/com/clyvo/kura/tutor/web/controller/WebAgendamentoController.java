@@ -32,8 +32,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.List;
 
 /**
- * Fluxo não-CRUD "agendamento com lock otimista" (SJ3-06, branch
- * descartável — ver {@code docs/ADR-web.md}). Lista os agendamentos do
+ * Fluxo não-CRUD "agendamento com lock otimista" (SJ3-06 — ver
+ * {@code docs/ADR-web.md} para o escopo desta branch). Lista os agendamentos do
  * TUTOR autenticado e oferece cancelar (com motivo) e remarcar; o
  * {@code NR_VERSION} do remarcar produz 409 em conflito de concorrência —
  * é o que separa este fluxo de um CRUD simples (backlog, seção `SJ3-06`).
