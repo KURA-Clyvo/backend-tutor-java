@@ -133,7 +133,24 @@ public class Agendamento {
         this.dtConfirmacao = LocalDateTime.now();
     }
 
+    /**
+     * Remarca/edita um agendamento ainda em curso.
+     *
+     * <p>A guarda de {@link StatusAgendamento#isFinal()} espelha {@link #cancelar(String)} e
+     * {@link #confirmar()} — ela faltava aqui, e a ausência era um buraco real: remarcar um
+     * agendamento {@code CANCELADO} (ou {@code REALIZADO}/{@code NAO_COMPARECEU}) movia a data
+     * e respondia sucesso, tanto pelo domínio quanto pelo {@code PUT /api/v1/agendamentos/{id}}
+     * que o app mobile consome. Medido por HTTP em 2026-09-08: cancelar devolvia 302, remarcar
+     * o MESMO agendamento devolvia 302, e a data nova aparecia na linha já cancelada.</p>
+     *
+     * <p>O javadoc de {@link StatusAgendamento} já declarava a intenção — {@code isFinal()} vive
+     * no enum "para não ser repetida em cada guarda" — e esta era a guarda que não a usava.</p>
+     */
     public void atualizar(LocalDateTime novaData, String novoTipo, String novasObs, Long novoVet) {
+        if (stStatus != null && stStatus.isFinal()) {
+            throw new IllegalStateException(
+                "Não é possível remarcar agendamento com status " + stStatus.name() + ".");
+        }
         if (novaData != null) {
             if (novaData.isBefore(LocalDateTime.now())) {
                 throw new IllegalArgumentException("Data de reagendamento deve ser no futuro.");

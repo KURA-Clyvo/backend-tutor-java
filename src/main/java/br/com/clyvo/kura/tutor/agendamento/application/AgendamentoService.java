@@ -109,8 +109,16 @@ public class AgendamentoService {
             throw new ObjectOptimisticLockingFailureException(Agendamento.class, idAgendamento);
         }
 
-        ag.atualizar(request.dtAgendamento(), request.dsTipoConsulta(),
-                     request.dsObservacoes(), request.idVeterinario());
+        // Espelha o try/catch de cancelar(): a guarda de status do dominio vira 422
+        // RegraDeNegocioException, e nao o 409 ESTADO_INVALIDO generico que
+        // GlobalExceptionHandler daria a um IllegalStateException solto. Mantem as duas
+        // transicoes de status recusadas com a MESMA semantica para o cliente.
+        try {
+            ag.atualizar(request.dtAgendamento(), request.dsTipoConsulta(),
+                         request.dsObservacoes(), request.idVeterinario());
+        } catch (IllegalStateException e) {
+            throw new RegraDeNegocioException(e.getMessage());
+        }
 
         return AgendamentoResponse.fromEntity(agendamentoRepository.save(ag));
     }
