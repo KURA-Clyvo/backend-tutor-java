@@ -4,7 +4,7 @@
 package br.com.clyvo.kura.tutor.web.controller;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
  * Página de acesso negado do chain {@code /web/**} (SJ3-05). Servida por
@@ -15,13 +15,28 @@ import org.springframework.web.bind.annotation.GetMapping;
  * {@code docs/ADR-web.md}). O status HTTP 403 é setado ANTES do forward,
  * neste controller apenas o corpo é renderizado.
  *
+ * {@code @RequestMapping} sem restrição de verbo — não {@code @GetMapping} —
+ * de propósito: o forward de aplicação PRESERVA o método HTTP da requisição
+ * original (fix wave da SJ3-05, achado G2-A). Um {@code POST}/{@code PUT}/
+ * {@code DELETE} negado (a regra {@code /web/suporte/**} casa por PATH, não
+ * por método — já protege qualquer verbo hoje) ou uma falha de CSRF em
+ * {@code /web/login} com sessão autenticada chegam aqui como o MESMO verbo.
+ * Com {@code @GetMapping}, isso lançava
+ * {@code HttpRequestMethodNotSupportedException} dentro do forward, que
+ * escapava do chain {@code /web/**} e caía no {@code GlobalExceptionHandler}
+ * de produto como {@code 500 ERRO_INTERNO} — sobrescrevendo o {@code 403}
+ * setado antes pelo {@code accessDeniedHandler}. Medido por HTTP real
+ * (4 vetores: POST, PUT, DELETE em {@code /web/suporte/**} e CSRF inválido
+ * autenticado em {@code /web/login}) — ver {@code sj3-05-revisao.md} (frente
+ * A2) e {@code sj3-05-fixwave.md} no repo de planejamento.
+ *
  * Também alcançável por GET direto (bookmark, link) — nesse caso responde
  * 200, porque não passou pelo {@code AccessDeniedHandler}.
  */
 @Controller
 public class Web403Controller {
 
-    @GetMapping("/web/403")
+    @RequestMapping("/web/403")
     public String acessoNegado() {
         return "web/403";
     }
