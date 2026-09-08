@@ -144,7 +144,11 @@ public class WebAgendamentoController {
     }
 
     // ─── 409 — conflito de versão (lock otimista, a cena central da task) ──
-
+    // MEDIDO SJ3-06 (sj3-06-report.md, critério 2 do §6 do brief): comentar
+    // este handler e reproduzir o mesmo conflito faz a exceção escapar para o
+    // GlobalExceptionHandler de produto e devolver JSON cru (409,
+    // application/json, {"codigo":"VERSAO_DESATUALIZADA",...}) em vez desta
+    // página — prova de que É este handler que faz a diferença.
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public String conflitoDeVersao(Model model) {
