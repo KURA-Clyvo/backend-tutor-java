@@ -3,21 +3,27 @@
 // Ver docs/ADR-web.md.
 package br.com.clyvo.kura.tutor.web.config;
 
+import br.com.clyvo.kura.tutor.auth.application.AuthService;
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.web.domain.WebUsuarioSuporteRepository;
 import br.com.clyvo.kura.tutor.web.security.WebAuthenticationProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.ExceptionMappingAuthenticationFailureHandler;
+
+import java.util.Map;
 
 /**
  * Segundo {@link SecurityFilterChain}, exclusivo de {@code /web/**} — o
@@ -47,16 +53,33 @@ public class WebSecurityConfig {
     private final ContaTutorRepository contaTutorRepository;
     private final WebUsuarioSuporteRepository suporteRepository;
     private final PasswordEncoder passwordEncoder;
-    private final int janelaBloqueioMinutos;
+    private final AuthService authService;
 
     public WebSecurityConfig(ContaTutorRepository contaTutorRepository,
                              WebUsuarioSuporteRepository suporteRepository,
                              PasswordEncoder passwordEncoder,
-                             @Value("${kura.auth.janela-bloqueio-minutos:15}") int janelaBloqueioMinutos) {
+                             AuthService authService) {
         this.contaTutorRepository = contaTutorRepository;
         this.suporteRepository = suporteRepository;
         this.passwordEncoder = passwordEncoder;
-        this.janelaBloqueioMinutos = janelaBloqueioMinutos;
+        this.authService = authService;
+    }
+
+    /**
+     * Destino de falha por TIPO de exceção — o formulário precisa distinguir
+     * "senha errada" (tente de novo) de "conta bloqueada" (procure o
+     * suporte). Sem isto, o {@code failureUrl} único mandava as duas para
+     * {@code ?erro} e a trava era invisível na tela, mesmo existindo no
+     * banco: a pessoa via "login ou senha inválidos" e continuava tentando.
+     */
+    private static AuthenticationFailureHandler falhaDeLogin() {
+        ExceptionMappingAuthenticationFailureHandler handler =
+                new ExceptionMappingAuthenticationFailureHandler();
+        handler.setExceptionMappings(Map.of(
+                LockedException.class.getName(), "/web/login?bloqueada",
+                DisabledException.class.getName(), "/web/login?desativada"));
+        handler.setDefaultFailureUrl("/web/login?erro");
+        return handler;
     }
 
     @Bean
@@ -66,7 +89,7 @@ public class WebSecurityConfig {
         // à parte — ver o javadoc da classe para o porquê (evitar auto-detecção
         // global do AuthenticationManager de produto).
         WebAuthenticationProvider webAuthenticationProvider = new WebAuthenticationProvider(
-                contaTutorRepository, suporteRepository, passwordEncoder, janelaBloqueioMinutos);
+                contaTutorRepository, suporteRepository, passwordEncoder, authService);
 
         // Fix do achado G2-1 (sj3-03-revisao.md, M4): SEM isto, o
         // AuthenticationManagerBuilder compartilhado que o Spring Boot
@@ -146,7 +169,23 @@ public class WebSecurityConfig {
                 // Ver sj3-05-revisao.md (frente C) e sj3-05-fixwave.md no
                 // repo de planejamento.
                 .defaultSuccessUrl("/web/painel", true)
-                .failureUrl("/web/login?erro")
+                // failureHandler (não failureUrl): distingue conta bloqueada
+                // de senha errada na tela — ver falhaDeLogin().
+                .failureHandler(falhaDeLogin())
+                .permitAll())
+            // Sem isto NÃO HÁ COMO SAIR do painel: a URL de logout padrão do
+            // Spring Security é "/logout", que não casa com
+            // securityMatcher("/web/**") e por isso é servida pelo chain de
+            // produto (stateless), que não enxerga nem invalida esta sessão.
+            // Trocar de perfil exigia apagar cookie na mão — inviável numa
+            // demonstração, e um painel sem "Sair" é funcionalidade faltando.
+            // POST, não GET: o chain tem CSRF ligado (o botão "Sair" do
+            // cabeçalho é um <form method="post">).
+            .logout(logout -> logout
+                .logoutUrl("/web/logout")
+                .logoutSuccessUrl("/web/login?sair")
+                .invalidateHttpSession(true)
+                .deleteCookies("JSESSIONID")
                 .permitAll());
 
         return http.build();

@@ -13,17 +13,15 @@ cai fora de /web/** e é servido pelo chain stateless de produto).
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
       lang="pt-br">
-<head>
-    <meta charset="UTF-8"/>
-    <title>KURA — acesso negado</title>
-    <style>
-        body { font-family: sans-serif; margin: 2rem; color: #222; }
-    </style>
-</head>
+<head th:replace="~{web/fragments/layout :: cabeca('KURA — acesso negado')}"></head>
 <body>
-<h1>Acesso negado</h1>
-<p>Sua conta <strong sec:authorize="isAuthenticated()" sec:authentication="name">usuário</strong>
-   não tem permissão para acessar essa página.</p>
-<p><a th:href="@{/web/painel}">Voltar ao painel</a></p>
+<div class="pagina">
+    <header th:replace="~{web/fragments/layout :: topo(@{/web/painel}, 'Voltar ao painel')}"></header>
+
+    <h1>Acesso negado</h1>
+    <p class="alerta alerta-erro">Sua conta
+        <strong sec:authorize="isAuthenticated()" sec:authentication="name">usuário</strong>
+        não tem permissão para acessar essa página.</p>
+</div>
 </body>
 </html>

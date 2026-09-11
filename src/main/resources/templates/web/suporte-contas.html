@@ -17,69 +17,59 @@ existe para o suporte repassar por fora do sistema.
 -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
-<head>
-    <meta charset="UTF-8"/>
-    <title>KURA — buscar conta</title>
-    <style>
-        body { font-family: sans-serif; margin: 2rem; color: #222; }
-        label { display: block; margin-top: 0.75rem; }
-        input[type=text] { width: 100%; max-width: 24rem; padding: 0.3rem; }
-        .mensagem { color: #1a6b1a; }
-        .aviso { color: #444; }
-        .erro { color: #b00020; }
-        section { border: 1px solid #ccc; border-radius: 6px; padding: 1rem; margin-top: 1rem; }
-        h3 { margin-bottom: 0.25rem; }
-    </style>
-</head>
+<head th:replace="~{web/fragments/layout :: cabeca('KURA — buscar conta')}"></head>
 <body>
-<h1>Buscar conta</h1>
-<p><a th:href="@{/web/painel}">Voltar ao painel</a></p>
+<div class="pagina">
+    <header th:replace="~{web/fragments/layout :: topo(@{/web/painel}, 'Voltar ao painel')}"></header>
 
-<p class="mensagem" th:if="${mensagem}" th:text="${mensagem}">mensagem</p>
+    <h1>Buscar conta</h1>
 
-<form th:action="@{/web/suporte/contas}" method="get">
-    <label>E-mail (login da conta ou e-mail cadastrado do tutor)
-        <input type="text" name="email" th:value="${email}"/>
-    </label>
-    <button type="submit">Buscar</button>
-</form>
+    <p class="alerta mensagem" th:if="${mensagem}" th:text="${mensagem}">mensagem</p>
 
-<p class="erro" th:if="${mensagemBusca}" th:text="${mensagemBusca}">mensagem</p>
+    <form th:action="@{/web/suporte/contas}" method="get">
+        <label for="email">E-mail (login da conta ou e-mail cadastrado do tutor)
+            <input type="text" id="email" name="email" th:value="${email}" autocomplete="off"/>
+        </label>
+        <button type="submit">Buscar</button>
+    </form>
 
-<section th:if="${resultado != null}" id="resultado">
-    <h2>Pessoa</h2>
-    <p>
-        <strong th:text="${resultado.tutor.nmTutor}">Nome</strong> —
-        <span th:text="${resultado.tutor.dsEmail}">e-mail</span>
-    </p>
+    <p class="erro" th:if="${mensagemBusca}" th:text="${mensagemBusca}">mensagem</p>
 
-    <h3>Conta</h3>
-    <div th:if="${resultado.conta != null}" id="bloco-conta">
-        <p>Tentativas de login: <span th:text="${resultado.conta.nrTentativasLogin}">0</span></p>
-        <p>Bloqueio:
-            <span th:if="${resultado.conta.dtBloqueio != null}" th:text="${resultado.conta.dtBloqueio}">data</span>
-            <span th:unless="${resultado.conta.dtBloqueio != null}">Nenhum</span>
+    <section th:if="${resultado != null}" id="resultado">
+        <h2>Pessoa</h2>
+        <p>
+            <strong th:text="${resultado.tutor.nmTutor}">Nome</strong> —
+            <span th:text="${resultado.tutor.dsEmail}">e-mail</span>
         </p>
-        <p>Conta ativa: <span th:text="${resultado.conta.stAtiva == 'S'} ? 'Sim' : 'Não'">Sim</span></p>
 
-        <form th:action="@{/web/suporte/contas/destravar}" method="post">
-            <input type="hidden" name="idConta" th:value="${resultado.conta.idConta}"/>
-            <input type="hidden" name="email" th:value="${email}"/>
-            <button type="submit">Destravar agora</button>
-        </form>
-    </div>
-    <p class="aviso" th:unless="${resultado.conta != null}">Esta pessoa ainda não criou conta.</p>
+        <h3>Conta</h3>
+        <div th:if="${resultado.conta != null}" id="bloco-conta">
+            <p>Tentativas de login: <span th:text="${resultado.conta.nrTentativasLogin}">0</span></p>
+            <p>Bloqueio:
+                <span th:if="${resultado.conta.dtBloqueio != null}" th:text="${resultado.conta.dtBloqueio}">data</span>
+                <span th:unless="${resultado.conta.dtBloqueio != null}">Nenhum</span>
+            </p>
+            <p>Conta ativa: <span th:text="${resultado.conta.stAtiva == 'S'} ? 'Sim' : 'Não'">Sim</span></p>
 
-    <h3>Convite</h3>
-    <div th:if="${resultado.convite != null}" id="bloco-convite">
-        <p class="aviso">Convite pendente — repasse por fora deste sistema (não há envio automático).</p>
-        <p>Canal: <span th:text="${resultado.convite.canal}">canal</span></p>
-        <p>Token: <span th:text="${resultado.convite.token}">token</span></p>
-        <p>Expira em: <span th:text="${resultado.convite.dtExpiracao}">data</span> —
-            <span th:text="${resultado.convite.expirado} ? 'expirado' : 'válido'">válido</span>
-        </p>
-    </div>
-    <p class="aviso" th:unless="${resultado.convite != null}">Nenhum convite pendente.</p>
-</section>
+            <form th:action="@{/web/suporte/contas/destravar}" method="post">
+                <input type="hidden" name="idConta" th:value="${resultado.conta.idConta}"/>
+                <input type="hidden" name="email" th:value="${email}"/>
+                <button type="submit">Destravar agora</button>
+            </form>
+        </div>
+        <p class="aviso" th:unless="${resultado.conta != null}">Esta pessoa ainda não criou conta.</p>
+
+        <h3>Convite</h3>
+        <div th:if="${resultado.convite != null}" id="bloco-convite">
+            <p class="aviso">Convite pendente — repasse por fora deste sistema (não há envio automático).</p>
+            <p>Canal: <span th:text="${resultado.convite.canal}">canal</span></p>
+            <p>Token: <span th:text="${resultado.convite.token}">token</span></p>
+            <p>Expira em: <span th:text="${resultado.convite.dtExpiracao}">data</span> —
+                <span th:text="${resultado.convite.expirado} ? 'expirado' : 'válido'">válido</span>
+            </p>
+        </div>
+        <p class="aviso" th:unless="${resultado.convite != null}">Nenhum convite pendente.</p>
+    </section>
+</div>
 </body>
 </html>

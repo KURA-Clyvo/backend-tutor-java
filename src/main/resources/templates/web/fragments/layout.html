@@ -1,0 +1,203 @@
+<!--
+KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
+Escopo isolado: depende do domínio; o domínio não depende dela.
+Ver docs/ADR-web.md.
+
+Fragmentos compartilhados das 8 páginas do painel. Existem por três defeitos
+medidos na revisão de gravação do vídeo (2026-09-11), todos os três visíveis
+na tela e nenhum pego por teste:
+
+ 1. NENHUM template declarava <meta name="viewport">. Sem ela o navegador
+    móvel assume uma viewport de ~980px e renderiza a página inteira reduzida
+    — o sintoma relatado como "formulário de e-mail desalinhado". Um <input>
+    sem largura declarada dentro de um <label> block completa o efeito.
+ 2. A volta existia só como link de texto no RODAPÉ de algumas páginas (e não
+    existia no painel nem no login). Vira botão, no TOPO, em todas.
+ 3. Não havia como SAIR (ver .logout() em WebSecurityConfig) — o botão mora
+    aqui, como <form method="post">, porque este chain tem CSRF ligado.
+
+CSS inline de propósito: continua sem framework e sem JS (decisão do brief da
+SJ3-05). O href="data:," do ícone é deliberado — evita o GET /favicon.ico,
+que nesta app responde 401 e sujaria o console do avaliador com uma linha
+vermelha que não é defeito de página.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
+      lang="pt-br">
+
+<head th:fragment="cabeca(titulo)">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title th:text="${titulo}">KURA</title>
+    <style>
+        :root {
+            --sage: #4A6944;
+            --sage-escuro: #35502F;
+            --texto: #222;
+            --suave: #5b5b5b;
+            --borda: #d8d8d8;
+            --fundo: #f7f7f5;
+            --erro: #b00020;
+            --ok: #1a6b1a;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            margin: 0;
+            color: var(--texto);
+            background: var(--fundo);
+            line-height: 1.5;
+        }
+
+        .pagina {
+            max-width: 52rem;
+            margin: 0 auto;
+            padding: 1rem 1rem 3rem;
+        }
+
+        .topo {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--borda);
+        }
+
+        .marca { font-weight: 700; letter-spacing: 0.04em; color: var(--sage-escuro); }
+        .marca span { font-weight: 400; color: var(--suave); }
+
+        .acoes-topo {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: auto;
+        }
+
+        .usuario { color: var(--suave); font-size: 0.9rem; }
+
+        h1 { font-size: 1.5rem; margin: 1.5rem 0 0.25rem; }
+        h2 { font-size: 1.15rem; }
+        h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+
+        /* Formulário: o label é o bloco, o campo ocupa a linha inteira até um
+           limite legível. É isto que conserta o desalinhamento em tela estreita. */
+        label { display: block; margin-top: 1rem; font-weight: 600; }
+
+        input[type=text], input[type=password], input[type=email],
+        input[type=datetime-local], textarea, select {
+            display: block;
+            width: 100%;
+            max-width: 24rem;
+            margin-top: 0.35rem;
+            padding: 0.55rem 0.6rem;
+            font: inherit;
+            color: inherit;
+            background: #fff;
+            border: 1px solid var(--borda);
+            border-radius: 6px;
+        }
+
+        textarea { max-width: 32rem; }
+
+        input:focus, textarea:focus {
+            outline: 2px solid var(--sage);
+            outline-offset: 1px;
+        }
+
+        button {
+            font: inherit;
+            padding: 0.55rem 1.1rem;
+            margin-top: 1rem;
+            color: #fff;
+            background: var(--sage);
+            border: 1px solid var(--sage-escuro);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover { background: var(--sage-escuro); }
+
+        .botao-secundario, a.botao-secundario {
+            display: inline-block;
+            margin-top: 0;
+            padding: 0.35rem 0.8rem;
+            font-size: 0.9rem;
+            color: var(--sage-escuro);
+            background: #fff;
+            border: 1px solid var(--borda);
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .botao-secundario:hover { background: #eef1ed; }
+
+        .form-sair { display: inline; }
+        .form-sair button { margin-top: 0; }
+
+        section {
+            background: #fff;
+            border: 1px solid var(--borda);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        /* Tabela larga rola SÓ dentro do próprio contêiner — a página nunca
+           ganha barra horizontal. */
+        .tabela-rolavel { overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; background: #fff; }
+        th, td { border: 1px solid var(--borda); padding: 0.5rem; text-align: left; }
+        th { background: #eef1ed; }
+
+        .erro { color: var(--erro); font-weight: 600; }
+        .mensagem { color: var(--ok); font-weight: 600; }
+        .aviso, .info, .vazio { color: var(--suave); }
+
+        .alerta {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--borda);
+            background: #fff;
+            margin-top: 1rem;
+        }
+
+        .alerta-erro { border-color: var(--erro); color: var(--erro); }
+
+        .acoes a { margin-right: 0.75rem; }
+
+        @media (max-width: 30rem) {
+            .pagina { padding: 0.75rem 0.75rem 2rem; }
+            .acoes-topo { margin-left: 0; width: 100%; }
+            h1 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+
+<body>
+
+<!--
+  topo(voltarUrl, voltarTexto) — passe voltarUrl = null para não mostrar o
+  botão de voltar (login e painel, que são as raízes de cada perfil).
+  "Sair" só aparece autenticado; é POST por causa do CSRF do chain /web/**.
+-->
+<header th:fragment="topo(voltarUrl, voltarTexto)" class="topo">
+    <div class="marca">KURA <span>· painel</span></div>
+    <nav class="acoes-topo">
+        <a th:if="${voltarUrl != null}" th:href="${voltarUrl}" class="botao-secundario"
+           th:text="'← ' + ${voltarTexto}">Voltar</a>
+        <span class="usuario" sec:authorize="isAuthenticated()" sec:authentication="name">usuário</span>
+        <form class="form-sair" sec:authorize="isAuthenticated()" th:action="@{/web/logout}" method="post">
+            <button type="submit" class="botao-secundario">Sair</button>
+        </form>
+    </nav>
+</header>
+
+</body>
+</html>

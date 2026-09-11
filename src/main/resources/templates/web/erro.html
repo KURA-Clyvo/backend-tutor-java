@@ -18,17 +18,13 @@ TUTOR e SUPORTE) — não mais para /web/agendamentos, que só o TUTOR alcança.
 -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
-<head>
-    <meta charset="UTF-8"/>
-    <title>KURA — não foi possível concluir</title>
-    <style>
-        body { font-family: sans-serif; margin: 2rem; color: #222; }
-        .erro { color: #b00020; }
-    </style>
-</head>
+<head th:replace="~{web/fragments/layout :: cabeca('KURA — não foi possível concluir')}"></head>
 <body>
-<h1 th:text="${titulo}">Erro</h1>
-<p class="erro" th:text="${mensagemErro}">mensagem</p>
-<p><a th:href="@{/web/painel}">Voltar ao painel</a></p>
+<div class="pagina">
+    <header th:replace="~{web/fragments/layout :: topo(@{/web/painel}, 'Voltar ao painel')}"></header>
+
+    <h1 th:text="${titulo}">Erro</h1>
+    <p class="alerta alerta-erro erro" th:text="${mensagemErro}">mensagem</p>
+</div>
 </body>
 </html>

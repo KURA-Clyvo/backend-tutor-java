@@ -3,37 +3,50 @@ KURA-WEB — camada de visualização servidor (Sprint 3, Java Advanced).
 Escopo isolado: depende do domínio; o domínio não depende dela.
 Ver docs/ADR-web.md.
 
-Formulário mínimo — fix do achado G2-2 (login inalcançável, SJ3-03). SJ3-05
-acrescentou só um <style> curto e lang="pt-br" para não parecer quebrado —
-sem framework de CSS, sem JS.
+Formulário mínimo — fix do achado G2-2 (login inalcançável, SJ3-03). O
+<style> e o layout responsivo vivem em web/fragments/layout.html desde a
+revisão de gravação (2026-09-11): sem <meta viewport> esta era a tela que
+aparecia reduzida e desalinhada no celular.
+
+As mensagens de falha são distintas de propósito (failureHandler em
+WebSecurityConfig): "senha inválida" e "conta bloqueada" pedem ações
+diferentes de quem está na frente da tela — tentar de novo × procurar o
+suporte. Enquanto o formulário não travava a conta, essa distinção não
+existia e a trava era invisível aqui.
 -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
-<head>
-    <meta charset="UTF-8"/>
-    <title>KURA — login painel</title>
-    <style>
-        body { font-family: sans-serif; margin: 2rem; color: #222; }
-        label { display: block; margin-top: 0.75rem; }
-        input { padding: 0.3rem; }
-        .erro { color: #b00020; }
-    </style>
-</head>
+<head th:replace="~{web/fragments/layout :: cabeca('KURA — login do painel')}"></head>
 <body>
-<h1>Login — painel interno</h1>
+<div class="pagina">
+    <header th:replace="~{web/fragments/layout :: topo(null, null)}"></header>
 
-<p class="erro" th:if="${param.erro}">Login ou senha inválidos.</p>
+    <h1>Login — painel interno</h1>
 
-<form th:action="@{/web/login}" method="post">
-    <label>Usuário/e-mail
-        <input type="text" name="username"/>
-    </label>
-    <label>Senha
-        <input type="password" name="password"/>
-    </label>
-    <!-- th:action já injeta o hidden de CSRF automaticamente
-         (thymeleaf-extras-springsecurity6 + RequestDataValueProcessor) -->
-    <button type="submit">Entrar</button>
-</form>
+    <p class="alerta alerta-erro erro" th:if="${param.erro}">Login ou senha inválidos.</p>
+
+    <p class="alerta alerta-erro erro" th:if="${param.bloqueada}">
+        Conta bloqueada por excesso de tentativas. Ela libera sozinha em alguns minutos,
+        ou o suporte libera na hora.
+    </p>
+
+    <p class="alerta alerta-erro erro" th:if="${param.desativada}">
+        Esta conta está desativada. Procure a clínica.
+    </p>
+
+    <p class="alerta mensagem" th:if="${param.sair}">Você saiu do painel.</p>
+
+    <form th:action="@{/web/login}" method="post">
+        <label for="username">Usuário ou e-mail
+            <input type="text" id="username" name="username" autocomplete="username"/>
+        </label>
+        <label for="password">Senha
+            <input type="password" id="password" name="password" autocomplete="current-password"/>
+        </label>
+        <!-- th:action já injeta o hidden de CSRF automaticamente
+             (thymeleaf-extras-springsecurity6 + RequestDataValueProcessor) -->
+        <button type="submit">Entrar</button>
+    </form>
+</div>
 </body>
 </html>

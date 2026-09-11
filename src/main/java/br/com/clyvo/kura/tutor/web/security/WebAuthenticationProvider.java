@@ -3,8 +3,12 @@
 // Ver docs/ADR-web.md.
 package br.com.clyvo.kura.tutor.web.security;
 
+import br.com.clyvo.kura.tutor.auth.api.dto.LoginRequest;
+import br.com.clyvo.kura.tutor.auth.application.AuthService;
 import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.entity.ContaTutor;
+import br.com.clyvo.kura.tutor.shared.exception.AccountInactiveException;
+import br.com.clyvo.kura.tutor.shared.exception.AccountLockedException;
 import br.com.clyvo.kura.tutor.web.domain.WebUsuarioSuporte;
 import br.com.clyvo.kura.tutor.web.domain.WebUsuarioSuporteRepository;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -18,7 +22,6 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -40,13 +43,27 @@ import java.util.Optional;
  * {@code G2-1}: o {@code AuthenticationManager} do chain {@code /web/**}
  * também não tem parent — ver {@link br.com.clyvo.kura.tutor.web.config.WebSecurityConfig}.)
  *
- * SÓ LEITURA (§3.1 do brief): não chama nenhum método que persista estado em
- * {@code ContaTutor} (nem {@code registrarLoginFalha}, nem
- * {@code limparBloqueioExpirado}, nem {@code save}). A checagem de bloqueio
- * usa a sobrecarga COM JANELA — {@link ContaTutor#isBloqueada(LocalDateTime, int)}
- * — que já ignora um bloqueio expirado sem precisar limpá-lo antes; é a MESMA
- * proteção que {@code AuthService} aplica no login da API, reaproveitando a
- * mesma propriedade {@code kura.auth.janela-bloqueio-minutos} (SJ3-02).
+ * <h2>Uma porta a mais, a mesma regra</h2>
+ * A versão anterior desta classe reimplementava o login do tutor — ativa,
+ * bloqueio, senha — e era declaradamente SÓ LEITURA: nunca chamava
+ * {@code registrarLoginFalha()}. Consequência medida: <b>errar a senha no
+ * formulário web, quantas vezes fosse, não travava a conta</b>; só as rotas
+ * REST (que passam por {@link AuthService}) contavam tentativa. Duas portas
+ * de autenticação, uma regra de negócio, e só uma das portas passava por
+ * ela — além da regra duplicada em dois lugares.
+ *
+ * Hoje o tutor é autenticado <b>delegando</b> a {@link AuthService#login},
+ * o MESMO serviço de domínio que a API usa. A camada web decide apenas QUEM
+ * está tentando entrar (tutor do produto ou usuário de suporte desta branch)
+ * e TRADUZ a exceção de domínio para a exceção equivalente do Spring
+ * Security, que o formulário sabe renderizar. A regra de negócio continua no
+ * domínio, e nenhum arquivo de produto foi editado.
+ *
+ * O par de tokens devolvido por {@code login} é descartado de propósito: o
+ * painel é sessão + CSRF, não Bearer. O que interessa aqui é o efeito
+ * correto sobre o estado da conta — contador de tentativas, bloqueio
+ * temporário de {@code kura.auth.janela-bloqueio-minutos} (SJ3-02) e reset
+ * no acerto.
  */
 public class WebAuthenticationProvider implements AuthenticationProvider {
 
@@ -55,16 +72,16 @@ public class WebAuthenticationProvider implements AuthenticationProvider {
     private final ContaTutorRepository contaTutorRepository;
     private final WebUsuarioSuporteRepository suporteRepository;
     private final PasswordEncoder passwordEncoder;
-    private final int janelaBloqueioMinutos;
+    private final AuthService authService;
 
     public WebAuthenticationProvider(ContaTutorRepository contaTutorRepository,
                                      WebUsuarioSuporteRepository suporteRepository,
                                      PasswordEncoder passwordEncoder,
-                                     int janelaBloqueioMinutos) {
+                                     AuthService authService) {
         this.contaTutorRepository = contaTutorRepository;
         this.suporteRepository = suporteRepository;
         this.passwordEncoder = passwordEncoder;
-        this.janelaBloqueioMinutos = janelaBloqueioMinutos;
+        this.authService = authService;
     }
 
     @Override
@@ -87,26 +104,25 @@ public class WebAuthenticationProvider implements AuthenticationProvider {
         throw new BadCredentialsException(MENSAGEM_CREDENCIAIS_INVALIDAS);
     }
 
+    /**
+     * Delega ao serviço de domínio e traduz o resultado para o vocabulário do
+     * Spring Security — a tradução é a ÚNICA responsabilidade desta camada:
+     * o 423 do domínio vira {@link LockedException} (o formulário mostra
+     * "conta bloqueada"), o 403 vira {@link DisabledException}, e o 401 já
+     * chega como {@link BadCredentialsException}.
+     */
     private Authentication autenticarTutor(ContaTutor conta, String senhaDigitada) {
-        if (!conta.isAtiva()) {
-            throw new DisabledException("Conta desativada.");
+        try {
+            authService.login(new LoginRequest(conta.getDsEmailLogin(), senhaDigitada));
+        } catch (AccountLockedException e) {
+            throw new LockedException(e.getMessage(), e);
+        } catch (AccountInactiveException e) {
+            throw new DisabledException(e.getMessage(), e);
+        } catch (BadCredentialsException e) {
+            throw new BadCredentialsException(MENSAGEM_CREDENCIAIS_INVALIDAS, e);
         }
 
-        LocalDateTime agora = LocalDateTime.now();
-        if (conta.isBloqueada(agora, janelaBloqueioMinutos)) {
-            throw new LockedException("Conta temporariamente bloqueada.");
-        }
-
-        if (!passwordEncoder.matches(senhaDigitada, conta.getDsSenhaHash())) {
-            throw new BadCredentialsException(MENSAGEM_CREDENCIAIS_INVALIDAS);
-        }
-
-        UserDetails principal = User.withUsername(conta.getDsEmailLogin())
-                .password(conta.getDsSenhaHash())
-                .authorities("ROLE_TUTOR")
-                .build();
-
-        return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+        return autenticado(conta.getDsEmailLogin(), conta.getDsSenhaHash(), "ROLE_TUTOR");
     }
 
     private Authentication autenticarSuporte(WebUsuarioSuporte usuario, String senhaDigitada) {
@@ -118,9 +134,13 @@ public class WebAuthenticationProvider implements AuthenticationProvider {
             throw new BadCredentialsException(MENSAGEM_CREDENCIAIS_INVALIDAS);
         }
 
-        UserDetails principal = User.withUsername(usuario.getDsLogin())
-                .password(usuario.getDsSenhaHash())
-                .authorities("ROLE_SUPORTE")
+        return autenticado(usuario.getDsLogin(), usuario.getDsSenhaHash(), "ROLE_SUPORTE");
+    }
+
+    private Authentication autenticado(String username, String senhaHash, String papel) {
+        UserDetails principal = User.withUsername(username)
+                .password(senhaHash)
+                .authorities(papel)
                 .build();
 
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
