@@ -117,6 +117,15 @@ public class WebSecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(req -> req
+                // Explícito, e não só formLogin().permitAll(): com failureHandler
+                // customizado não há failureUrl registrada, e o permitAll do
+                // formLogin casa a URL EXATA com query string — "/web/login?erro"
+                // caía em authenticated(), voltava para "/web/login" sem
+                // parâmetro e a mensagem de falha nunca aparecia ("só dá
+                // refresh"). Este matcher ignora a query e cobre ?erro,
+                // ?bloqueada e ?desativada. Regressão travada em
+                // WebLoginFormularioTravaContaTest.
+                .requestMatchers("/web/login").permitAll()
                 .requestMatchers("/web/suporte/**").hasRole("SUPORTE")
                 .anyRequest().authenticated())
             // Achado medido durante a prova HTTP real da fix wave da SJ3-03

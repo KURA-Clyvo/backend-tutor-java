@@ -11,6 +11,8 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -113,6 +117,28 @@ class WebLoginFormularioTravaContaTest {
     @DisplayName("Controle positivo — senha certa em conta limpa entra no painel")
     void senhaCertaEntra() throws Exception {
         tentarLogin(SENHA_CERTA, "/web/painel");
+    }
+
+    /**
+     * Regressão do achado de gravação de 2026-09-13: errar a senha "só dava
+     * refresh". O POST redirecionava certo para {@code ?erro} (os testes acima
+     * só olham o Location e passavam), mas a PÁGINA de destino exigia login:
+     * com {@code failureHandler} customizado, {@code formLogin().permitAll()}
+     * libera só {@code loginPage}/{@code loginProcessingUrl}, com match EXATO
+     * incluindo query string — {@code /web/login?erro} caía em
+     * {@code authenticated()} e voltava para {@code /web/login} sem parâmetro.
+     */
+    @ParameterizedTest(name = "GET /web/login?{0} deslogado mostra a mensagem")
+    @CsvSource({
+            "erro,       Login ou senha inválidos",
+            "bloqueada,  Conta bloqueada por excesso de tentativas",
+            "desativada, Esta conta está desativada",
+            "sair,       Você saiu do painel"
+    })
+    void paginaDeDestinoDaFalhaMostraAMensagem(String parametro, String mensagem) throws Exception {
+        mockMvc.perform(get("/web/login?" + parametro))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(mensagem)));
     }
 
     @Test
