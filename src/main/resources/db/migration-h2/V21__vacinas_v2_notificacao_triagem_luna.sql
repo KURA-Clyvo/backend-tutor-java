@@ -1,39 +1,84 @@
 -- =============================================================================
 -- V21__vacinas_v2_notificacao_triagem_luna.sql
 -- LU-02 (KURA_BACKLOG_LUNA_AI). Contrato de dados da Luna — um único número
--- Flyway, três grupos de DDL:
+-- Flyway, três grupos de DDL.
+--
+-- FIX WAVE 1 (G2 REPROVOU a versão original deste arquivo — achados 1-5,
+-- lu-02-revisao.md). Este cabeçalho já descreve a view CORRIGIDA; não há
+-- registro do "antes" aqui — o histórico do achado está no ledger.
 --
 -- 1) VW_VACINAS_VENCENDO v2 (CREATE OR REPLACE). As 7 colunas atuais
 --    permanecem com o mesmo nome (TutorBffController:125 /
---    VacinaVencendo.java leem por nome de coluna, ddl-auto=validate em prod
---    ignora coluna extra não mapeada). Acrescenta: NM_TUTOR, DS_WHATSAPP,
---    DIAS_RESTANTES, ID_VACINA (nulo quando a origem é AGENDAMENTO),
---    DS_ORIGEM ('VACINA'|'AGENDAMENTO'), ST_CONSENTE_LEMBRETE ('S'|'N', D-L4).
+--    VacinaVencendo.java leem por nome de coluna; ddl-auto é `none` nos dois
+--    profiles — não há validação de schema no boot em nenhum ambiente,
+--    achado 5). Acrescenta: NM_TUTOR, DS_WHATSAPP, DIAS_RESTANTES, ID_VACINA
+--    (nulo quando a origem é AGENDAMENTO), DS_ORIGEM ('VACINA'|'AGENDAMENTO'),
+--    ST_CONSENTE_LEMBRETE ('S'|'N', D-L4).
 --
 --    Fonte = UNION ALL de:
 --      (a) aplicação real de vacina: VACINA.DT_PROXIMA_DOSE, via
 --          EVENTO_CLINICO → PET → TUTOR_PET → TUTOR (G0/N2 — hoje a view só
 --          enxerga AGENDAMENTO, nunca VACINA). Fan-out por tutor: pet com 2
 --          tutores gera 2 linhas (cada tutor é avisado — decisão do brief
---          LU-02, correto por design).
---      (b) a regra atual sobre AGENDAMENTO (DS_TIPO='VACINA', preservada tal
---          qual V6): 1 linha por agendamento — AGENDAMENTO.ID_TUTOR já é o
---          tutor único que agendou, sem fan-out via TUTOR_PET aqui.
---    Janela nos dois ramos: DT_PROXIMA_DOSE/DT_AGENDAMENTO em
---    [CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + 30 dias] — igual à V6.
---    DIAS_RESTANTES = diferença em dias de CALENDÁRIO (TRUNC de data),
---    não em horas — TRUNC(dt) - TRUNC(SYSDATE).
+--          LU-02, correto por design). O endpoint Java pet-scoped
+--          (TimelineService.listarVacinasPet/statusVacinasPet) deduplica essas
+--          2 linhas por (ID_PET,NM_VACINA,DT_PROXIMA_DOSE) — achado 1/G2,
+--          corrigido no Java, não na view (a Luna precisa das 2 linhas).
+--      (b) AGENDAMENTO (DS_TIPO='VACINA') — **DIFERENÇAS EXPLÍCITAS em
+--          relação à v1/V6** (achado 2/G2 — o comentário original desta
+--          migration alegava "preservada tal qual V6", o que era falso):
+--            • v1/V6 não fazia JOIN em TUTOR nenhum (só PET/CLINICA); a
+--              primeira versão desta V21 introduziu INNER JOIN TUTOR, e como
+--              AGENDAMENTO.ID_TUTOR é NULLABLE (V1:269) isso derrubava o
+--              agendamento de vacina sem tutor. Corrigido para LEFT JOIN
+--              TUTOR: o agendamento sem tutor CONTINUA aparecendo
+--              (NM_TUTOR/DS_WHATSAPP nulos, ST_CONSENTE_LEMBRETE='N').
+--            • Exclusão de tutor inativo (pedido do backlog LU-02) só se
+--              aplica QUANDO existe tutor: `t.ID_TUTOR IS NULL OR
+--              t.ST_ATIVO='S'`.
+--            • Exclusão de pet inativo (pedido do backlog) sem mudança.
+--          1 linha por agendamento — AGENDAMENTO.ID_TUTOR já é o tutor único
+--          que agendou (ou nulo), sem fan-out via TUTOR_PET aqui.
+--
+--    Janela e DIAS_RESTANTES — RELÓGIO ÚNICO (achado 4/G2, corrigido):
+--    a versão original comparava a janela por INSTANTE
+--    (`>= CURRENT_TIMESTAMP`) e DIAS_RESTANTES por
+--    `DATEDIFF('DAY', CURRENT_TIMESTAMP, dt)` — o Oracle usava SYSDATE (fuso
+--    do SO do banco, UTC no container) enquanto este H2 usa o fuso da JVM,
+--    então as duas variantes podiam divergir (dose gravada à meia-noite do
+--    próprio dia saía da janela antes de DIAS_RESTANTES=0 ser alcançável, e
+--    o off-by-one diário entre 21h-24h BRT). Corrigido: uma ÚNICA referência
+--    de "hoje" por variante — aqui, `CURRENT_DATE` (já é a data civil no
+--    fuso da JVM, sem componente de hora) — usada tanto na janela quanto em
+--    DIAS_RESTANTES, e a janela compara DATA, não instante:
+--    `CAST(DT_PROXIMA_DOSE AS DATE) >= HOJE AND ... <= HOJE+30`. Com a JVM
+--    em America/Sao_Paulo (mesmo fuso do `kura-tutor` em produção — TASK-87),
+--    esta variante e a Oracle (SYSTIMESTAMP AT TIME ZONE
+--    'America/Sao_Paulo') dão o MESMO resultado nos casos medidos pela G2
+--    (hoje 00:00, dose já passada no dia, janela de 30 dias). Efeito: dose
+--    de hoje (qualquer hora) aparece com DIAS_RESTANTES=0; dose de ontem não
+--    aparece; dose em hoje+30 às 23:30 aparece com DIAS_RESTANTES=30 (antes
+--    sumia, por comparar instante em vez de data).
 --    Exclui pet inativo (PET.ST_ATIVO <> 'S') e tutor soft-deletado
---    (TUTOR.ST_ATIVO <> 'S') — nomes de coluna confirmados em V1
---    (não existe "deleted_at"; o padrão do schema é ST_ATIVO CHAR(1) S/N).
+--    (TUTOR.ST_ATIVO <> 'S', só quando há tutor) — nomes de coluna
+--    confirmados em V1 (não existe "deleted_at"; o padrão do schema é
+--    ST_ATIVO CHAR(1) S/N).
 --    NM_VACINA sai como VARCHAR2(200) nos dois lados do UNION (era
 --    VARCHAR2(30), vindo de AGENDAMENTO.DS_TIPO — G0 flagou que
 --    VACINA.NM_VACINA é VARCHAR2(200); widening em vez de truncar).
---    ST_CONSENTE_LEMBRETE: usa o registro mais recente de
---    CONSENTIMENTO(ID_TUTOR, DS_TIPO='LEMBRETES') por DT_ACEITE (pode haver
---    mais de um por tutor/tipo — histórico insert-only); 'S' só se esse
---    registro tiver ST_ACEITO='S' AND DT_REVOGACAO IS NULL, senão 'N'
---    (COALESCE cobre tutor sem nenhum consentimento LEMBRETES).
+--
+--    ST_CONSENTE_LEMBRETE (D-L4) — DESEMPATE CORRIGIDO (achado 3/G2): usa o
+--    registro mais recente de CONSENTIMENTO(ID_TUTOR, DS_TIPO='LEMBRETES')
+--    por DT_ACEITE (pode haver mais de um por tutor/tipo — histórico
+--    insert-only). Em caso de EMPATE de DT_ACEITE entre um aceite e uma
+--    revogação (mesmo instante — raro, mas possível), a versão original
+--    resolvia com MAX(CASE...'S'...) — 'S' > 'N' lexicamente, então o empate
+--    favorecia o ENVIO. Errado para LGPD: corrigido para MIN(CASE...), que
+--    escolhe 'N' no empate — a revogação vence. 'S' só se, dentre os
+--    registros empatados no DT_ACEITE mais recente, TODOS tiverem
+--    ST_ACEITO='S' AND DT_REVOGACAO IS NULL; qualquer um deles sendo
+--    recusa/revogação já derruba para 'N'. Sem tutor (ramo AGENDAMENTO com
+--    ID_TUTOR nulo) ou sem nenhum consentimento LEMBRETES → 'N' (COALESCE).
 --
 -- 2) NOTIFICACAO (.NET owns, criada em V9) ganha 6 colunas NULAS de envio
 --    (G0/N1 — a Luna hoje grava em colunas que não existem: ORA-00904):
@@ -55,14 +100,14 @@
 -- Variante H2 (MODE=Oracle) de
 -- db/migration-oracle/V21__vacinas_v2_notificacao_triagem_luna.sql.
 -- Só a view diverge de sintaxe entre os dois motores: Oracle usa
--- TRUNC(dt) - TRUNC(SYSDATE) para diferença em dias de calendário; aqui usa
--- DATEDIFF('DAY', t1, t2), que conta fronteiras de dia cruzadas (mesma
--- semântica de calendário, sem depender de TRUNC(timestamp) em H2). Os
--- grupos 2 e 3 seriam portáveis sozinhos (ALTER TABLE ADD de uma coluna por
--- vez + CHECK, já provado portável em V7/V8/V11/V16), mas nenhuma versão
--- pode conviver em db/migration/ e nos irmãos ao mesmo tempo (mesmo motivo
--- de V2/V3/V5/V12/V15/V17/V18) — por isso o arquivo inteiro é duplicado,
--- idêntico nos grupos 2/3, entre db/migration-oracle/ e esta pasta.
+-- SYSTIMESTAMP AT TIME ZONE 'America/Sao_Paulo' + TRUNC; H2 usa CURRENT_DATE
+-- (fuso da JVM — não há região IANA confiável em "AT TIME ZONE" no H2) +
+-- DATEDIFF. Os grupos 2 e 3 seriam portáveis sozinhos (ALTER TABLE ADD de
+-- uma coluna por vez + CHECK, já provado portável em V7/V8/V11/V16), mas
+-- nenhuma versão pode conviver em db/migration/ e nos irmãos ao mesmo tempo
+-- (mesmo motivo de V2/V3/V5/V12/V15/V17/V18) — por isso o arquivo inteiro é
+-- duplicado, idêntico nos grupos 2/3, entre db/migration-oracle/ e esta
+-- pasta.
 -- =============================================================================
 
 CREATE OR REPLACE VIEW VW_VACINAS_VENCENDO AS
@@ -76,11 +121,11 @@ SELECT
     cl.NM_CLINICA,
     t.NM_TUTOR,
     t.DS_WHATSAPP,
-    DATEDIFF('DAY', CURRENT_TIMESTAMP, v.DT_PROXIMA_DOSE) AS DIAS_RESTANTES,
+    DATEDIFF('DAY', CURRENT_DATE, CAST(v.DT_PROXIMA_DOSE AS DATE)) AS DIAS_RESTANTES,
     v.ID_VACINA,
     CAST('VACINA' AS VARCHAR2(20))                AS DS_ORIGEM,
     COALESCE((
-        SELECT MAX(CASE WHEN c.ST_ACEITO = 'S' AND c.DT_REVOGACAO IS NULL THEN 'S' ELSE 'N' END)
+        SELECT MIN(CASE WHEN c.ST_ACEITO = 'S' AND c.DT_REVOGACAO IS NULL THEN 'S' ELSE 'N' END)
         FROM   CONSENTIMENTO c
         WHERE  c.ID_TUTOR = t.ID_TUTOR
           AND  c.DS_TIPO  = 'LEMBRETES'
@@ -100,8 +145,8 @@ JOIN   CLINICA         cl ON cl.ID_CLINICA = ec.ID_CLINICA
 WHERE  p.ST_ATIVO = 'S'
   AND  t.ST_ATIVO = 'S'
   AND  v.DT_PROXIMA_DOSE IS NOT NULL
-  AND  v.DT_PROXIMA_DOSE >= CURRENT_TIMESTAMP
-  AND  v.DT_PROXIMA_DOSE <= CURRENT_TIMESTAMP + INTERVAL '30' DAY
+  AND  CAST(v.DT_PROXIMA_DOSE AS DATE) >= CURRENT_DATE
+  AND  CAST(v.DT_PROXIMA_DOSE AS DATE) <= DATEADD('DAY', 30, CURRENT_DATE)
 
 UNION ALL
 
@@ -115,11 +160,11 @@ SELECT
     cl.NM_CLINICA,
     t.NM_TUTOR,
     t.DS_WHATSAPP,
-    DATEDIFF('DAY', CURRENT_TIMESTAMP, a.DT_AGENDAMENTO)   AS DIAS_RESTANTES,
+    DATEDIFF('DAY', CURRENT_DATE, CAST(a.DT_AGENDAMENTO AS DATE)) AS DIAS_RESTANTES,
     CAST(NULL AS NUMBER(10))                      AS ID_VACINA,
     CAST('AGENDAMENTO' AS VARCHAR2(20))           AS DS_ORIGEM,
     COALESCE((
-        SELECT MAX(CASE WHEN c.ST_ACEITO = 'S' AND c.DT_REVOGACAO IS NULL THEN 'S' ELSE 'N' END)
+        SELECT MIN(CASE WHEN c.ST_ACEITO = 'S' AND c.DT_REVOGACAO IS NULL THEN 'S' ELSE 'N' END)
         FROM   CONSENTIMENTO c
         WHERE  c.ID_TUTOR = t.ID_TUTOR
           AND  c.DS_TIPO  = 'LEMBRETES'
@@ -133,16 +178,16 @@ SELECT
 FROM   AGENDAMENTO a
 JOIN   PET         p  ON p.ID_PET      = a.ID_PET
 JOIN   CLINICA     cl ON cl.ID_CLINICA = a.ID_CLINICA
-JOIN   TUTOR       t  ON t.ID_TUTOR    = a.ID_TUTOR
+LEFT JOIN TUTOR    t  ON t.ID_TUTOR    = a.ID_TUTOR
 WHERE  a.DS_TIPO    = 'VACINA'
   AND  a.ST_STATUS NOT IN ('CANCELADO','REALIZADO')
   AND  p.ST_ATIVO   = 'S'
-  AND  t.ST_ATIVO   = 'S'
-  AND  a.DT_AGENDAMENTO >= CURRENT_TIMESTAMP
-  AND  a.DT_AGENDAMENTO <= CURRENT_TIMESTAMP + INTERVAL '30' DAY;
+  AND  (t.ID_TUTOR IS NULL OR t.ST_ATIVO = 'S')
+  AND  CAST(a.DT_AGENDAMENTO AS DATE) >= CURRENT_DATE
+  AND  CAST(a.DT_AGENDAMENTO AS DATE) <= DATEADD('DAY', 30, CURRENT_DATE);
 
 COMMENT ON TABLE VW_VACINAS_VENCENDO IS
-    'v2 (V21/LU-02): UNION ALL de aplicação real (VACINA, via EVENTO_CLINICO/TUTOR_PET) + agendamento futuro (AGENDAMENTO, regra pré-V21 preservada). Pet com 2 tutores gera 2 linhas na origem VACINA (cada tutor é avisado). DIAS_RESTANTES em dias de calendário (TRUNC). Exclui pet inativo / tutor soft-deletado.';
+    'v2 (V21/LU-02, fix wave 1). UNION ALL de aplicação real (VACINA, via EVENTO_CLINICO/TUTOR_PET, fan-out por tutor) + agendamento futuro (AGENDAMENTO, LEFT JOIN TUTOR — agendamento sem tutor continua visível). DIAS_RESTANTES e janela usam a MESMA referencia de calendario (CURRENT_DATE, fuso da JVM). Empate de DT_ACEITE em ST_CONSENTE_LEMBRETE favorece revogacao (MIN). Exclui pet inativo / tutor soft-deletado (quando ha tutor).';
 
 -- ─── Grupo 2: NOTIFICACAO — colunas nulas de envio (.NET owns, G0/N1) ────────
 ALTER TABLE NOTIFICACAO ADD ID_PET NUMBER(10);

@@ -9,6 +9,7 @@ import br.com.clyvo.kura.tutor.timeline.api.dto.VacinaStatusResponse;
 import br.com.clyvo.kura.tutor.timeline.api.dto.VacinaVencendoResponse;
 import br.com.clyvo.kura.tutor.timeline.domain.TimelinePet;
 import br.com.clyvo.kura.tutor.timeline.domain.VacinaVencendo;
+import br.com.clyvo.kura.tutor.timeline.domain.VacinaVencendoId;
 import br.com.clyvo.kura.tutor.timeline.domain.repository.TimelinePetRepository;
 import br.com.clyvo.kura.tutor.timeline.domain.repository.VacinaVencendoRepository;
 import org.springframework.data.domain.Page;
@@ -16,8 +17,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class TimelineService {
@@ -80,7 +84,7 @@ public class TimelineService {
     @Transactional(readOnly = true)
     public List<VacinaVencendoResponse> listarVacinasPet(Long idPet, String emailAutenticado) {
         verificarVinculo(idPet, emailAutenticado);
-        return vacinaVencendoRepository.findByIdPet(idPet).stream()
+        return semDuplicatasDeTutor(vacinaVencendoRepository.findByIdPet(idPet)).stream()
                 .map(VacinaVencendoResponse::fromEntity)
                 .toList();
     }
@@ -89,7 +93,7 @@ public class TimelineService {
     @Transactional(readOnly = true)
     public VacinaStatusResponse statusVacinasPet(Long idPet, String emailAutenticado) {
         verificarVinculo(idPet, emailAutenticado);
-        List<VacinaVencendo> pendentes = vacinaVencendoRepository.findByIdPet(idPet);
+        List<VacinaVencendo> pendentes = semDuplicatasDeTutor(vacinaVencendoRepository.findByIdPet(idPet));
 
         var dtProximaDose = pendentes.stream()
                 .map(VacinaVencendo::getDtProximaDose)
@@ -99,6 +103,31 @@ public class TimelineService {
         String status = pendentes.isEmpty() ? "EM_DIA" : "ALERTA";
 
         return new VacinaStatusResponse(idPet, pendentes.size(), dtProximaDose, status);
+    }
+
+    /**
+     * LU-02 fix wave 1 (achado 1, G2 BLOQUEANTE). VW_VACINAS_VENCENDO v2 (V21) faz fan-out
+     * do ramo VACINA por TUTOR_PET: um pet com 2 tutores gera 2 linhas idênticas (mesma
+     * vacina/data, um ID_TUTOR por linha) — correto para a Luna avisar cada tutor, mas
+     * {@link #listarVacinasPet}/{@link #statusVacinasPet} são pet-scoped
+     * ({@code findByIdPet}, sem filtro de tutor) e {@link VacinaVencendoResponse} não expõe
+     * {@code idTutor} — a segunda linha é uma duplicata pura para quem lê esta lista.
+     * <p>
+     * Dedup pela chave da view (ID_PET, NM_VACINA, DT_PROXIMA_DOSE) em vez de filtrar por
+     * tutor autenticado: v1 (pré-V21, {@code findByIdPet} sem filtro de tutor) já mostrava a
+     * qualquer tutor do pet um agendamento de vacina de OUTRO tutor — inclusive o ramo
+     * AGENDAMENTO com {@code ID_TUTOR} nulo, que a V21 preserva via {@code LEFT JOIN TUTOR}.
+     * Filtrar por {@code ID_TUTOR} reintroduziria essa perda para todo tutor de um pet
+     * compartilhado. Dedup preserva a visibilidade pet-scoped de v1 e só remove linhas
+     * genuinamente idênticas.
+     */
+    private List<VacinaVencendo> semDuplicatasDeTutor(List<VacinaVencendo> vacinas) {
+        Map<VacinaVencendoId, VacinaVencendo> unicas = new LinkedHashMap<>();
+        for (VacinaVencendo v : vacinas) {
+            unicas.putIfAbsent(
+                    new VacinaVencendoId(v.getIdPet(), v.getNmVacina(), v.getDtProximaDose()), v);
+        }
+        return new ArrayList<>(unicas.values());
     }
 
     private void verificarVinculo(Long idPet, String emailAutenticado) {
