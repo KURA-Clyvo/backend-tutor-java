@@ -27,14 +27,13 @@
 --      (b) AGENDAMENTO (DS_TIPO='VACINA') — **DIFERENÇAS EXPLÍCITAS em
 --          relação à v1/V6** (achado 2/G2 — o comentário original desta
 --          migration alegava "preservada tal qual V6", o que era falso):
---            • v1 usava INNER JOIN TUTOR; AGENDAMENTO.ID_TUTOR é NULLABLE
---              (V1:269), então um agendamento de vacina sem tutor
---              desaparecia da v1... não: a v1/V6 NÃO fazia JOIN em TUTOR
---              nenhum (só PET/CLINICA) — quem introduziu o INNER JOIN TUTOR
---              foi a primeira versão desta V21, derrubando esse agendamento.
---              Esta versão corrige para LEFT JOIN TUTOR: o agendamento sem
---              tutor CONTINUA aparecendo (NM_TUTOR/DS_WHATSAPP nulos,
---              ST_CONSENTE_LEMBRETE='N' — ninguém para consentir).
+--            • v1/V6 não fazia JOIN em TUTOR nenhum (só PET/CLINICA); a
+--              primeira versão desta V21 introduziu INNER JOIN TUTOR, e como
+--              AGENDAMENTO.ID_TUTOR é NULLABLE (V1:269) isso derrubava o
+--              agendamento de vacina sem tutor. Corrigido para LEFT JOIN
+--              TUTOR: o agendamento sem tutor CONTINUA aparecendo
+--              (NM_TUTOR/DS_WHATSAPP nulos, ST_CONSENTE_LEMBRETE='N' —
+--              ninguém para consentir).
 --            • v1 não excluía tutor inativo (não tinha JOIN TUTOR); esta V21
 --              exclui (pedido explícito do backlog LU-02) — SÓ quando existe
 --              tutor: `t.ID_TUTOR IS NULL OR t.ST_ATIVO='S'`.

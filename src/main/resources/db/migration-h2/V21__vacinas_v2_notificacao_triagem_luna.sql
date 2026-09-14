@@ -51,14 +51,24 @@
 --    de "hoje" por variante — aqui, `CURRENT_DATE` (já é a data civil no
 --    fuso da JVM, sem componente de hora) — usada tanto na janela quanto em
 --    DIAS_RESTANTES, e a janela compara DATA, não instante:
---    `CAST(DT_PROXIMA_DOSE AS DATE) >= HOJE AND ... <= HOJE+30`. Com a JVM
---    em America/Sao_Paulo (mesmo fuso do `kura-tutor` em produção — TASK-87),
---    esta variante e a Oracle (SYSTIMESTAMP AT TIME ZONE
---    'America/Sao_Paulo') dão o MESMO resultado nos casos medidos pela G2
---    (hoje 00:00, dose já passada no dia, janela de 30 dias). Efeito: dose
---    de hoje (qualquer hora) aparece com DIAS_RESTANTES=0; dose de ontem não
---    aparece; dose em hoje+30 às 23:30 aparece com DIAS_RESTANTES=30 (antes
---    sumia, por comparar instante em vez de data).
+--    `TRUNC(DT_PROXIMA_DOSE) >= HOJE AND ... <= HOJE+30`.
+--    FIX WAVE 2 (achado IMPORTANTE da re-G2, lu-02-revisao.md §Re-G2): a fix
+--    wave 1 usava `CAST(dt AS DATE)` aqui, e em H2 2.2.224 `MODE=Oracle`
+--    `CAST(timestamp AS DATE)` PRESERVA a hora (medido:
+--    `CAST(TIMESTAMP '2026-10-14 23:30:00' AS DATE)` = `2026-10-14 23:30:00`,
+--    não meia-noite) — diferente do Oracle, onde `DATE` sempre trunca. Isso
+--    fazia uma dose em `hoje+30` com hora > 00:00 SAIR da janela no H2 e
+--    CONTINUAR dentro no Oracle (DIAS_RESTANTES=30). Trocado para
+--    `TRUNC(dt)`, que no H2 zera a hora como no Oracle (medido:
+--    `TRUNC(TIMESTAMP '2026-10-14 23:30:00')` = `2026-10-14 00:00:00`).
+--    Com a JVM em America/Sao_Paulo (mesmo fuso do `kura-tutor` em produção
+--    — TASK-87), esta variante e a Oracle (SYSTIMESTAMP AT TIME ZONE
+--    'America/Sao_Paulo' + TRUNC) dão o MESMO resultado nos casos provados
+--    por `VacinasVencendoV21JanelaH2Test` (hoje 00:00, dose já passada no
+--    dia, ontem, hoje+30 com hora, hoje+31). Efeito: dose de hoje (qualquer
+--    hora) aparece com DIAS_RESTANTES=0; dose de ontem não aparece; dose em
+--    hoje+30 às 23:30 aparece com DIAS_RESTANTES=30; dose em hoje+31 00:00
+--    não aparece.
 --    Exclui pet inativo (PET.ST_ATIVO <> 'S') e tutor soft-deletado
 --    (TUTOR.ST_ATIVO <> 'S', só quando há tutor) — nomes de coluna
 --    confirmados em V1 (não existe "deleted_at"; o padrão do schema é
@@ -121,7 +131,7 @@ SELECT
     cl.NM_CLINICA,
     t.NM_TUTOR,
     t.DS_WHATSAPP,
-    DATEDIFF('DAY', CURRENT_DATE, CAST(v.DT_PROXIMA_DOSE AS DATE)) AS DIAS_RESTANTES,
+    DATEDIFF('DAY', CURRENT_DATE, TRUNC(v.DT_PROXIMA_DOSE)) AS DIAS_RESTANTES,
     v.ID_VACINA,
     CAST('VACINA' AS VARCHAR2(20))                AS DS_ORIGEM,
     COALESCE((
@@ -145,8 +155,8 @@ JOIN   CLINICA         cl ON cl.ID_CLINICA = ec.ID_CLINICA
 WHERE  p.ST_ATIVO = 'S'
   AND  t.ST_ATIVO = 'S'
   AND  v.DT_PROXIMA_DOSE IS NOT NULL
-  AND  CAST(v.DT_PROXIMA_DOSE AS DATE) >= CURRENT_DATE
-  AND  CAST(v.DT_PROXIMA_DOSE AS DATE) <= DATEADD('DAY', 30, CURRENT_DATE)
+  AND  TRUNC(v.DT_PROXIMA_DOSE) >= CURRENT_DATE
+  AND  TRUNC(v.DT_PROXIMA_DOSE) <= DATEADD('DAY', 30, CURRENT_DATE)
 
 UNION ALL
 
@@ -160,7 +170,7 @@ SELECT
     cl.NM_CLINICA,
     t.NM_TUTOR,
     t.DS_WHATSAPP,
-    DATEDIFF('DAY', CURRENT_DATE, CAST(a.DT_AGENDAMENTO AS DATE)) AS DIAS_RESTANTES,
+    DATEDIFF('DAY', CURRENT_DATE, TRUNC(a.DT_AGENDAMENTO)) AS DIAS_RESTANTES,
     CAST(NULL AS NUMBER(10))                      AS ID_VACINA,
     CAST('AGENDAMENTO' AS VARCHAR2(20))           AS DS_ORIGEM,
     COALESCE((
@@ -183,11 +193,11 @@ WHERE  a.DS_TIPO    = 'VACINA'
   AND  a.ST_STATUS NOT IN ('CANCELADO','REALIZADO')
   AND  p.ST_ATIVO   = 'S'
   AND  (t.ID_TUTOR IS NULL OR t.ST_ATIVO = 'S')
-  AND  CAST(a.DT_AGENDAMENTO AS DATE) >= CURRENT_DATE
-  AND  CAST(a.DT_AGENDAMENTO AS DATE) <= DATEADD('DAY', 30, CURRENT_DATE);
+  AND  TRUNC(a.DT_AGENDAMENTO) >= CURRENT_DATE
+  AND  TRUNC(a.DT_AGENDAMENTO) <= DATEADD('DAY', 30, CURRENT_DATE);
 
 COMMENT ON TABLE VW_VACINAS_VENCENDO IS
-    'v2 (V21/LU-02, fix wave 1). UNION ALL de aplicação real (VACINA, via EVENTO_CLINICO/TUTOR_PET, fan-out por tutor) + agendamento futuro (AGENDAMENTO, LEFT JOIN TUTOR — agendamento sem tutor continua visível). DIAS_RESTANTES e janela usam a MESMA referencia de calendario (CURRENT_DATE, fuso da JVM). Empate de DT_ACEITE em ST_CONSENTE_LEMBRETE favorece revogacao (MIN). Exclui pet inativo / tutor soft-deletado (quando ha tutor).';
+    'v2 (V21/LU-02, fix wave 2). UNION ALL de aplicação real (VACINA, via EVENTO_CLINICO/TUTOR_PET, fan-out por tutor) + agendamento futuro (AGENDAMENTO, LEFT JOIN TUTOR — agendamento sem tutor continua visível). DIAS_RESTANTES e janela usam a MESMA referencia de calendario (CURRENT_DATE + TRUNC, fuso da JVM). Empate de DT_ACEITE em ST_CONSENTE_LEMBRETE favorece revogacao (MIN). Exclui pet inativo / tutor soft-deletado (quando ha tutor).';
 
 -- ─── Grupo 2: NOTIFICACAO — colunas nulas de envio (.NET owns, G0/N1) ────────
 ALTER TABLE NOTIFICACAO ADD ID_PET NUMBER(10);
