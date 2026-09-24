@@ -20,11 +20,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * aplicou V1..V22 (variante -h2 + os arquivos comuns de {@code db/migration}) antes de
  * qualquer teste rodar.
  *
- * <p>Sem o arquivo {@code V22__pet_foto.sql}, TODOS os testes desta classe falham — não com
- * assertion, com {@link org.springframework.jdbc.BadSqlGrammarException} ("column not found") —
- * porque as duas colunas simplesmente não existem no schema. Essa é a mordida exigida pelo
- * brief: reverter a migration (ou renomeá-la para fora de {@code db/migration/}) faz a suíte
- * cair na hora de compilar o INSERT/SELECT, não na asserção.
+ * <p>Sem o arquivo {@code V22__pet_foto.sql}, os 5 testes desta classe falham: os 2 de
+ * {@code INFORMATION_SCHEMA} por assertion (coluna não encontrada), os 2 de escrita por
+ * {@link org.springframework.jdbc.BadSqlGrammarException} ("column not found") e o de pet sem
+ * foto por {@code containsKey} — um {@code Map.get} de coluna ausente devolveria {@code null}
+ * e passaria sem a migration (achado F1-a da G2).
  *
  * <p>O que esta classe PROVA: as 2 colunas existem, são nullable, e aceitam gravação/leitura
  * de valor real (chave no formato do G0, timestamp). O que ela NÃO prova: nada sobre Oracle
@@ -85,6 +85,8 @@ class PetFotoV22MigrationTest {
         long idPet = plantarPetSemFoto(idClinica, idEspecie, "Rex sem foto");
 
         Map<String, Object> pet = petPorId(idPet);
+        // containsKey primeiro: sem a V22, get() de coluna ausente também devolve null.
+        assertThat(pet).containsKey("DS_FOTO_CHAVE").containsKey("DT_FOTO_ATUALIZACAO");
         assertThat(pet.get("DS_FOTO_CHAVE")).isNull();
         assertThat(pet.get("DT_FOTO_ATUALIZACAO")).isNull();
     }
