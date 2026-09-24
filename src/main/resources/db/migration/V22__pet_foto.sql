@@ -12,8 +12,9 @@
 -- de chave relativa -- ver G0 item 2).
 --
 -- DS_FOTO_CHAVE VARCHAR2(500): formato proposto
--- clinica/{idClinica}/pet/{idPet}/{uuid} (chave BASE relativa;
--- as variantes sao derivadas: {chave}_256.webp e {chave}_1080.webp -- regra A2). Mesmo
+-- clinica/{idClinica}/pet/{idPet}/{uuid}.{ext} (chave relativa; ext = webp,
+-- jpg ou png, detectado pelos magic bytes no upload; as variantes sao
+-- derivadas: {uuid}_256.{ext} e {uuid}_1080.{ext} -- regra A2, ruling F7-a). Mesmo
 -- tamanho de DOCUMENTO.DS_CAMINHO (V9__schema_drift_clinico.sql:193), que já
 -- provou ser suficiente para path de arquivo. Nullable: pet sem foto
 -- continua existindo (maioria dos pets, no dia da demo) -- fallback é o
@@ -43,5 +44,5 @@ ALTER TABLE PET
 ALTER TABLE PET
     ADD DT_FOTO_ATUALIZACAO TIMESTAMP;
 
-COMMENT ON COLUMN PET.DS_FOTO_CHAVE IS 'Chave relativa do arquivo de foto no armazenamento externo (nunca o binário, nunca a URL) -- formato clinica/{idClinica}/pet/{idPet}/{uuid} (chave base; variantes {chave}_256.webp e {chave}_1080.webp). Nullable: pet sem foto usa o avatar ilustrado. Gravada pelo backend-clinica-dotnet (FT-03); o backend-tutor-java só lê, para derivar a URL assinada (FT-05).';
+COMMENT ON COLUMN PET.DS_FOTO_CHAVE IS 'Chave relativa do arquivo de foto no armazenamento externo (nunca o binário, nunca a URL) -- formato clinica/{idClinica}/pet/{idPet}/{uuid}.{ext} (ext webp, jpg ou png; variantes derivadas {uuid}_256.{ext} e {uuid}_1080.{ext}). Nullable: pet sem foto usa o avatar ilustrado. Gravada pelo backend-clinica-dotnet (FT-03); o backend-tutor-java só lê, para derivar a URL assinada (FT-05).';
 COMMENT ON COLUMN PET.DT_FOTO_ATUALIZACAO IS 'Timestamp da última troca/upload de foto. Nullable até o primeiro upload.';
