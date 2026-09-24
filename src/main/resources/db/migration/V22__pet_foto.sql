@@ -12,7 +12,8 @@
 -- de chave relativa -- ver G0 item 2).
 --
 -- DS_FOTO_CHAVE VARCHAR2(500): formato proposto
--- clinica/{idClinica}/pet/{idPet}/{uuid}.webp (chave relativa). Mesmo
+-- clinica/{idClinica}/pet/{idPet}/{uuid} (chave BASE relativa;
+-- as variantes sao derivadas: {chave}_256.webp e {chave}_1080.webp -- regra A2). Mesmo
 -- tamanho de DOCUMENTO.DS_CAMINHO (V9__schema_drift_clinico.sql:193), que já
 -- provou ser suficiente para path de arquivo. Nullable: pet sem foto
 -- continua existindo (maioria dos pets, no dia da demo) -- fallback é o
@@ -32,8 +33,8 @@
 -- Ownership: PET é tabela .NET-owned (Flyway continua sendo a única
 -- autoridade de DDL). Quem GRAVA a foto é o backend-clinica-dotnet (FT-03).
 -- O backend-tutor-java só LÊ estas 2 colunas -- Pet.java continua anotado
--- @Immutable (FT-07) -- para derivar a URL assinada exposta ao tutor, com a
--- MESMA fórmula de assinatura usada pelo .NET (âncora obrigatória na FT-07).
+-- @Immutable (FT-05) -- para derivar a URL assinada exposta ao tutor, com a
+-- MESMA fórmula de assinatura usada pelo .NET (âncora obrigatória na FT-05).
 -- =============================================================================
 
 ALTER TABLE PET
@@ -42,5 +43,5 @@ ALTER TABLE PET
 ALTER TABLE PET
     ADD DT_FOTO_ATUALIZACAO TIMESTAMP;
 
-COMMENT ON COLUMN PET.DS_FOTO_CHAVE IS 'Chave relativa do arquivo de foto no armazenamento externo (nunca o binário, nunca a URL) -- formato clinica/{idClinica}/pet/{idPet}/{uuid}.webp. Nullable: pet sem foto usa o avatar ilustrado. Gravada pelo backend-clinica-dotnet (FT-03); o backend-tutor-java só lê, para derivar a URL assinada (FT-07).';
+COMMENT ON COLUMN PET.DS_FOTO_CHAVE IS 'Chave relativa do arquivo de foto no armazenamento externo (nunca o binário, nunca a URL) -- formato clinica/{idClinica}/pet/{idPet}/{uuid} (chave base; variantes {chave}_256.webp e {chave}_1080.webp). Nullable: pet sem foto usa o avatar ilustrado. Gravada pelo backend-clinica-dotnet (FT-03); o backend-tutor-java só lê, para derivar a URL assinada (FT-05).';
 COMMENT ON COLUMN PET.DT_FOTO_ATUALIZACAO IS 'Timestamp da última troca/upload de foto. Nullable até o primeiro upload.';
