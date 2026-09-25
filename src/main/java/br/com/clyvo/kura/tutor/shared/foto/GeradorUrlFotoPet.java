@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>Mesmo algoritmo do .NET</b> (ver {@link AssinadorUrlFotoHmac} e {@link ChaveFotoPet}
  * para as âncoras). Formato da URL, espelhando {@code GeradorUrlFotoPet.cs} do
- * {@code backend-clinica-dotnet} ({@code main} @ {@code 5adb9e5}, linhas 47-61):
+ * {@code backend-clinica-dotnet} ({@code main} @ {@code 5adb9e5}, linhas 47-61, conferido em
+ * 2026-09-25; reproduzir com {@code git -C backend-clinica-dotnet show
+ * 5adb9e5:src/Kura.Api/Services/GeradorUrlFotoPet.cs}):
  * {@code {base}/api/v1/fotos/{chaveVariante}?exp={exp}&sig={sig}}.
  *
  * <p><b>Diferença deliberada em relação ao .NET (decisão do maestro, brief FT-05):</b> o .NET

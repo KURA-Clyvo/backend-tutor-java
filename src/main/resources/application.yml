@@ -61,7 +61,7 @@ kura:
     # com o backend-clinica-dotnet via a MESMA variável de ambiente (FT-06) — precisa ter
     # ao menos 32 bytes UTF-8, senão é tratado como ausente.
     url-secret: ${FOTO_URL_SECRET:}
-    # A origem HTTPS que os apps alcançam (igual ao Java/.NET — achado F-P1 do G2 da
+    # A origem HTTPS que os apps alcançam (a MESMA do Foto__UrlBase do .NET — achado F-P1 do G2 da
     # FT-04) — NUNCA o endereço interno do .NET. Sem fallback derivado de request (o
     # Java não é o host da foto, ao contrário do .NET).
     url-base: ${FOTO_URL_BASE:}

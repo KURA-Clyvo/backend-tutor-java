@@ -39,7 +39,7 @@ import javax.crypto.spec.SecretKeySpec;
  * assinatura no {@code Validar} (base64 com padding, alfabeto misto {@code +}/{@code -},
  * {@code /}/{@code _}, e os 2 bits sem uso do 43º caractere). Como este lado não implementa
  * {@code Validar}, o achado F3-a ("comparar bytes, não strings") não se aplica a esta classe —
- * ele só importaria se este lado also comparasse uma {@code sig} recebida contra uma calculada,
+ * ele só importaria se este lado também comparasse uma {@code sig} recebida contra uma calculada,
  * o que nunca acontece aqui.
  */
 public final class AssinadorUrlFotoHmac {
