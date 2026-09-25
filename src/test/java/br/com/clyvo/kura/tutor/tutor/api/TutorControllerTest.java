@@ -64,8 +64,9 @@ class TutorControllerTest {
     @DisplayName("getPetsDeTutorPropriosDeveRetornar200")
     @WithMockUser(username = EMAIL)
     void getPetsDeTutorPropriosDeveRetornar200() throws Exception {
+        // FT-05: dsFotoThumbUrl é o único campo de foto do DTO de LISTA (regra A5).
         PetResponse pet = new PetResponse(
-                1L, "Rex", "Cachorro", "SRD", "M", LocalDate.of(2020, 3, 15), "M");
+                1L, "Rex", "Cachorro", "SRD", "M", LocalDate.of(2020, 3, 15), "M", null);
         Page<PetResponse> page = new PageImpl<>(List.of(pet));
 
         when(tutorService.listarPets(eq(ID_PROPRIO), eq(EMAIL), any(Pageable.class)))
