@@ -1,6 +1,8 @@
 package br.com.clyvo.kura.tutor.tutor.api.dto;
 
 import br.com.clyvo.kura.tutor.entity.Pet;
+import br.com.clyvo.kura.tutor.shared.foto.ChaveFotoPet;
+import br.com.clyvo.kura.tutor.shared.foto.GeradorUrlFotoPet;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDate;
@@ -20,9 +22,18 @@ public record PetDetalheResponse(
         @Schema(description = "Veterinário responsável — null se não atribuído", example = "Dra. Ana Souza")
                 String nmVeterinarioResponsavel,
         @Schema(description = "Quantidade de eventos na timeline (VW_TIMELINE_PET)", example = "5")
-                long nrConsultas
+                long nrConsultas,
+        // FT-05 (KURA_BACKLOG_FOTO_PET): DTO de DETALHE ganha as 2 variantes (regra A5 do
+        // backlog — só a lista fica restrita à thumb). Null nos 2 quando o pet não tem foto
+        // OU quando a assinatura de URL está desabilitada.
+        @Schema(description = "URL assinada da foto em tamanho de detalhe (1080px) — null sem foto",
+                example = "https://kura-clinica.example/api/v1/fotos/clinica/1/pet/2/abc_1080.webp?exp=...&sig=...")
+                String dsFotoUrl,
+        @Schema(description = "URL assinada da foto em miniatura (256px) — null sem foto",
+                example = "https://kura-clinica.example/api/v1/fotos/clinica/1/pet/2/abc_256.webp?exp=...&sig=...")
+                String dsFotoThumbUrl
 ) {
-    public static PetDetalheResponse fromEntity(Pet p, long nrConsultas) {
+    public static PetDetalheResponse fromEntity(Pet p, long nrConsultas, GeradorUrlFotoPet geradorUrlFotoPet) {
         return new PetDetalheResponse(
                 p.getIdPet(),
                 p.getNmPet(),
@@ -33,7 +44,9 @@ public record PetDetalheResponse(
                 p.getSgPorte(),
                 p.getClinica() != null ? p.getClinica().getNmClinica() : null,
                 p.getVeterinarioResponsavel() != null ? p.getVeterinarioResponsavel().getNmVeterinario() : null,
-                nrConsultas
+                nrConsultas,
+                geradorUrlFotoPet.gerarUrl(p.getDsFotoChave(), ChaveFotoPet.SUFIXO_MEDIA),
+                geradorUrlFotoPet.gerarUrl(p.getDsFotoChave(), ChaveFotoPet.SUFIXO_THUMB)
         );
     }
 }

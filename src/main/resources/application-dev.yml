@@ -45,6 +45,15 @@ kura:
   jwt:
     # Fallback local — NÃO usar em produção. Mínimo 64 bytes em prod (exigência HS512).
     secret: ${JWT_SECRET:dev-secret-trocar-em-prod-com-no-minimo-64-bytes-gerado-localmente-aqui}
+  foto:
+    # FT-05. Valor de desenvolvimento (48 bytes UTF-8, >= 32) — habilita as URLs por
+    # padrão neste profile, sem exigir configuração extra para rodar a suíte/local.
+    # Em compose, a FT-06 injeta a MESMA env var nos 2 serviços (.NET e Java).
+    url-secret: ${FOTO_URL_SECRET:dev-segredo-foto-pet-compartilhado-32-bytes-ok!!}
+    # Porta 8080 = onde o backend-clinica-dotnet (dono do endpoint /api/v1/fotos/...)
+    # escuta localmente (CLAUDE.md, tabela de portas). Só um valor de conveniência para
+    # dev/teste local — em compose/Azure a FT-06 injeta a origem real (achado F-P1).
+    url-base: ${FOTO_URL_BASE:http://localhost:8080}
 
 logging:
   level:

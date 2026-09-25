@@ -72,7 +72,11 @@ class TutorBffControllerTest {
     @DisplayName("GET /v1/tutor/pets com JWT válido retorna 200 com lista de pets")
     @WithMockUser(username = EMAIL)
     void listarPets_comJwt_retorna200() throws Exception {
-        PetResponse pet = new PetResponse(1L, "Rex", "Cachorro", "SRD", "M", LocalDate.of(2020, 3, 15), "M");
+        // FT-05: dsFotoThumbUrl é o único campo de foto do DTO de LISTA (regra A5) — valor
+        // de exemplo só para provar que o nome do campo serializa; a lógica de GERAR a URL
+        // é exercitada por GeradorUrlFotoPetTest/PetFotoUrlDtoTest, não aqui (service mockado).
+        PetResponse pet = new PetResponse(1L, "Rex", "Cachorro", "SRD", "M", LocalDate.of(2020, 3, 15), "M",
+                "https://kura-clinica.example/api/v1/fotos/clinica/1/pet/1/abc_256.webp?exp=1&sig=xyz");
         Page<PetResponse> page = new PageImpl<>(List.of(pet));
 
         when(contaTutorRepository.findIdTutorByEmail(EMAIL)).thenReturn(Optional.of(ID_TUTOR));
@@ -82,6 +86,8 @@ class TutorBffControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].idPet").value(1))
                 .andExpect(jsonPath("$.content[0].nmPet").value("Rex"))
+                .andExpect(jsonPath("$.content[0].dsFotoThumbUrl")
+                        .value("https://kura-clinica.example/api/v1/fotos/clinica/1/pet/1/abc_256.webp?exp=1&sig=xyz"))
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
@@ -112,9 +118,12 @@ class TutorBffControllerTest {
     @DisplayName("GET /v1/tutor/pets/{id} com JWT válido retorna 200 com detalhe do pet")
     @WithMockUser(username = EMAIL)
     void detalharPet_comJwt_retorna200() throws Exception {
+        // FT-05: DTO de DETALHE ganha as 2 variantes (dsFotoUrl 1080 + dsFotoThumbUrl 256).
         PetDetalheResponse detalhe = new PetDetalheResponse(
                 1L, "Rex", "Cachorro", "SRD", "M", LocalDate.of(2020, 3, 15), "M",
-                "Clyvo Vet São Paulo", "Dra. Ana Souza", 3L);
+                "Clyvo Vet São Paulo", "Dra. Ana Souza", 3L,
+                "https://kura-clinica.example/api/v1/fotos/clinica/1/pet/1/abc_1080.webp?exp=1&sig=xyz",
+                "https://kura-clinica.example/api/v1/fotos/clinica/1/pet/1/abc_256.webp?exp=1&sig=xyz");
 
         when(tutorService.buscarPetDetalhe(eq(1L), eq(EMAIL))).thenReturn(detalhe);
 
@@ -122,7 +131,11 @@ class TutorBffControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idPet").value(1))
                 .andExpect(jsonPath("$.nmPet").value("Rex"))
-                .andExpect(jsonPath("$.nrConsultas").value(3));
+                .andExpect(jsonPath("$.nrConsultas").value(3))
+                .andExpect(jsonPath("$.dsFotoUrl")
+                        .value("https://kura-clinica.example/api/v1/fotos/clinica/1/pet/1/abc_1080.webp?exp=1&sig=xyz"))
+                .andExpect(jsonPath("$.dsFotoThumbUrl")
+                        .value("https://kura-clinica.example/api/v1/fotos/clinica/1/pet/1/abc_256.webp?exp=1&sig=xyz"));
     }
 
     @Test

@@ -7,6 +7,7 @@ import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.repository.TutorRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
+import br.com.clyvo.kura.tutor.shared.foto.GeradorUrlFotoPet;
 import br.com.clyvo.kura.tutor.timeline.domain.repository.TimelinePetRepository;
 import br.com.clyvo.kura.tutor.tutor.api.dto.PetDetalheResponse;
 import br.com.clyvo.kura.tutor.tutor.api.dto.PetResponse;
@@ -29,15 +30,18 @@ public class TutorService {
     private final PetRepository petRepository;
     private final ContaTutorRepository contaTutorRepository;
     private final TimelinePetRepository timelinePetRepository;
+    private final GeradorUrlFotoPet geradorUrlFotoPet;
 
     public TutorService(TutorRepository tutorRepository,
                         PetRepository petRepository,
                         ContaTutorRepository contaTutorRepository,
-                        TimelinePetRepository timelinePetRepository) {
+                        TimelinePetRepository timelinePetRepository,
+                        GeradorUrlFotoPet geradorUrlFotoPet) {
         this.tutorRepository = tutorRepository;
         this.petRepository = petRepository;
         this.contaTutorRepository = contaTutorRepository;
         this.timelinePetRepository = timelinePetRepository;
+        this.geradorUrlFotoPet = geradorUrlFotoPet;
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +75,7 @@ public class TutorService {
                 : pageable;
 
         return petRepository.findAtivosByIdTutor(idTutor, efetivo)
-                .map(PetResponse::fromEntity);
+                .map(p -> PetResponse.fromEntity(p, geradorUrlFotoPet));
     }
 
     /**
@@ -93,7 +97,7 @@ public class TutorService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pet", idPet));
 
         long nrConsultas = timelinePetRepository.countByIdPet(idPet);
-        return PetDetalheResponse.fromEntity(pet, nrConsultas);
+        return PetDetalheResponse.fromEntity(pet, nrConsultas, geradorUrlFotoPet);
     }
 
     @Transactional

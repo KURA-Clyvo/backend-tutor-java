@@ -54,3 +54,15 @@ kura:
     # consecutivas — defesa anti-brute-force, não deve ser permanente. Passada
     # esta janela, o próximo login zera o contador e destranca a conta.
     janela-bloqueio-minutos: ${AUTH_JANELA_BLOQUEIO_MINUTOS:15}
+  foto:
+    # FT-05 (KURA_BACKLOG_FOTO_PET). Default vazio de propósito nos 3: GeradorUrlFotoPet
+    # NÃO falha sem eles (decisão do maestro) — dsFotoUrl/dsFotoThumbUrl saem null e o app
+    # usa a ilustração padrão; um único WARN é logado na partida. Segredo compartilhado
+    # com o backend-clinica-dotnet via a MESMA variável de ambiente (FT-06) — precisa ter
+    # ao menos 32 bytes UTF-8, senão é tratado como ausente.
+    url-secret: ${FOTO_URL_SECRET:}
+    # A origem HTTPS que os apps alcançam (igual ao Java/.NET — achado F-P1 do G2 da
+    # FT-04) — NUNCA o endereço interno do .NET. Sem fallback derivado de request (o
+    # Java não é o host da foto, ao contrário do .NET).
+    url-base: ${FOTO_URL_BASE:}
+    url-validade-horas: ${FOTO_URL_VALIDADE_HORAS:24}
