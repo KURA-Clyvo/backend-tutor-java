@@ -4,11 +4,24 @@
 -- confirmacao D-1 (A-10) e PK unica por SEQ_AGENDAMENTO (A-4 - fecha a "estrategia dupla" que a V12 deixou).
 -- Todas as colunas TIMESTAMP novas guardam hora LOCAL de America/Sao_Paulo (F-4 / A-5), como DT_AGENDAMENTO.
 --
--- PRE-CONDICAO (rodar ANTES em base com dado acumulado; tem de devolver 0 linhas):
+-- PRE-CONDICAO 1 (rodar ANTES em base com dado acumulado; tem de devolver 0 linhas):
 --   SELECT DS_ORIGEM, COUNT(*) FROM AGENDAMENTO
 --    WHERE DS_ORIGEM NOT IN ('PORTAL','RECEPCAO','TRIAGEM_LUNA') GROUP BY DS_ORIGEM;
 --   Controle positivo obrigatorio: SELECT DS_ORIGEM, COUNT(*) FROM AGENDAMENTO GROUP BY DS_ORIGEM (tem de listar PORTAL).
 --   Medido no compose em 2026-09-26: PORTAL 10, nenhum outro valor.
+--
+-- PRE-CONDICAO 2 (m2 da revisao G2 / g2-rec07.md M5 - residuo da IDENTITY antiga, G0 item 1):
+--   se algum insert historico usou a IDENTITY sem id explicito, o proximo valor de
+--   SEQ_AGENDAMENTO pode ja ter sido ocupado por ela - o ORA-00001 so apareceria DEPOIS, em
+--   runtime, quando a sequence alcancasse esse id (teorico nesta base: nenhum insert de producao
+--   usa a IDENTITY sem id - ver g2-rec07.md M5). Verificar ANTES de aplicar:
+--     SELECT MAX(ID_AGENDAMENTO) FROM AGENDAMENTO;                                            -- MX
+--     SELECT LAST_NUMBER - CACHE_SIZE FROM USER_SEQUENCES
+--      WHERE SEQUENCE_NAME = 'SEQ_AGENDAMENTO';                                                -- PISO
+--   MX tem de ser MENOR que PISO; senao, avancar a sequence (SELECT SEQ_AGENDAMENTO.NEXTVAL
+--   repetidas vezes ate passar de MX) antes de aplicar esta migration.
+--   Controle positivo (a mesma consulta MAX enxerga dado real, nao 0 por tabela vazia):
+--     SELECT COUNT(*) FROM AGENDAMENTO; -- tem de ser > 0 nesta base (G0/G2 mediram 10).
 -- Split: o H2 nao aceita MODIFY (col DROP IDENTITY) - variante em db/migration-h2/V23__agendamento_recepcao.sql.
 -- =============================================================================
 
@@ -43,7 +56,7 @@ ALTER TABLE AGENDAMENTO MODIFY (ID_AGENDAMENTO DEFAULT SEQ_AGENDAMENTO.NEXTVAL);
 
 -- 5. Contrato da tabela compartilhada.
 COMMENT ON TABLE AGENDAMENTO IS
-    'Shared-write. Java cria (DS_ORIGEM=PORTAL), confirma e cancela. .NET cria (RECEPCAO / TRIAGEM_LUNA), muda ST_STATUS pela maquina de estados, grava DT_CHECKIN / DT_INICIO_ATENDIMENTO e a confirmacao D-1. Toda escrita incrementa NR_VERSION. PK unica: SEQ_AGENDAMENTO. Horarios em hora local America/Sao_Paulo.';
+    'Shared-write. Java cria (DS_ORIGEM=PORTAL), remarca e cancela. .NET cria (RECEPCAO / TRIAGEM_LUNA), muda ST_STATUS pela maquina de estados, grava DT_CHECKIN / DT_INICIO_ATENDIMENTO e a confirmacao D-1. Toda escrita incrementa NR_VERSION. PK unica: SEQ_AGENDAMENTO. Horarios em hora local America/Sao_Paulo.';
 COMMENT ON COLUMN AGENDAMENTO.DS_ORIGEM               IS 'PORTAL (app do tutor) | RECEPCAO | TRIAGEM_LUNA. Registrada so para frente (R5).';
 COMMENT ON COLUMN AGENDAMENTO.DT_CHECKIN              IS 'Chegada do paciente (hora local SP). Nao e ST_STATUS (A-2).';
 COMMENT ON COLUMN AGENDAMENTO.DT_INICIO_ATENDIMENTO   IS 'Inicio do atendimento (hora local SP). Nao e ST_STATUS (A-2).';
