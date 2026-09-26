@@ -54,7 +54,7 @@ public class Agendamento {
     @Column(name = "DS_TIPO", length = 30)
     private String dsTipoConsulta;
 
-    @Column(name = "DS_ORIGEM", length = 100)
+    @Column(name = "DS_ORIGEM", length = 20)
     private String dsOrigem = "PORTAL";
 
     @Column(name = "DS_OBSERVACOES", length = 1000)
@@ -73,7 +73,12 @@ public class Agendamento {
     @Column(name = "DS_MOTIVO_CANCEL", length = 500)
     private String dsMotivoCancel;
 
-    /** Preenchido pelo .NET quando ST_STATUS=REALIZADO */
+    /**
+     * Vínculo com o evento clínico gerado no `.NET`. Nenhum código do `.NET` preenche esta
+     * coluna hoje (G0 item 8, ciclo KURA_BACKLOG_RECEPCAO): a consulta não recebe
+     * {@code idAgendamento} e {@code ID_EVENTO_GERADO} está sempre {@code NULL} em produção
+     * — a coluna existe, o produtor não. Não prometer o que o código não faz.
+     */
     @Column(name = "ID_EVENTO_GERADO")
     private Long idEventoGerado;
 
