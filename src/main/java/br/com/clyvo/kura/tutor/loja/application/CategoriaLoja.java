@@ -6,5 +6,15 @@ public enum CategoriaLoja {
     ALIMENTACAO,
     HIGIENE,
     ACESSORIOS,
-    BRINQUEDOS
+    BRINQUEDOS;
+
+    /** Conversão tolerante: valor ausente ou fora do enum vira vazio, sem lançar nem vazar nome de classe. */
+    public static java.util.Optional<CategoriaLoja> tentar(String valor) {
+        for (CategoriaLoja c : values()) {
+            if (c.name().equals(valor)) {
+                return java.util.Optional.of(c);
+            }
+        }
+        return java.util.Optional.empty();
+    }
 }

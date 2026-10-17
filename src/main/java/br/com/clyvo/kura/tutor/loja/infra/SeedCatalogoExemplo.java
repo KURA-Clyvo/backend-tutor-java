@@ -10,7 +10,6 @@ import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -19,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Seed idempotente do catálogo (D-LOJA-5, D-LOJA-10): upsert por slug, só itens exemplo=true.
@@ -28,6 +28,8 @@ import java.util.Map;
 public class SeedCatalogoExemplo {
 
     static final String ARQUIVO_SEED = "mongo/catalogo_loja.seed.json";
+
+    private static final Set<String> CAMPOS_EDITORIAIS = Set.of("ativo", "ordem");
 
     private final MongoDatabase database;
 
@@ -44,31 +46,43 @@ public class SeedCatalogoExemplo {
             if (!Boolean.TRUE.equals(item.getBoolean("exemplo"))) {
                 throw new IllegalStateException("Seed da Loja só admite itens exemplo=true: " + item.getString("slug"));
             }
-            String slug = item.getString("slug");
-            List<Bson> mudancas = new ArrayList<>();
-            for (Map.Entry<String, Object> campo : item.entrySet()) {
-                if (!"slug".equals(campo.getKey())) {
-                    mudancas.add(Updates.set(campo.getKey(), campo.getValue()));
-                }
-            }
-            mudancas.add(Updates.setOnInsert("criadoEm", agora));
-            mudancas.add(Updates.currentDate("atualizadoEm"));
-            colecao.updateOne(Filters.eq("slug", slug), Updates.combine(mudancas), new UpdateOptions().upsert(true));
+            colecao.updateOne(Filters.eq("slug", item.getString("slug")), montarUpdate(item, agora),
+                    new UpdateOptions().upsert(true));
             total++;
         }
         return total;
     }
 
+    /**
+     * Campos editoriais ({@code ativo}, {@code ordem}) só valem na criação: ajuste manual no Mongo
+     * (ex.: {@code ativo:false}) sobrevive ao próximo boot. O conteúdo do exemplo segue em {@code $set}.
+     */
+    static Bson montarUpdate(Document item, Date agora) {
+        List<Bson> mudancas = new ArrayList<>();
+        for (Map.Entry<String, Object> campo : item.entrySet()) {
+            String chave = campo.getKey();
+            if ("slug".equals(chave)) {
+                continue;
+            }
+            mudancas.add(CAMPOS_EDITORIAIS.contains(chave)
+                    ? Updates.setOnInsert(chave, campo.getValue())
+                    : Updates.set(chave, campo.getValue()));
+        }
+        mudancas.add(Updates.setOnInsert("criadoEm", agora));
+        mudancas.add(Updates.currentDate("atualizadoEm"));
+        return Updates.combine(mudancas);
+    }
+
     static List<Document> lerItens() {
         try {
-            JsonNode raiz = new ObjectMapper().readTree(new ClassPathResource(ARQUIVO_SEED).getInputStream());
+            JsonNode raiz = new ObjectMapper().readTree(RecursoClasspath.lerTexto(ARQUIVO_SEED));
             List<Document> itens = new ArrayList<>();
             for (JsonNode no : raiz) {
                 itens.add(Document.parse(no.toString()));
             }
             return itens;
         } catch (IOException e) {
-            throw new UncheckedIOException("Seed da Loja ausente: " + ARQUIVO_SEED, e);
+            throw new UncheckedIOException("Seed da Loja inválido: " + ARQUIVO_SEED, e);
         }
     }
 }

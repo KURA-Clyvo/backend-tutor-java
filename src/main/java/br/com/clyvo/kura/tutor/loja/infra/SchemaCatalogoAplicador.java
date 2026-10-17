@@ -13,11 +13,7 @@ import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.BsonValue;
-import org.springframework.core.io.ClassPathResource;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +39,7 @@ public class SchemaCatalogoAplicador {
     }
 
     public void aplicar() {
-        BsonDocument config = BsonDocument.parse(ler(ARQUIVO_SCHEMA));
+        BsonDocument config = BsonDocument.parse(RecursoClasspath.lerTexto(ARQUIVO_SCHEMA));
         BsonDocument validator = config.getDocument("validator");
         String nivel = config.getString("validationLevel").getValue();
         String acao = config.getString("validationAction").getValue();
@@ -64,7 +60,7 @@ public class SchemaCatalogoAplicador {
             log.info("Loja: validator de {} reaplicado (collMod)", COLECAO);
         }
 
-        BsonArray indices = BsonDocument.parse("{\"i\":" + ler(ARQUIVO_INDICES) + "}").getArray("i");
+        BsonArray indices = BsonDocument.parse("{\"i\":" + RecursoClasspath.lerTexto(ARQUIVO_INDICES) + "}").getArray("i");
         for (BsonValue valor : indices) {
             BsonDocument indice = valor.asDocument();
             String nome = indice.getString("name").getValue();
@@ -75,14 +71,6 @@ public class SchemaCatalogoAplicador {
             } catch (MongoCommandException e) {
                 log.warn("Loja: índice {} não aplicado (código {})", nome, e.getErrorCode());
             }
-        }
-    }
-
-    private static String ler(String caminho) {
-        try {
-            return new String(new ClassPathResource(caminho).getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Arquivo de schema da Loja ausente: " + caminho, e);
         }
     }
 }

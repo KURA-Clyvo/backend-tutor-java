@@ -1,9 +1,7 @@
 // KURA-LOJA — catálogo MongoDB (Sprint 4). Escopo isolado: depende do domínio; o domínio não depende dele.
 package br.com.clyvo.kura.tutor.loja.infra;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
+import com.mongodb.client.MongoDatabase;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
@@ -15,25 +13,22 @@ import org.springframework.stereotype.Component;
  * impedir o kura-tutor de subir: toda falha é capturada, 1 WARN sem URI nem credencial (só o
  * nome da classe da exceção), e a reaplicação acontece na próxima subida.
  */
-@Slf4j
 @Component
 @Order(1)
 @ConditionalOnProperty(name = "kura.loja.mongo.init-enabled", havingValue = "true")
-public class LojaMongoInicializador implements ApplicationRunner {
-
-    private final MongoDatabaseFactory factory;
+public class LojaMongoInicializador extends LojaRunnerTolerante {
 
     public LojaMongoInicializador(MongoDatabaseFactory factory) {
-        this.factory = factory;
+        super(factory);
     }
 
     @Override
-    public void run(ApplicationArguments args) {
-        try {
-            new SchemaCatalogoAplicador(factory.getMongoDatabase()).aplicar();
-        } catch (Exception e) {
-            log.warn("Loja: schema do Mongo não aplicado nesta subida ({}); será reaplicado no próximo boot",
-                    e.getClass().getSimpleName());
-        }
+    void executar(MongoDatabase database) {
+        new SchemaCatalogoAplicador(database).aplicar();
+    }
+
+    @Override
+    String mensagemDeFalha() {
+        return "Loja: schema do Mongo não aplicado nesta subida ({}); será reaplicado no próximo boot";
     }
 }

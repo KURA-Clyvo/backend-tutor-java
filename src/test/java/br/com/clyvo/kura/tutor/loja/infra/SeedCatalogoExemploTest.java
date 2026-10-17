@@ -81,4 +81,18 @@ class SeedCatalogoExemploTest {
         // sem coleção nenhuma além de catalogo_loja
         verify(database, times(1)).getCollection(any());
     }
+
+    @Test
+    @DisplayName("m-1: ativo e ordem vão em $setOnInsert (edição editorial sobrevive ao boot); conteúdo segue em $set")
+    void camposEditoriaisSoNaCriacao() {
+        Document item = SeedCatalogoExemplo.lerItens().get(0);
+
+        BsonDocument upd = SeedCatalogoExemplo.montarUpdate(item, new java.util.Date()).toBsonDocument();
+
+        Set<String> setOnInsert = upd.getDocument("$setOnInsert").keySet();
+        Set<String> set = upd.getDocument("$set").keySet();
+        assertThat(setOnInsert).contains("ativo", "ordem", "criadoEm");
+        assertThat(set).doesNotContain("ativo", "ordem", "criadoEm");
+        assertThat(set).contains("nome", "preco", "categoria", "exemplo", "dados");
+    }
 }

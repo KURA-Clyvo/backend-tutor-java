@@ -19,6 +19,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@org.junit.jupiter.api.extension.ExtendWith(org.springframework.boot.test.system.OutputCaptureExtension.class)
 class CatalogoMongoRepositorioTest {
 
     private final MongoTemplate mongo = mock(MongoTemplate.class);
@@ -90,5 +91,34 @@ class CatalogoMongoRepositorioTest {
 
         assertThat(fatia.temProxima()).isFalse();
         assertThat(fatia.itens()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("m-6: preço ausente não vira 0; o documento é pulado e o WARN não traz conteúdo")
+    void precoAusenteEPulado(org.springframework.boot.test.system.CapturedOutput saida) {
+        Document semPreco = doc(1);
+        semPreco.remove("preco");
+        when(mongo.find(org.mockito.ArgumentMatchers.any(Query.class), eq(Document.class), eq("catalogo_loja")))
+                .thenReturn(List.of(semPreco, doc(2)));
+
+        FatiaCatalogo fatia = repositorio.listarAtivos(null, 0, 5);
+
+        assertThat(fatia.itens()).extracting(i -> i.slug()).containsExactly("item-2");
+        assertThat(saida.getAll()).contains("documento do catálogo inválido ignorado (slug=item-1)")
+                .doesNotContain("Item 1");
+    }
+
+    @Test
+    @DisplayName("m-6: categoria fora do enum é pulada sem lançar nem vazar nome de classe")
+    void categoriaForaDoEnumEPulada(org.springframework.boot.test.system.CapturedOutput saida) {
+        Document ruim = doc(1);
+        ruim.put("categoria", "MEDICAMENTO");
+        when(mongo.find(org.mockito.ArgumentMatchers.any(Query.class), eq(Document.class), eq("catalogo_loja")))
+                .thenReturn(List.of(ruim, doc(2)));
+
+        FatiaCatalogo fatia = repositorio.listarAtivos(null, 0, 5);
+
+        assertThat(fatia.itens()).extracting(i -> i.slug()).containsExactly("item-2");
+        assertThat(saida.getAll()).doesNotContain("No enum constant").doesNotContain("CategoriaLoja.");
     }
 }
