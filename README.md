@@ -228,6 +228,9 @@ Em produção, `ddl-auto: validate` está ativo — o Hibernate valida o schema 
 | `JWT_ACCESS_EXPIRATION_MINUTES` | `15` | ❌ |
 | `JWT_REFRESH_EXPIRATION_DAYS` | `7` | ❌ |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:8081,http://localhost:19006` | ✅ |
+| `SPRING_DATA_MONGODB_URI` | `mongodb://localhost:27017/kura_docs?serverSelectionTimeoutMS=2000` | ❌ (só se a Loja estiver ligada) |
+| `KURA_LOJA_MONGO_INIT_ENABLED` | `false` | ❌ (o compose liga) |
+| `KURA_LOJA_SEED_EXEMPLO_ENABLED` | `false` | ❌ (só demo) |
 
 Copie `.env.example` para `.env` e preencha os valores de produção antes do deploy.
 
@@ -331,6 +334,24 @@ As tabelas acima documentam a estrutura de rotas **id-scoped** (`/tutores/{idTut
 | Método | Endpoint | Auth | Descrição |
 |---|---|---|---|
 | `GET` | `/v1/tutor/notificacoes` | JWT | Lista notificações do tutor autenticado (paginado, mais recente primeiro; leitura de `NOTIFICACAO`, tabela .NET-owned) |
+
+**`LojaCatalogoController` — `/v1/loja/catalogo` (Loja, MongoDB)**
+
+| Método | Endpoint | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/loja/catalogo?categoria=&page=&size=` | JWT | Catálogo global da plataforma (itens ativos, ordem editorial). `categoria` ∈ `ALIMENTACAO\|HIGIENE\|ACESSORIOS\|BRINQUEDOS`; `page` 0–10000 (padrão 0); `size` 1–50 (padrão 20). Envelope `{aviso, content, page, size, hasNext}`; `preco` em centavos |
+
+#### Loja (pré-lançamento)
+
+A Loja é a vitrine de produtos para o pet dentro do app do tutor. Os dados vivem no **MongoDB** (database `kura_docs`, coleção `catalogo_loja`); o restante do KURA segue em Oracle. A Loja está em **pré-lançamento** e a resposta do catálogo traz sempre este aviso, na raiz do JSON:
+
+> Pré-lançamento: pagamento e entrega serão ativados quando os parceiros logísticos concluírem a integração. Nenhuma cobrança é feita.
+
+- **Dados de exemplo.** Todo item do seed vem com `exemplo: true` (produtos genéricos, sem marca); o app mostra o selo "Exemplo" e o preço como "preço de referência". O seed é uma exceção deliberada à regra "dado fictício nunca em prod" (D-LOJA-10): só `catalogo_loja`, só itens `exemplo: true`, e só liga com `KURA_LOJA_SEED_EXEMPLO_ENABLED=true`.
+- **Schema e índices são do código.** Na subida, o runner `LojaMongoInicializador` (`KURA_LOJA_MONGO_INIT_ENABLED=true`) cria a coleção com o `$jsonSchema` de `src/main/resources/mongo/catalogo_loja.schema.json` (ou reaplica com `collMod`) e cria os índices de `catalogo_loja.indexes.json`. Desligado por padrão em `dev` e nos testes.
+- **Mongo fora do ar não derruba o tutor.** O runner captura a falha, registra um `WARN` (sem URI nem credencial) e reaplica na próxima subida; o health indicator do Mongo está desligado (`management.health.mongo.enabled=false`); `GET /v1/loja/catalogo` responde `503` com `codigo: CATALOGO_INDISPONIVEL`, nunca `500`.
+- **Sem pagamento.** Não há carrinho, pedido nem campo de pagamento nesta versão.
+- Conexão: `SPRING_DATA_MONGODB_URI` (o compose injeta o usuário `kura_java`, de privilégio restrito às coleções do Java).
 
 ### Códigos HTTP
 

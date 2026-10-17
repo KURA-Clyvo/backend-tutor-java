@@ -1,0 +1,5 @@
+[
+  { "name": "ix_cat_ativo_categoria_ordem_slug", "key": { "ativo": 1, "categoria": 1, "ordem": 1, "slug": 1 }, "unique": false },
+  { "name": "ix_cat_ativo_ordem_slug",           "key": { "ativo": 1, "ordem": 1, "slug": 1 },                "unique": false },
+  { "name": "uk_cat_slug",                       "key": { "slug": 1 },                                         "unique": true }
+]
