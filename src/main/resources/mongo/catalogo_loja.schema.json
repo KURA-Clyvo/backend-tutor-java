@@ -1,0 +1,91 @@
+{
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "title": "catalogo_loja",
+      "required": ["slug", "nome", "categoria", "preco", "moeda", "ativo", "ordem", "exemplo", "dados", "criadoEm", "atualizadoEm"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "slug": { "bsonType": "string", "minLength": 3, "maxLength": 80, "pattern": "^[a-z0-9]+(-[a-z0-9]+)*\\z" },
+        "nome": { "bsonType": "string", "minLength": 1, "maxLength": 120 },
+        "descricao": { "bsonType": "string", "maxLength": 500 },
+        "categoria": { "enum": ["ALIMENTACAO", "HIGIENE", "ACESSORIOS", "BRINQUEDOS"] },
+        "preco": { "bsonType": ["int", "long"], "minimum": 0 },
+        "moeda": { "enum": ["BRL"] },
+        "ativo": { "bsonType": "bool" },
+        "ordem": { "bsonType": ["int", "long"], "minimum": 0 },
+        "exemplo": { "bsonType": "bool" },
+        "dados": { "bsonType": "object" },
+        "criadoEm": { "bsonType": "date" },
+        "atualizadoEm": { "bsonType": "date" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "categoria": { "enum": ["ALIMENTACAO"] },
+            "dados": {
+              "bsonType": "object",
+              "required": ["tipoAlimento", "especieAlvo", "faixaEtaria", "pesoLiquidoGramas"],
+              "additionalProperties": false,
+              "properties": {
+                "tipoAlimento": { "enum": ["SECO", "UMIDO", "PETISCO"] },
+                "especieAlvo": { "enum": ["CAO", "GATO", "AMBOS"] },
+                "faixaEtaria": { "enum": ["FILHOTE", "ADULTO", "SENIOR", "TODAS"] },
+                "pesoLiquidoGramas": { "bsonType": ["int", "long"], "minimum": 1 }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "categoria": { "enum": ["HIGIENE"] },
+            "dados": {
+              "bsonType": "object",
+              "required": ["tipoHigiene", "especieAlvo"],
+              "additionalProperties": false,
+              "properties": {
+                "tipoHigiene": { "enum": ["SHAMPOO", "ESCOVA", "TAPETE_HIGIENICO", "CORTADOR_UNHAS"] },
+                "especieAlvo": { "enum": ["CAO", "GATO", "AMBOS"] },
+                "volumeMl": { "bsonType": ["int", "long"], "minimum": 1 },
+                "quantidadeUnidades": { "bsonType": ["int", "long"], "minimum": 1 }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "categoria": { "enum": ["ACESSORIOS"] },
+            "dados": {
+              "bsonType": "object",
+              "required": ["tipoAcessorio", "tamanho"],
+              "additionalProperties": false,
+              "properties": {
+                "tipoAcessorio": { "enum": ["COLEIRA", "PEITORAL", "GUIA", "COMEDOURO", "CAMA"] },
+                "tamanho": { "enum": ["PP", "P", "M", "G", "GG", "UNICO"] },
+                "material": { "bsonType": "string", "maxLength": 60 }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "categoria": { "enum": ["BRINQUEDOS"] },
+            "dados": {
+              "bsonType": "object",
+              "required": ["tipoBrinquedo", "tamanho"],
+              "additionalProperties": false,
+              "properties": {
+                "tipoBrinquedo": { "enum": ["BOLA", "MORDEDOR", "PELUCIA", "INTERATIVO"] },
+                "tamanho": { "enum": ["PP", "P", "M", "G", "GG", "UNICO"] },
+                "material": { "bsonType": "string", "maxLength": 60 }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "validationLevel": "strict",
+  "validationAction": "error"
+}

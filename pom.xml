@@ -66,6 +66,12 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!-- KURA-LOJA — MongoDB da Loja (Sprint 4). Versão do BOM do Boot 3.2.5, sem override. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
         <!-- ── H2 (desenvolvimento sem Oracle) ───────────────────────── -->
         <!-- CORREÇÃO: "spring-boot-h2console" não existe. Correto: h2 da com.h2database -->
         <dependency>
