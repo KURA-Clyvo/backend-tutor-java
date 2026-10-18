@@ -24,8 +24,8 @@ spring:
     resources:
       cache:
         cachecontrol:
-          # Fotos da Loja (NX-04): nome de arquivo muda se a foto mudar, então cache longo é seguro.
-          max-age: 7d
+          # Fotos da Loja (NX-04): a chave do arquivo é o slug do item, então trocar a foto NÃO muda a URL: cache curto (1 h) para a foto nova aparecer logo; ao trocar foto antes do estande, limpar o cache do navegador/app.
+          max-age: 1h
           cache-public: true
   data:
     mongodb:
