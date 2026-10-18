@@ -11,7 +11,7 @@ Fotos genéricas: sem marca, logotipo ou texto legível; nenhuma pessoa identifi
 | produtos/alimento-seco-adulto-caes-1kg | ração seca | https://www.pexels.com/photo/close-up-of-dry-dog-food-kibble-34952079/ | Rafael Rodrigues | Pexels | 2026-10-18 |
 | produtos/alimento-umido-gatos-adultos-85g | gato comendo patê úmido moldado num pires branco | https://www.pexels.com/photo/a-cat-eating-20545902/ | Silvio Pelegrin | Pexels | 2026-10-18 |
 | produtos/petisco-macio-filhotes-100g | petiscos (biscoitos em papel kraft) | https://www.pexels.com/photo/top-view-of-dogs-snacks-on-paper-8121154/ | Rubenstein Rebello | Pexels | 2026-10-18 |
-| produtos/shampoo-neutro-500ml | frasco branco sem rótulo | https://www.pexels.com/photo/white-dispenser-pump-and-white-tube-8015792/ | Cup of Couple | Pexels | 2026-10-18 |
+| produtos/shampoo-neutro-500ml | frasco âmbar com bomba preta, sem rótulo (substitui a foto 8015792 de Cup of Couple, recusada por falta de contraste; NX-04 G2 I-2) | https://www.pexels.com/photo/a-brown-pump-bottle-8167172/ | Daria Liudnaya | Pexels | 2026-10-18 |
 | produtos/escova-cerdas-macias | escova de cerdas naturais sobre prato preto, vista de cima (escova de madeira genérica, não específica de pet) | https://www.pexels.com/photo/flatlay-photo-of-a-brown-body-brush-on-black-round-plate-9475425/ | Greta Hoffman | Pexels | 2026-10-18 |
 | produtos/tapete-higienico-30-unidades | filhote sobre tapete higiênico (recortada: caixa x150-720, y340-1080) | https://www.pexels.com/photo/adorable-bichon-frise-puppy-on-training-pad-33744730/ | zhangliubin | Pexels | 2026-10-18 |
 | produtos/coleira-ajustavel-m | coleira (cão com coleira de couro) | https://www.pexels.com/photo/close-up-shot-of-a-dog-5705543/ | Karola G | Pexels | 2026-10-18 |
