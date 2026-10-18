@@ -81,7 +81,7 @@ class SeedCatalogoExemploTest {
                 .containsExactlyInAnyOrder("chave", "alt");
         assertThat(imagem.getBoolean("additionalProperties").getValue()).isFalse();
         assertThat(imagem.getDocument("properties").getDocument("chave").getString("pattern").getValue())
-                .isEqualTo("^[a-z0-9]+(-[a-z0-9]+)*\z");
+                .isEqualTo("^[a-z0-9]+(-[a-z0-9]+)*\\z");
     }
 
     @Test
