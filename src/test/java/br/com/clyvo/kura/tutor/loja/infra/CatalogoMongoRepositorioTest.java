@@ -48,6 +48,24 @@ class CatalogoMongoRepositorioTest {
     }
 
     @Test
+    @DisplayName("NX-04: a projeção inclui imagem e o documento com imagem vira chave+alt; sem imagem, nulos")
+    void projecaoIncluiImagem() {
+        Document comFoto = doc(1).append("imagem", new Document("chave", "item-1").append("alt", "Foto ilustrativa: item"));
+        when(mongo.find(org.mockito.ArgumentMatchers.any(Query.class), eq(Document.class), eq("catalogo_loja")))
+                .thenReturn(List.of(comFoto, doc(2)));
+
+        FatiaCatalogo fatia = repositorio.listarAtivos(null, 0, 5);
+
+        ArgumentCaptor<Query> query = ArgumentCaptor.forClass(Query.class);
+        verify(mongo).find(query.capture(), eq(Document.class), eq("catalogo_loja"));
+        assertThat(query.getValue().getFieldsObject().keySet()).contains("imagem");
+        assertThat(fatia.itens().get(0).imagemChave()).isEqualTo("item-1");
+        assertThat(fatia.itens().get(0).imagemAlt()).isEqualTo("Foto ilustrativa: item");
+        assertThat(fatia.itens().get(1).imagemChave()).isNull();
+        assertThat(fatia.itens().get(1).imagemAlt()).isNull();
+    }
+
+    @Test
     @DisplayName("com categoria o filtro de categoria entra na consulta")
     void filtroDeCategoria() {
         when(mongo.find(org.mockito.ArgumentMatchers.any(Query.class), eq(Document.class), eq("catalogo_loja")))

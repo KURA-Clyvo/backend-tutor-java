@@ -55,6 +55,36 @@ class SeedCatalogoExemploTest {
     }
 
     @Test
+    @DisplayName("NX-04: todo item do seed tem imagem {chave==slug, alt} e os dois arquivos (grande e _256) existem no classpath")
+    void todoItemTemImagemComArquivos() {
+        for (Document item : SeedCatalogoExemplo.lerItens()) {
+            Document imagem = item.get("imagem", Document.class);
+            assertThat(imagem).as("imagem de %s", item.getString("slug")).isNotNull();
+            assertThat(imagem.keySet()).containsExactlyInAnyOrder("chave", "alt");
+            String chave = imagem.getString("chave");
+            assertThat(chave).isEqualTo(item.getString("slug"));
+            assertThat(imagem.getString("alt")).startsWith("Foto ilustrativa:").hasSizeBetween(5, 160);
+            assertThat(new ClassPathResource("static/loja/imagens/" + chave + ".webp").exists()).isTrue();
+            assertThat(new ClassPathResource("static/loja/imagens/" + chave + "_256.webp").exists()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("NX-04: schema declara imagem opcional (fora do required), com chave e alt obrigatórios e sem campo extra")
+    void schemaDeclaraImagemMalformadaRecusavel() throws Exception {
+        String json = new String(new ClassPathResource("mongo/catalogo_loja.schema.json").getInputStream().readAllBytes(),
+                StandardCharsets.UTF_8);
+        BsonDocument raiz = BsonDocument.parse(json).getDocument("validator").getDocument("$jsonSchema");
+        assertThat(raiz.getArray("required").stream().map(v -> v.asString().getValue())).doesNotContain("imagem");
+        BsonDocument imagem = raiz.getDocument("properties").getDocument("imagem");
+        assertThat(imagem.getArray("required").stream().map(v -> v.asString().getValue()))
+                .containsExactlyInAnyOrder("chave", "alt");
+        assertThat(imagem.getBoolean("additionalProperties").getValue()).isFalse();
+        assertThat(imagem.getDocument("properties").getDocument("chave").getString("pattern").getValue())
+                .isEqualTo("^[a-z0-9]+(-[a-z0-9]+)*\\z");
+    }
+
+    @Test
     @DisplayName("aplicar: upsert por slug para cada item, com upsert=true e criadoEm só na inserção")
     void upsertPorSlug() {
         MongoDatabase database = mock(MongoDatabase.class);
@@ -93,6 +123,6 @@ class SeedCatalogoExemploTest {
         Set<String> set = upd.getDocument("$set").keySet();
         assertThat(setOnInsert).contains("ativo", "ordem", "criadoEm");
         assertThat(set).doesNotContain("ativo", "ordem", "criadoEm");
-        assertThat(set).contains("nome", "preco", "categoria", "exemplo", "dados");
+        assertThat(set).contains("nome", "preco", "categoria", "exemplo", "dados", "imagem");
     }
 }

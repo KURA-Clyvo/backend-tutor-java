@@ -20,6 +20,13 @@ spring:
         format_sql: true
   cache:
     type: caffeine
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          # Fotos da Loja (NX-04): a chave do arquivo é o slug do item, então trocar a foto NÃO muda a URL: cache curto (1 h) para a foto nova aparecer logo; ao trocar foto antes do estande, limpar o cache do navegador/app.
+          max-age: 1h
+          cache-public: true
   data:
     mongodb:
       # KURA-LOJA. No compose, SPRING_DATA_MONGODB_URI (DevOps-Cloud) sobrescreve. O default

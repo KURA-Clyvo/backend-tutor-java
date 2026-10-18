@@ -43,7 +43,7 @@ public class CatalogoMongoRepositorio implements CatalogoRepositorio {
         query.with(Sort.by(Sort.Direction.ASC, "ordem", "slug"));
         query.skip((long) page * size).limit(size + 1);
         query.fields().exclude("_id")
-                .include("slug", "nome", "descricao", "categoria", "preco", "moeda", "exemplo", "dados");
+                .include("slug", "nome", "descricao", "categoria", "preco", "moeda", "exemplo", "dados", "imagem");
 
         List<Document> lidos = mongo.find(query, Document.class, SchemaCatalogoAplicador.COLECAO);
         boolean temProxima = lidos.size() > size;
@@ -67,6 +67,13 @@ public class CatalogoMongoRepositorio implements CatalogoRepositorio {
         }
         Document dados = doc.get("dados", Document.class);
         Map<String, Object> mapaDados = dados == null ? Map.of() : new LinkedHashMap<>(dados);
+        Document imagem = doc.get("imagem", Document.class);
+        String imagemChave = imagem == null ? null : imagem.getString("chave");
+        String imagemAlt = imagem == null ? null : imagem.getString("alt");
+        if (imagemChave == null || imagemAlt == null) {
+            imagemChave = null;
+            imagemAlt = null;
+        }
         return Optional.of(new ItemCatalogo(
                 doc.getString("slug"),
                 doc.getString("nome"),
@@ -75,6 +82,8 @@ public class CatalogoMongoRepositorio implements CatalogoRepositorio {
                 preco.longValue(),
                 doc.getString("moeda"),
                 Boolean.TRUE.equals(doc.getBoolean("exemplo")),
-                mapaDados));
+                mapaDados,
+                imagemChave,
+                imagemAlt));
     }
 }

@@ -62,7 +62,45 @@ class LojaCatalogoControllerTest {
 
     private static ItemCatalogo item(String slug, CategoriaLoja categoria, String descricao) {
         return new ItemCatalogo(slug, "Nome " + slug, descricao, categoria, 4990L, "BRL", true,
-                Map.of("tipoAlimento", "SECO"));
+                Map.of("tipoAlimento", "SECO"), null, null);
+    }
+
+    private static ItemCatalogo itemComFoto(String slug) {
+        return new ItemCatalogo(slug, "Nome " + slug, "desc", CategoriaLoja.HIGIENE, 2990L, "BRL", true,
+                Map.of("tipoHigiene", "SHAMPOO"), slug, "Foto ilustrativa: frasco de shampoo");
+    }
+
+    @Test
+    @DisplayName("NX-04: item com imagem devolve url, urlThumb e alt; item sem imagem não traz o campo")
+    @WithMockUser
+    void itemComImagemDevolveUrlThumbEAlt() throws Exception {
+        when(repositorio.listarAtivos(any(), eq(0), eq(20))).thenReturn(new FatiaCatalogo(
+                List.of(itemComFoto("shampoo-neutro-500ml"), item("d-e-f", CategoriaLoja.HIGIENE, null)), false));
+
+        mockMvc.perform(get("/v1/loja/catalogo"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].imagem.url").value("/api/loja/imagens/shampoo-neutro-500ml.webp"))
+                .andExpect(jsonPath("$.content[0].imagem.urlThumb").value("/api/loja/imagens/shampoo-neutro-500ml_256.webp"))
+                .andExpect(jsonPath("$.content[0].imagem.alt").value("Foto ilustrativa: frasco de shampoo"))
+                .andExpect(jsonPath("$.content[0].imagem.chave").doesNotExist())
+                .andExpect(jsonPath("$.content[1].imagem").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("NX-04: foto da Loja é pública (200 image/webp sem token) e o catálogo segue 401 sem token")
+    void imagemPublicaCatalogoProtegido() throws Exception {
+        mockMvc.perform(get("/loja/imagens/shampoo-neutro-500ml_256.webp"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .contentType("image/webp"));
+        mockMvc.perform(get("/loja/imagens/shampoo-neutro-500ml.webp")).andExpect(status().isOk());
+        mockMvc.perform(get("/v1/loja/catalogo")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("NX-04: a rota pública não vira porta para outros estáticos: fora de /loja/imagens exige token")
+    void foraDeLojaImagensExigeToken() throws Exception {
+        mockMvc.perform(get("/loja/outra/x.webp")).andExpect(status().isUnauthorized());
     }
 
     @Test
