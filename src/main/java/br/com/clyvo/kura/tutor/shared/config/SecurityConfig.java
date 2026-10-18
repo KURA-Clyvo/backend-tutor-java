@@ -42,7 +42,10 @@ public class SecurityConfig {
         "/actuator/health",
         "/h2-console/**",
         "/especies/**",
-        "/racas/**"
+        "/racas/**",
+        // Fotos ilustrativas da Loja (NX-04): <Image> do RN/web não envia Authorization. Só GET de
+        // arquivo estático genérico; o catálogo (/v1/loja/catalogo) continua exigindo JWT.
+        "/loja/imagens/**"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

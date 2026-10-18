@@ -3,7 +3,7 @@ package br.com.clyvo.kura.tutor.loja.application;
 
 import java.util.Map;
 
-/** Item do catálogo como o domínio da Loja o enxerga. {@code preco} em centavos. */
+/** Item do catálogo como o domínio da Loja o enxerga. {@code preco} em centavos; {@code imagemChave}/{@code imagemAlt} nulos = item sem foto. */
 public record ItemCatalogo(
         String slug,
         String nome,
@@ -12,5 +12,7 @@ public record ItemCatalogo(
         long preco,
         String moeda,
         boolean exemplo,
-        Map<String, Object> dados) {
+        Map<String, Object> dados,
+        String imagemChave,
+        String imagemAlt) {
 }

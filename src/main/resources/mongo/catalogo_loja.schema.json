@@ -16,6 +16,15 @@
         "ativo": { "bsonType": "bool" },
         "ordem": { "bsonType": ["int", "long"], "minimum": 0 },
         "exemplo": { "bsonType": "bool" },
+        "imagem": {
+          "bsonType": "object",
+          "required": ["chave", "alt"],
+          "additionalProperties": false,
+          "properties": {
+            "chave": { "bsonType": "string", "minLength": 3, "maxLength": 80, "pattern": "^[a-z0-9]+(-[a-z0-9]+)*\\z" },
+            "alt": { "bsonType": "string", "minLength": 5, "maxLength": 160 }
+          }
+        },
         "dados": { "bsonType": "object" },
         "criadoEm": { "bsonType": "date" },
         "atualizadoEm": { "bsonType": "date" }
