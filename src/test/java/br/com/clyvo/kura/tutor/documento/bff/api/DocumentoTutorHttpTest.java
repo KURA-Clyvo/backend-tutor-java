@@ -34,6 +34,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -132,6 +133,19 @@ class DocumentoTutorHttpTest {
                 .andExpect(status().isBadRequest());
         mockMvc.perform(multipart(BASE, PET_A).param("tipo", "RG_ANIMAL").with(TUTOR_A))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("M-3: POST com Content-Type nao-multipart (JSON, texto, sem corpo): 415, sem stack trace, nada gravado")
+    void postNaoMultipart415() throws Exception {
+        for (String tipo : new String[] {"application/json", "text/plain"}) {
+            mockMvc.perform(post(BASE, PET_A).contentType(tipo).content("{\"tipo\":\"RG_ANIMAL\"}").with(TUTOR_A))
+                    .andExpect(status().isUnsupportedMediaType())
+                    .andExpect(jsonPath("$.codigo").value("CONTENT_TYPE_NAO_SUPORTADO"))
+                    .andExpect(jsonPath("$.trace").doesNotExist());
+        }
+        mockMvc.perform(post(BASE, PET_A).with(TUTOR_A)).andExpect(status().isUnsupportedMediaType());
+        assertThat(fake.total()).isZero();
     }
 
     @Test

@@ -52,9 +52,9 @@ public class DocumentoTutorController {
         this.contaTutorRepository = contaTutorRepository;
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping
     @Operation(summary = "Envia um documento do pet",
-            description = "multipart: arquivo (JPEG, PNG, WEBP ou PDF, até 5 MB), tipo, emissor? e numero?. "
+            description = "multipart/form-data: arquivo (JPEG, PNG, WEBP ou PDF, até 5 MB), tipo, emissor? e numero?. "
                     + "O tipo do arquivo é detectado pela assinatura, não pelo Content-Type do cliente.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Documento gravado"),
@@ -63,7 +63,7 @@ public class DocumentoTutorController {
         @ApiResponse(responseCode = "404", description = "Pet inativo"),
         @ApiResponse(responseCode = "409", description = "Teto de 20 documentos por pet"),
         @ApiResponse(responseCode = "413", description = "Arquivo acima de 5 MB"),
-        @ApiResponse(responseCode = "415", description = "Assinatura do arquivo não reconhecida"),
+        @ApiResponse(responseCode = "415", description = "Assinatura do arquivo não reconhecida ou Content-Type não multipart"),
         @ApiResponse(responseCode = "503", description = "DOCUMENTOS_INDISPONIVEL")
     })
     public ResponseEntity<DocumentoResponse> enviar(

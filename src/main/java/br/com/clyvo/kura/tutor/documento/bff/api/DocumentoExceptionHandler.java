@@ -17,6 +17,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
@@ -64,6 +65,22 @@ public class DocumentoExceptionHandler {
     @ExceptionHandler({MissingServletRequestPartException.class, MissingServletRequestParameterException.class})
     public ResponseEntity<ApiError> faltando(Exception ex, HttpServletRequest req) {
         return erro(400, "VALIDACAO_INVALIDA", "Campos obrigatórios ausentes: arquivo e tipo.", req);
+    }
+
+    /**
+     * POST que nao e multipart. O controller NAO declara {@code consumes}: a rejeicao por Content-Type
+     * no mapeamento nasce antes de existir handler method e um advice com {@code basePackages} nao e
+     * consultado nesse momento (cairia no catch-all global, 500). Sem {@code consumes}, o
+     * {@code @RequestPart} lanca MultipartException DENTRO do handler, onde este advice alcanca.
+     */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ApiError> naoMultipart(MultipartException ex, HttpServletRequest req) {
+        String tipo = req.getContentType();
+        if (tipo == null || !tipo.toLowerCase(java.util.Locale.ROOT).startsWith("multipart/")) {
+            return erro(415, "CONTENT_TYPE_NAO_SUPORTADO", "Envie o documento como multipart/form-data.", req);
+        }
+        log.warn("Documentos: multipart invalido ({})", ex.getClass().getSimpleName());
+        return erro(400, "VALIDACAO_INVALIDA", "Envio multipart invalido.", req);
     }
 
     private static ResponseEntity<ApiError> erro(int status, String codigo, String mensagem, HttpServletRequest req) {
