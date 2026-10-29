@@ -185,6 +185,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- S4-JAVA-02 — mongod real embarcado para testes (API núcleo, sem o módulo spring3x). Só testes, tag mongo-real. -->
+        <dependency>
+            <groupId>de.flapdoodle.embed</groupId>
+            <artifactId>de.flapdoodle.embed.mongo</artifactId>
+            <version>4.20.0</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

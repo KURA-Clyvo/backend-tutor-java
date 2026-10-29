@@ -39,7 +39,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * lida foi avaliado e descartado (ver INT-01-contract-map e NotificacaoService).
  */
 @WebMvcTest(NotificacaoBffController.class)
-@Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class})
+@Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class,
+        br.com.clyvo.kura.tutor.shared.security.TutorAutenticado.class})
 @TestPropertySource(properties = {
         "kura.jwt.secret=dev-secret-trocar-em-prod-com-no-minimo-64-bytes-aqui-para-test-kura",
         "kura.jwt.access-expiration-minutes=15",

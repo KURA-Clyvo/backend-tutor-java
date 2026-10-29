@@ -1,7 +1,6 @@
 package br.com.clyvo.kura.tutor.bff.api;
 
-import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
-import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
+import br.com.clyvo.kura.tutor.shared.security.TutorAutenticado;
 import br.com.clyvo.kura.tutor.notificacao.api.dto.NotificacaoResponse;
 import br.com.clyvo.kura.tutor.notificacao.application.NotificacaoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,12 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificacaoBffController {
 
     private final NotificacaoService notificacaoService;
-    private final ContaTutorRepository contaTutorRepository;
+    private final TutorAutenticado tutorAutenticado;
 
     public NotificacaoBffController(NotificacaoService notificacaoService,
-                                     ContaTutorRepository contaTutorRepository) {
+                                     TutorAutenticado tutorAutenticado) {
         this.notificacaoService = notificacaoService;
-        this.contaTutorRepository = contaTutorRepository;
+        this.tutorAutenticado = tutorAutenticado;
     }
 
     @GetMapping
@@ -54,13 +53,8 @@ public class NotificacaoBffController {
     public ResponseEntity<Page<NotificacaoResponse>> listar(
             Authentication auth,
             @PageableDefault(size = 20) Pageable pageable) {
-        Long idTutor = resolverIdTutor(auth);
+        Long idTutor = tutorAutenticado.idTutor(auth);
         return ResponseEntity.ok(notificacaoService.listar(idTutor, pageable));
     }
 
-    private Long resolverIdTutor(Authentication auth) {
-        return contaTutorRepository
-                .findIdTutorByEmail(auth.getName())
-                .orElseThrow(() -> new RecursoNaoEncontradoException("ContaTutor", auth.getName()));
-    }
 }

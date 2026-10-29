@@ -1,0 +1,4 @@
+[
+  { "name": "ix_doc_tutor_pet_criado", "key": { "idTutor": 1, "idPet": 1, "criadoEm": -1, "_id": -1 }, "unique": false },
+  { "name": "ix_doc_pet_criado",       "key": { "idPet": 1, "criadoEm": -1 },                          "unique": false }
+]

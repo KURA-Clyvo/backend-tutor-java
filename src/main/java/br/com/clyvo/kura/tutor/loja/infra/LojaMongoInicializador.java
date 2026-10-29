@@ -1,6 +1,7 @@
 // KURA-LOJA — catálogo MongoDB (Sprint 4). Escopo isolado: depende do domínio; o domínio não depende dele.
 package br.com.clyvo.kura.tutor.loja.infra;
 
+import br.com.clyvo.kura.tutor.shared.mongo.RunnerMongoTolerante;
 import com.mongodb.client.MongoDatabase;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
@@ -16,19 +17,19 @@ import org.springframework.stereotype.Component;
 @Component
 @Order(1)
 @ConditionalOnProperty(name = "kura.loja.mongo.init-enabled", havingValue = "true")
-public class LojaMongoInicializador extends LojaRunnerTolerante {
+public class LojaMongoInicializador extends RunnerMongoTolerante {
 
     public LojaMongoInicializador(MongoDatabaseFactory factory) {
         super(factory);
     }
 
     @Override
-    void executar(MongoDatabase database) {
+    protected void executar(MongoDatabase database) {
         new SchemaCatalogoAplicador(database).aplicar();
     }
 
     @Override
-    String mensagemDeFalha() {
+    protected String mensagemDeFalha() {
         return "Loja: schema do Mongo não aplicado nesta subida ({}); será reaplicado no próximo boot";
     }
 }

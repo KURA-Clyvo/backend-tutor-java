@@ -1,7 +1,6 @@
 package br.com.clyvo.kura.tutor.bff.api;
 
-import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
-import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
+import br.com.clyvo.kura.tutor.shared.security.TutorAutenticado;
 import br.com.clyvo.kura.tutor.timeline.api.dto.TimelineEventoResponse;
 import br.com.clyvo.kura.tutor.timeline.api.dto.VacinaStatusResponse;
 import br.com.clyvo.kura.tutor.timeline.api.dto.VacinaVencendoResponse;
@@ -40,14 +39,14 @@ public class TutorBffController {
 
     private final TutorService tutorService;
     private final TimelineService timelineService;
-    private final ContaTutorRepository contaTutorRepository;
+    private final TutorAutenticado tutorAutenticado;
 
     public TutorBffController(TutorService tutorService,
                                TimelineService timelineService,
-                               ContaTutorRepository contaTutorRepository) {
+                               TutorAutenticado tutorAutenticado) {
         this.tutorService = tutorService;
         this.timelineService = timelineService;
-        this.contaTutorRepository = contaTutorRepository;
+        this.tutorAutenticado = tutorAutenticado;
     }
 
     @GetMapping("/pets")
@@ -63,7 +62,7 @@ public class TutorBffController {
     public ResponseEntity<Page<PetResponse>> listarPets(
             Authentication auth,
             @PageableDefault(size = 20, sort = "nmPet", direction = Sort.Direction.ASC) Pageable pageable) {
-        Long idTutor = resolverIdTutor(auth);
+        Long idTutor = tutorAutenticado.idTutor(auth);
         return ResponseEntity.ok(tutorService.listarPets(idTutor, auth.getName(), pageable));
     }
 
@@ -165,14 +164,9 @@ public class TutorBffController {
     public ResponseEntity<Void> atualizarPushToken(
             Authentication auth,
             @Valid @RequestBody PushTokenRequest request) {
-        Long idTutor = resolverIdTutor(auth);
+        Long idTutor = tutorAutenticado.idTutor(auth);
         tutorService.atualizarPushToken(idTutor, request);
         return ResponseEntity.noContent().build();
     }
 
-    private Long resolverIdTutor(Authentication auth) {
-        return contaTutorRepository
-                .findIdTutorByEmail(auth.getName())
-                .orElseThrow(() -> new RecursoNaoEncontradoException("ContaTutor", auth.getName()));
-    }
 }

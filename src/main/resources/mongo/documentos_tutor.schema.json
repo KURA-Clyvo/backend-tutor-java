@@ -1,0 +1,32 @@
+{
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "title": "documentos_tutor",
+      "required": ["idTutor", "idPet", "tipo", "arquivo", "criadoEm"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "idTutor": { "bsonType": "long", "minimum": 1 },
+        "idPet": { "bsonType": "long", "minimum": 1 },
+        "tipo": { "enum": ["RG_ANIMAL", "CARTEIRA_VACINA", "MICROCHIP"] },
+        "emissor": { "enum": ["SINPATINHAS", "RGA_MUNICIPAL", "OUTRO", null] },
+        "numero": { "bsonType": ["string", "null"], "pattern": "^[A-Za-z0-9./-]{1,40}$" },
+        "arquivo": {
+          "bsonType": "object",
+          "required": ["conteudo", "contentType", "tamanhoBytes", "sha256"],
+          "additionalProperties": false,
+          "properties": {
+            "conteudo": { "bsonType": "binData" },
+            "contentType": { "enum": ["image/jpeg", "image/png", "image/webp", "application/pdf"] },
+            "tamanhoBytes": { "bsonType": "long", "minimum": 1, "maximum": 5242880 },
+            "sha256": { "bsonType": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        "criadoEm": { "bsonType": "date" }
+      }
+    }
+  },
+  "validationLevel": "strict",
+  "validationAction": "error"
+}
