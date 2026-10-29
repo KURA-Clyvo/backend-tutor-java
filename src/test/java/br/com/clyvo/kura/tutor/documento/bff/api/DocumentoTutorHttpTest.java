@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.util.Optional;
@@ -80,7 +80,7 @@ class DocumentoTutorHttpTest {
         when(petRepository.findByIdPetAndStAtivo(PET_B, "S")).thenReturn(Optional.of(mock(Pet.class)));
     }
 
-    private MockMultipartHttpServletRequestBuilder envio(long idPet, byte[] bytes, String nome, String contentTypeDoCliente) {
+    private MockHttpServletRequestBuilder envio(long idPet, byte[] bytes, String nome, String contentTypeDoCliente) {
         return multipart(BASE, idPet)
                 .file(new MockMultipartFile("arquivo", nome, contentTypeDoCliente, bytes))
                 .param("tipo", "RG_ANIMAL");
@@ -122,7 +122,9 @@ class DocumentoTutorHttpTest {
     void validacao400() throws Exception {
         mockMvc.perform(multipart(BASE, PET_A).file(new MockMultipartFile("arquivo", "rg.jpg", "image/jpeg", JPEG))
                         .with(TUTOR_A)).andExpect(status().isBadRequest());
-        mockMvc.perform(envio(PET_A, JPEG, "rg.jpg", "image/jpeg").param("tipo", "CPF").with(TUTOR_A))
+        mockMvc.perform(multipart(BASE, PET_A)
+                        .file(new MockMultipartFile("arquivo", "rg.jpg", "image/jpeg", JPEG))
+                        .param("tipo", "CPF").with(TUTOR_A))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(envio(PET_A, new byte[0], "rg.jpg", "image/jpeg").with(TUTOR_A))
                 .andExpect(status().isBadRequest());
