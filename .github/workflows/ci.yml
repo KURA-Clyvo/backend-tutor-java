@@ -21,6 +21,13 @@ jobs:
           java-version: '21'
           cache: maven
 
+      # Binario do mongod que o flapdoodle baixa para os testes mongo-real (Main.V7_0, flapdoodle 4.20.0).
+      - name: Cache mongod embarcado
+        uses: actions/cache@v4
+        with:
+          path: ~/.embedmongo
+          key: embedmongo-mongod-7.0-flapdoodle-4.20.0
+
       # Perfil dev = H2 em memória (afterMigrate__seeds_dev.sql), sem Oracle externo.
       # Nenhum teste do repo usa Testcontainers hoje (a dependência oracle-xe está no
       # pom.xml para futuros testes de integração, mas nenhuma classe a importa —
