@@ -4,6 +4,7 @@ package br.com.clyvo.kura.tutor.loja.infra;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoCollection;
+import br.com.clyvo.kura.tutor.shared.mongo.RecursoClasspath;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.UpdateOptions;
