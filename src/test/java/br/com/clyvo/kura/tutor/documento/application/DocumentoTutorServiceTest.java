@@ -4,6 +4,7 @@ import br.com.clyvo.kura.tutor.entity.Pet;
 import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
 import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
+import br.com.clyvo.kura.tutor.shared.pet.GuardaPetDoTutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ class DocumentoTutorServiceTest {
 
     @BeforeEach
     void preparar() {
-        service = new DocumentoTutorService(repositorio, petRepository, Clock.fixed(AGORA, ZoneOffset.UTC));
+        service = new DocumentoTutorService(repositorio, new GuardaPetDoTutor(petRepository), Clock.fixed(AGORA, ZoneOffset.UTC));
     }
 
     private void petDoTutor() {

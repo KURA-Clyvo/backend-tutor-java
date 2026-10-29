@@ -76,6 +76,11 @@ kura:
     seed-exemplo:
       # EXCEÇÃO D-LOJA-10 à regra "dado fictício nunca em prod": só catalogo_loja, só exemplo=true.
       enabled: ${KURA_LOJA_SEED_EXEMPLO_ENABLED:false}
+  laudo:
+    # S4-JAVA-03. Base HTTPS que os apps alcançam e que serve a rota de arquivo da .NET; vazia = urlArquivo null.
+    # Assina com o mesmo segredo de kura.foto.url-secret.
+    url-base: ${LAUDO_URL_BASE:}
+    url-validade-minutos: ${LAUDO_URL_VALIDADE_MINUTOS:60}
   documentos:
     # S4-JAVA-02. Desligado por padrão (dev/teste não tocam o Mongo); o compose liga.
     mongo:
