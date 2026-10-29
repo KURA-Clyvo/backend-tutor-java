@@ -204,6 +204,21 @@ class DocumentoTutorMongoRealTest {
     }
 
     @Test
+    @DisplayName("mesmo tutor, dois pets: o documento do pet A e invisivel ao pet B ao listar, abrir, apagar e contar")
+    void mesmoTutorDoisPets() {
+        DocumentoTutor doPetA = repositorio.inserir(1L, novo(10L, Instant.parse("2026-10-29T10:00:00Z")));
+
+        assertThat(repositorio.listar(1L, 11L)).isEmpty();
+        assertThat(repositorio.contar(1L, 11L)).isZero();
+        assertThat(repositorio.abrirArquivo(1L, 11L, doPetA.id())).isEmpty();
+        assertThat(repositorio.apagar(1L, 11L, doPetA.id())).isFalse();
+        assertThat(colecao.countDocuments()).isEqualTo(1);
+        assertThat(repositorio.listar(1L, 10L)).hasSize(1);
+        assertThat(repositorio.contar(1L, 10L)).isEqualTo(1);
+        assertThat(repositorio.abrirArquivo(1L, 10L, doPetA.id())).isPresent();
+    }
+
+    @Test
     @DisplayName("apagar pelo dono remove fisicamente; id malformado é 'não existe'")
     void apagarFisico() {
         DocumentoTutor doc = repositorio.inserir(1L, novo(10L, Instant.parse("2026-10-29T10:00:00Z")));
