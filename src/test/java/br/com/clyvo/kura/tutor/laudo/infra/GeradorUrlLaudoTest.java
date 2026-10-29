@@ -75,7 +75,7 @@ class GeradorUrlLaudoTest {
         assertThat(segredoCurto.gerarUrl(2L, CHAVE)).isNull();
         assertThat(logs.list).hasSize(2).allSatisfy(e -> {
             assertThat(e.getLevel()).isEqualTo(Level.WARN);
-            assertThat(e.getFormattedMessage()).doesNotContain(SEGREDO).doesNotContain("curto");
+            assertThat(e.getFormattedMessage()).doesNotContain(SEGREDO).doesNotContain("x.example");
         });
     }
 
