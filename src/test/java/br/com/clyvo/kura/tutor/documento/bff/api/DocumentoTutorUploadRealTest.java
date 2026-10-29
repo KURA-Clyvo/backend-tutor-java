@@ -115,6 +115,16 @@ class DocumentoTutorUploadRealTest {
     }
 
     @Test
+    @DisplayName("8 MiB pela rede: 413 ARQUIVO_MUITO_GRANDE (e nao reset de conexao), nada gravado")
+    void oitoMib413() throws Exception {
+        HttpResponse<String> resposta = postar(jpegDeTamanho(8L * 1024 * 1024));
+
+        assertThat(resposta.statusCode()).isEqualTo(413);
+        assertThat(resposta.body()).contains("\"codigo\":\"ARQUIVO_MUITO_GRANDE\"");
+        assertThat(fake.total()).isZero();
+    }
+
+    @Test
     @DisplayName("controle positivo: exatamente 5 MiB passa o teto do multipart e grava (201, urlArquivo com /api)")
     void exatamenteCincoMib201() throws Exception {
         HttpResponse<String> resposta = postar(jpegDeTamanho(CINCO_MIB));
