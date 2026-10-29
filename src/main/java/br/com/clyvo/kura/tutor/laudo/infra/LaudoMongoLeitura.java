@@ -29,12 +29,17 @@ public class LaudoMongoLeitura implements LaudoLeituraRepositorio {
 
     @Override
     public List<LaudoTutor> listarAtivos(long idPet) {
+        return mongo.find(consulta(idPet), Document.class, COLECAO).stream().map(LaudoMongoLeitura::paraLaudo).toList();
+    }
+
+    /** A consulta exata enviada ao Mongo (filtro, sort, teto e projeção positiva); visível ao teste. */
+    static Query consulta(long idPet) {
         Query query = new Query(Criteria.where("idPet").is(idPet).and("stAtivo").is(true))
                 .with(Sort.by(Sort.Order.desc("dataExame")))
                 .limit(TETO_LEITURA);
         query.fields().include("tipo", "titulo", "dataExame", "laboratorio",
                 "arquivo.chave", "arquivo.contentType", "arquivo.tamanhoBytes");
-        return mongo.find(query, Document.class, COLECAO).stream().map(LaudoMongoLeitura::paraLaudo).toList();
+        return query;
     }
 
     private static LaudoTutor paraLaudo(Document doc) {

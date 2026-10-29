@@ -36,6 +36,7 @@ class LaudoMongoLeituraRealTest {
 
     private MongoCollection<Document> colecao;
     private LaudoMongoLeitura repositorio;
+    private MongoTemplate template;
 
     @BeforeAll
     static void sobeMongod() {
@@ -51,7 +52,8 @@ class LaudoMongoLeituraRealTest {
     void bancoNovo() {
         String nome = "kura_docs_" + UUID.randomUUID().toString().replace("-", "");
         colecao = cliente.getDatabase(nome).getCollection("laudos");
-        repositorio = new LaudoMongoLeitura(new MongoTemplate(new SimpleMongoClientDatabaseFactory(cliente, nome)));
+        template = new MongoTemplate(new SimpleMongoClientDatabaseFactory(cliente, nome));
+        repositorio = new LaudoMongoLeitura(template);
     }
 
     /** Documento completo do contrato v1 (todos os campos obrigatórios + os internos). */
@@ -104,14 +106,12 @@ class LaudoMongoLeituraRealTest {
         assertThat(l.contentType()).isEqualTo("application/pdf");
         assertThat(l.tamanhoBytes()).isEqualTo(2048L);
         assertThat(l.chaveArquivo()).endsWith(".pdf");
-        // O record não tem campo para os internos; a prova de que nem saem do banco é a consulta crua:
-        Document cru = colecao.find(new Document("titulo", "hemograma"))
-                .projection(new Document("tipo", 1).append("titulo", 1).append("dataExame", 1)
-                        .append("laboratorio", 1).append("arquivo.chave", 1).append("arquivo.contentType", 1)
-                        .append("arquivo.tamanhoBytes", 1))
-                .first();
-        assertThat(cru.keySet()).doesNotContain("observacao", "dados", "idUsuarioAutor", "idClinica", "idEventoClinico");
-        assertThat(cru.get("arquivo", Document.class).keySet()).doesNotContain("sha256");
+        // O record não tem campo para os internos; a prova de que nem saem do banco é a consulta REAL do
+        // repositório executada crua: o documento devolvido só tem as chaves da lista positiva.
+        Document cru = template.find(LaudoMongoLeitura.consulta(PET), Document.class, "laudos").get(0);
+        assertThat(cru.keySet()).containsExactlyInAnyOrder("_id", "tipo", "titulo", "dataExame", "laboratorio", "arquivo");
+        assertThat(cru.get("arquivo", Document.class).keySet())
+                .containsExactlyInAnyOrder("chave", "contentType", "tamanhoBytes");
     }
 
     @Test
