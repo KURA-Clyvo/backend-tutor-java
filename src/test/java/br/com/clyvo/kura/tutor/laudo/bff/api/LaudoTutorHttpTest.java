@@ -70,7 +70,7 @@ class LaudoTutorHttpTest {
     @Test
     @DisplayName("200: itens com o shape do contrato, urlArquivo assinada e nenhum campo interno")
     void lista200() throws Exception {
-        fake.semear(PET_A, laudo("clinica/1/pet/100/laudo/0a1b2c3d-0000-4000-8000-00000000abcd.pdf"));
+        fake.semear(PET_A, laudo("clinica/1/pet/100/laudo/0a1b2c3d4e5f40008000000000abcdef.pdf"));
 
         mockMvc.perform(get(ROTA, PET_A).with(TUTOR_A))
                 .andExpect(status().isOk())
@@ -96,7 +96,7 @@ class LaudoTutorHttpTest {
     @Test
     @DisplayName("200 com urlArquivo null quando a chave é de outro pet (documento malformado)")
     void chaveDeOutroPetViraNull() throws Exception {
-        fake.semear(PET_A, laudo("clinica/1/pet/999/laudo/0a1b2c3d-0000-4000-8000-00000000abcd.pdf"));
+        fake.semear(PET_A, laudo("clinica/1/pet/999/laudo/0a1b2c3d4e5f40008000000000abcdef.pdf"));
 
         mockMvc.perform(get(ROTA, PET_A).with(TUTOR_A))
                 .andExpect(status().isOk())

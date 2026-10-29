@@ -25,7 +25,7 @@ class GeradorUrlLaudoTest {
     private static final String CHAVE_FOTO_DO_VETOR = "clinica/1/pet/2/abc_256.webp";
     private static final String SIG_VETOR_FOTO = "frkL_Z__8wHPKtfmeVu8A4L59bcuZNzdSx31BgHBjL0";
 
-    private static final String CHAVE = "clinica/1/pet/2/laudo/0a1b2c3d-0000-4000-8000-00000000abcd.pdf";
+    private static final String CHAVE = "clinica/1/pet/2/laudo/0a1b2c3d4e5f40008000000000abcdef.pdf";
     // Calculada de forma independente (python hmac/hashlib) para segredo+CHAVE+EXP: mesma função do vetor da foto.
     private static final String SIG_LAUDO = "djpmJVLBV8eNaSfV6MNIDpLXk7CxZIY_Qa7XEbNQctU";
     private static final long VALIDADE_MIN = 60;

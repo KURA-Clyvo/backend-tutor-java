@@ -3,12 +3,17 @@ package br.com.clyvo.kura.tutor.laudo.infra;
 import br.com.clyvo.kura.tutor.laudo.application.LaudoLeituraRepositorio;
 import br.com.clyvo.kura.tutor.laudo.application.LaudoTutor;
 import org.bson.Document;
+import org.bson.types.ObjectId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -18,6 +23,8 @@ import java.util.List;
  */
 @Repository
 public class LaudoMongoLeitura implements LaudoLeituraRepositorio {
+
+    private static final Logger log = LoggerFactory.getLogger(LaudoMongoLeitura.class);
 
     static final String COLECAO = "laudos";
 
@@ -29,7 +36,14 @@ public class LaudoMongoLeitura implements LaudoLeituraRepositorio {
 
     @Override
     public List<LaudoTutor> listarAtivos(long idPet) {
-        return mongo.find(consulta(idPet), Document.class, COLECAO).stream().map(LaudoMongoLeitura::paraLaudo).toList();
+        List<LaudoTutor> lista = new ArrayList<>();
+        for (Document doc : mongo.find(consulta(idPet), Document.class, COLECAO)) {
+            LaudoTutor laudo = paraLaudo(doc);
+            if (laudo != null) {
+                lista.add(laudo);
+            }
+        }
+        return lista;
     }
 
     /** A consulta exata enviada ao Mongo (filtro, sort, teto e projeção positiva); visível ao teste. */
@@ -42,16 +56,28 @@ public class LaudoMongoLeitura implements LaudoLeituraRepositorio {
         return query;
     }
 
+    /** Documento malformado (fora do contrato) é pulado com 1 WARN que traz só o _id; não derruba a lista. */
     private static LaudoTutor paraLaudo(Document doc) {
-        Document arquivo = doc.get("arquivo", Document.class);
+        Object id = doc.get("_id");
+        Object data = doc.get("dataExame");
+        Object arq = doc.get("arquivo");
+        if (!(id instanceof ObjectId oid) || !(data instanceof Date dataExame) || !(arq instanceof Document arquivo)
+                || !(arquivo.get("tamanhoBytes") instanceof Number tamanho)) {
+            log.warn("Laudo fora do contrato v1 ignorado (_id={})", id);
+            return null;
+        }
         return new LaudoTutor(
-                doc.getObjectId("_id").toHexString(),
-                doc.getString("tipo"),
-                doc.getString("titulo"),
-                doc.getDate("dataExame").toInstant(),
-                doc.getString("laboratorio"),
-                arquivo.getString("contentType"),
-                arquivo.get("tamanhoBytes", Number.class).longValue(),
-                arquivo.getString("chave"));
+                oid.toHexString(),
+                texto(doc.get("tipo")),
+                texto(doc.get("titulo")),
+                dataExame.toInstant(),
+                texto(doc.get("laboratorio")),
+                texto(arquivo.get("contentType")),
+                tamanho.longValue(),
+                texto(arquivo.get("chave")));
+    }
+
+    private static String texto(Object valor) {
+        return valor instanceof String s ? s : null;
     }
 }

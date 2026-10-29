@@ -37,7 +37,7 @@ public class DocumentoTutorService {
 
     public DocumentoTutor criar(long idTutor, long idPet, TipoDocumento tipo, EmissorDocumento emissor,
                                 String numero, byte[] conteudo) {
-        garantirPetDoTutor(idTutor, idPet);
+        guarda.garantir(idTutor, idPet);
         if (conteudo == null || conteudo.length == 0) {
             throw new DocumentoInvalidoException("Arquivo vazio.");
         }
@@ -61,12 +61,12 @@ public class DocumentoTutorService {
     }
 
     public List<DocumentoTutor> listar(long idTutor, long idPet) {
-        garantirPetDoTutor(idTutor, idPet);
+        guarda.garantir(idTutor, idPet);
         return repositorio.listar(idTutor, idPet);
     }
 
     public ArquivoDocumento abrir(long idTutor, long idPet, String idDocumento) {
-        garantirPetDoTutor(idTutor, idPet);
+        guarda.garantir(idTutor, idPet);
         return repositorio.abrirArquivo(idTutor, idPet, idDocumento)
                 .orElseThrow(DocumentoTutorService::documentoNaoEncontrado);
     }
@@ -81,10 +81,6 @@ public class DocumentoTutorService {
             throw documentoNaoEncontrado();
         }
         log.info("Documento do pet apagado (idPet={})", idPet);
-    }
-
-    private void garantirPetDoTutor(long idTutor, long idPet) {
-        guarda.garantir(idTutor, idPet);
     }
 
     /** 404 de documento: mesma resposta para "não existe" e "é de outro tutor". */

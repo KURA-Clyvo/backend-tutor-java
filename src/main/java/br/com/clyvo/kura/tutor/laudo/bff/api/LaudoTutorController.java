@@ -6,6 +6,8 @@ import br.com.clyvo.kura.tutor.laudo.bff.api.dto.ListaLaudosResponse;
 import br.com.clyvo.kura.tutor.laudo.infra.GeradorUrlLaudo;
 import br.com.clyvo.kura.tutor.shared.security.TutorAutenticado;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +39,13 @@ public class LaudoTutorController {
     @Operation(summary = "Lista os laudos ativos do pet",
             description = "dataExame decrescente. urlArquivo é uma URL assinada de curta duração, ou null quando indisponível. "
                     + "403 pet de outro tutor, 404 pet inativo, 503 LAUDOS_INDISPONIVEL.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Laudos ativos do pet (pode ser lista vazia)"),
+        @ApiResponse(responseCode = "401", description = "Sem token ou token inválido"),
+        @ApiResponse(responseCode = "403", description = "Pet de outro tutor"),
+        @ApiResponse(responseCode = "404", description = "Pet inativo"),
+        @ApiResponse(responseCode = "503", description = "LAUDOS_INDISPONIVEL")
+    })
     public ResponseEntity<ListaLaudosResponse> listar(Authentication auth, @PathVariable long idPet) {
         var itens = service.listar(tutorAutenticado.idTutor(auth), idPet).stream()
                 .map(l -> LaudoTutorResponse.de(l, geradorUrl.gerarUrl(idPet, l.chaveArquivo())))

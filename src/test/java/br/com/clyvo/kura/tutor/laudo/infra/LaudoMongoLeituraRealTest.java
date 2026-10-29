@@ -6,7 +6,12 @@ import br.com.clyvo.kura.tutor.shared.mongo.MongodEmbarcado;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.bson.Document;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +20,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
+import org.springframework.data.mongodb.core.query.Query;
 
 import java.time.Instant;
 import java.util.Date;
@@ -69,7 +75,7 @@ class LaudoMongoLeituraRealTest {
                 .append("observacao", "NOTA INTERNA DA CLINICA")
                 .append("dados", new Document("hematocrito", 41.5))
                 .append("arquivo", new Document("chave",
-                                "clinica/" + idClinica + "/pet/" + idPet + "/laudo/0a1b2c3d-0000-4000-8000-00000000abcd.pdf")
+                                "clinica/" + idClinica + "/pet/" + idPet + "/laudo/0a1b2c3d4e5f40008000000000abcdef.pdf")
                         .append("contentType", "application/pdf")
                         .append("tamanhoBytes", 2048L)
                         .append("sha256", "a".repeat(64)))
@@ -134,11 +140,44 @@ class LaudoMongoLeituraRealTest {
                 new com.mongodb.client.model.IndexOptions().name("ix_laudo_pet_ativo_data"));
         colecao.insertOne(laudo(1, PET, "x", "2026-09-10T00:00:00Z", true));
 
-        Document plano = colecao.find(new Document("idPet", PET).append("stAtivo", true))
-                .sort(new Document("dataExame", -1)).limit(LaudoLeituraRepositorio.TETO_LEITURA)
+        // A consulta REAL do repositório (filtro, sort, limite, projeção), não uma reescrita no teste.
+        Query q = LaudoMongoLeitura.consulta(PET);
+        Document plano = colecao.find(q.getQueryObject()).projection(q.getFieldsObject())
+                .sort(q.getSortObject()).limit(q.getLimit())
                 .explain();
         String texto = plano.toJson();
 
         assertThat(texto).contains("IXSCAN").contains("ix_laudo_pet_ativo_data").doesNotContain("\"stage\": \"SORT\"");
+    }
+
+    @Test
+    @DisplayName("documento malformado (sem dataExame / sem arquivo / tipo errado) é pulado com 1 WARN só com o _id; os demais voltam")
+    void malformadoEPuladoComWarnSoComId() {
+        colecao.insertOne(laudo(1, PET, "bom", "2026-09-10T00:00:00Z", true));
+        Document semData = laudo(1, PET, "SEGREDO-SEM-DATA", "2026-09-11T00:00:00Z", true);
+        semData.remove("dataExame");
+        Document semArquivo = laudo(1, PET, "SEGREDO-SEM-ARQUIVO", "2026-09-12T00:00:00Z", true);
+        semArquivo.remove("arquivo");
+        Document tipoErrado = laudo(1, PET, "SEGREDO-TIPO-ERRADO", "2026-09-13T00:00:00Z", true);
+        tipoErrado.put("dataExame", "2026-09-13");
+        colecao.insertMany(List.of(semData, semArquivo, tipoErrado));
+
+        Logger logger = (Logger) LoggerFactory.getLogger(LaudoMongoLeitura.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        List<LaudoTutor> lista;
+        try {
+            lista = repositorio.listarAtivos(PET);
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        assertThat(lista).extracting(LaudoTutor::titulo).containsExactly("bom");
+        assertThat(appender.list).hasSize(3).allSatisfy(e -> {
+            assertThat(e.getLevel()).isEqualTo(Level.WARN);
+            assertThat(e.getFormattedMessage()).matches(".*_id=[0-9a-f]{24}\)$")
+                    .doesNotContain("SEGREDO").doesNotContain("clinica/").doesNotContain("HEMOGRAMA");
+        });
     }
 }
