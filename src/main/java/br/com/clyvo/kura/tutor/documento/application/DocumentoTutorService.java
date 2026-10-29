@@ -72,8 +72,12 @@ public class DocumentoTutorService {
                 .orElseThrow(DocumentoTutorService::documentoNaoEncontrado);
     }
 
+    /**
+     * LGPD art. 18 VI: o titular elimina o proprio documento mesmo sem vinculo ativo ou com o pet
+     * inativo. Sem checagem de vinculo de proposito: o filtro {_id, idTutor, idPet} do repositorio
+     * ja impede tocar dado alheio (outro tutor ou outro pet = 404).
+     */
     public void apagar(long idTutor, long idPet, String idDocumento) {
-        garantirPetDoTutor(idTutor, idPet);
         if (!repositorio.apagar(idTutor, idPet, idDocumento)) {
             throw documentoNaoEncontrado();
         }

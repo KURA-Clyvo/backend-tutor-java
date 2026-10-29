@@ -135,14 +135,28 @@ class DocumentoTutorHttpTest {
     }
 
     @Test
-    @DisplayName("403: pet de outro tutor (envio, lista, arquivo e apagar)")
+    @DisplayName("403: pet de outro tutor (envio, lista, arquivo); apagar vira 404 (M-4: sem checagem de vinculo)")
     void petDeOutroTutor403() throws Exception {
         mockMvc.perform(envio(PET_B, JPEG, "rg.jpg", "image/jpeg").with(TUTOR_A)).andExpect(status().isForbidden());
         mockMvc.perform(get(BASE, PET_B).with(TUTOR_A)).andExpect(status().isForbidden());
         mockMvc.perform(get(BASE + "/{id}/arquivo", PET_B, "000000000000000000000001").with(TUTOR_A))
                 .andExpect(status().isForbidden());
         mockMvc.perform(delete(BASE + "/{id}", PET_B, "000000000000000000000001").with(TUTOR_A))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("M-4: tutor sem vinculo ativo (e pet inativo) apaga o PROPRIO documento: 204; outro tutor sem vinculo: 404 e o documento continua")
+    void apagarProprioDocumentoSemVinculo() throws Exception {
+        String idDoA = enviarEPegarId(TUTOR_A, PET_A);
+        when(petRepository.countVinculo(PET_A, 1L)).thenReturn(0L);
+        when(petRepository.findByIdPetAndStAtivo(PET_A, "S")).thenReturn(Optional.empty());
+
+        mockMvc.perform(delete(BASE + "/{id}", PET_A, idDoA).with(TUTOR_B)).andExpect(status().isNotFound());
+        assertThat(fake.total()).isEqualTo(1);
+        mockMvc.perform(delete(BASE + "/{id}", PET_A, idDoA).with(TUTOR_A)).andExpect(status().isNoContent());
+        assertThat(fake.total()).isZero();
+        mockMvc.perform(delete(BASE + "/{id}", PET_A, idDoA).with(TUTOR_A)).andExpect(status().isNotFound());
     }
 
     @Test

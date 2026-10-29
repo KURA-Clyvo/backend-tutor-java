@@ -5,6 +5,9 @@ import br.com.clyvo.kura.tutor.documento.application.DocumentoTutor;
 import br.com.clyvo.kura.tutor.documento.application.EmissorDocumento;
 import br.com.clyvo.kura.tutor.documento.application.NovoDocumento;
 import br.com.clyvo.kura.tutor.documento.application.TipoDocumento;
+import br.com.clyvo.kura.tutor.documento.application.DocumentoTutorService;
+import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
+import br.com.clyvo.kura.tutor.repository.PetRepository;
 import br.com.clyvo.kura.tutor.shared.mongo.MongodEmbarcado;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoClient;
@@ -29,7 +32,9 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
 import org.springframework.data.mongodb.core.query.Query;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -38,7 +43,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -216,6 +223,21 @@ class DocumentoTutorMongoRealTest {
         assertThat(repositorio.listar(1L, 10L)).hasSize(1);
         assertThat(repositorio.contar(1L, 10L)).isEqualTo(1);
         assertThat(repositorio.abrirArquivo(1L, 10L, doPetA.id())).isPresent();
+    }
+
+    @Test
+    @DisplayName("M-4 pelo service sobre mongod real: tutor sem vinculo apaga o proprio documento (remove 1); outro tutor recebe 404 e o documento continua")
+    void apagarSemVinculoPeloService() {
+        PetRepository semVinculo = mock(PetRepository.class);
+        DocumentoTutorService service = new DocumentoTutorService(repositorio, semVinculo,
+                Clock.fixed(Instant.parse("2026-10-29T10:00:00Z"), ZoneOffset.UTC));
+        DocumentoTutor doc = repositorio.inserir(1L, novo(10L, Instant.parse("2026-10-29T10:00:00Z")));
+
+        assertThatThrownBy(() -> service.apagar(2L, 10L, doc.id())).isInstanceOf(RecursoNaoEncontradoException.class);
+        assertThat(colecao.countDocuments()).isEqualTo(1);
+        service.apagar(1L, 10L, doc.id());
+        assertThat(colecao.countDocuments()).isZero();
+        verifyNoInteractions(semVinculo);
     }
 
     @Test

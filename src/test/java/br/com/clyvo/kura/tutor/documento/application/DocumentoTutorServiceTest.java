@@ -69,7 +69,7 @@ class DocumentoTutorServiceTest {
     }
 
     @Test
-    @DisplayName("sem vínculo: 403 e o repositório de documentos nunca é tocado (criar, listar, abrir, apagar)")
+    @DisplayName("sem vínculo: 403 e o repositório de documentos nunca é tocado (criar, listar, abrir)")
     void semVinculoNaoTocaORepositorio() {
         when(petRepository.countVinculo(PET, TUTOR)).thenReturn(0L);
 
@@ -77,9 +77,19 @@ class DocumentoTutorServiceTest {
                 .isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> service.listar(TUTOR, PET)).isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> service.abrir(TUTOR, PET, "abc")).isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(() -> service.apagar(TUTOR, PET, "abc")).isInstanceOf(ForbiddenException.class);
 
         verifyNoInteractions(repositorio);
+    }
+
+    @Test
+    @DisplayName("apagar (M-4, mudanca deliberada): NAO consulta vinculo nem pet ativo; o filtro do repositorio basta")
+    void apagarNaoExigeVinculo() {
+        when(repositorio.apagar(TUTOR, PET, "abc")).thenReturn(true);
+
+        service.apagar(TUTOR, PET, "abc");
+
+        verify(repositorio).apagar(TUTOR, PET, "abc");
+        verifyNoInteractions(petRepository);
     }
 
     @Test
