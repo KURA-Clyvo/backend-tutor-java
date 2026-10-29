@@ -1,12 +1,11 @@
 package br.com.clyvo.kura.tutor.bff.api;
 
-import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.shared.security.TutorAutenticado;
 import br.com.clyvo.kura.tutor.consentimento.api.dto.ConsentimentoRequest;
 import br.com.clyvo.kura.tutor.consentimento.api.dto.ConsentimentoResponse;
 import br.com.clyvo.kura.tutor.consentimento.application.ConsentimentoService;
 import br.com.clyvo.kura.tutor.consentimento.application.ConsentimentoService.RegistroResult;
 import br.com.clyvo.kura.tutor.consentimento.lgpd.AuditoriaSessao;
-import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -32,12 +31,12 @@ import java.util.List;
 public class ConsentimentoBffController {
 
     private final ConsentimentoService consentimentoService;
-    private final ContaTutorRepository contaTutorRepository;
+    private final TutorAutenticado tutorAutenticado;
 
     public ConsentimentoBffController(ConsentimentoService consentimentoService,
-                                       ContaTutorRepository contaTutorRepository) {
+                                       TutorAutenticado tutorAutenticado) {
         this.consentimentoService = consentimentoService;
-        this.contaTutorRepository = contaTutorRepository;
+        this.tutorAutenticado = tutorAutenticado;
     }
 
     @GetMapping
@@ -50,7 +49,7 @@ public class ConsentimentoBffController {
         @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
     })
     public ResponseEntity<List<ConsentimentoResponse>> listar(Authentication auth) {
-        Long idTutor = resolverIdTutor(auth);
+        Long idTutor = tutorAutenticado.idTutor(auth);
         return ResponseEntity.ok(consentimentoService.listarUltimosPorTipo(idTutor, auth.getName()));
     }
 
@@ -70,7 +69,7 @@ public class ConsentimentoBffController {
             @Valid @RequestBody ConsentimentoRequest request,
             HttpServletRequest httpRequest,
             Authentication auth) {
-        Long idTutor = resolverIdTutor(auth);
+        Long idTutor = tutorAutenticado.idTutor(auth);
         AuditoriaSessao sessao = AuditoriaSessao.from(httpRequest);
         RegistroResult result = consentimentoService.registrarComIdempotencia(
                 idTutor, request, sessao.ipCliente(), idempotencyKey, auth.getName());
@@ -88,9 +87,4 @@ public class ConsentimentoBffController {
         return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
 
-    private Long resolverIdTutor(Authentication auth) {
-        return contaTutorRepository
-                .findIdTutorByEmail(auth.getName())
-                .orElseThrow(() -> new RecursoNaoEncontradoException("ContaTutor", auth.getName()));
-    }
 }

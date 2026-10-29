@@ -3,6 +3,7 @@ package br.com.clyvo.kura.tutor.documento.infra;
 import br.com.clyvo.kura.tutor.documento.application.ArquivoDocumento;
 import br.com.clyvo.kura.tutor.documento.application.DocumentoTutor;
 import br.com.clyvo.kura.tutor.documento.application.DocumentoTutorRepositorio;
+import br.com.clyvo.kura.tutor.documento.application.DocumentoTutorService;
 import br.com.clyvo.kura.tutor.documento.application.EmissorDocumento;
 import br.com.clyvo.kura.tutor.documento.application.NovoDocumento;
 import br.com.clyvo.kura.tutor.documento.application.TipoDocumento;
@@ -27,7 +28,6 @@ import java.util.Optional;
 public class DocumentoTutorMongoRepositorio implements DocumentoTutorRepositorio {
 
     private static final String COLECAO = SchemaDocumentosAplicador.COLECAO;
-    private static final int TETO_LISTA = 20;
 
     private final MongoTemplate mongo;
 
@@ -59,7 +59,7 @@ public class DocumentoTutorMongoRepositorio implements DocumentoTutorRepositorio
     public List<DocumentoTutor> listar(long idTutor, long idPet) {
         Query query = new Query(Criteria.where("idTutor").is(idTutor).and("idPet").is(idPet))
                 .with(Sort.by(Sort.Order.desc("criadoEm"), Sort.Order.desc("_id")))
-                .limit(TETO_LISTA);
+                .limit(DocumentoTutorService.TETO_POR_PET);
         query.fields().exclude("arquivo.conteudo");
         return mongo.find(query, Document.class, COLECAO).stream()
                 .map(DocumentoTutorMongoRepositorio::paraMetadados)

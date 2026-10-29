@@ -5,36 +5,34 @@ import br.com.clyvo.kura.tutor.documento.application.DocumentoInvalidoException;
 import br.com.clyvo.kura.tutor.documento.application.LimiteDocumentosException;
 import br.com.clyvo.kura.tutor.documento.application.TipoArquivoNaoSuportadoException;
 import br.com.clyvo.kura.tutor.shared.exception.ApiError;
-import com.mongodb.MongoSocketException;
-import com.mongodb.MongoTimeoutException;
+import br.com.clyvo.kura.tutor.shared.exception.MongoExceptionHandlerBase;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
  * Handlers do pacote documento, escopados por {@code basePackages} para não mudar a resposta
- * de nenhum outro endpoint. Nunca ecoa URI nem credencial do Mongo: loga só o nome da classe.
+ * de nenhum outro endpoint. O 503 de Mongo e o 400 de parâmetro vêm de {@link MongoExceptionHandlerBase}.
  */
-@Slf4j
 @RestControllerAdvice(basePackages = "br.com.clyvo.kura.tutor.documento")
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class DocumentoExceptionHandler {
+public class DocumentoExceptionHandler extends MongoExceptionHandlerBase {
 
-    @ExceptionHandler({MongoTimeoutException.class, MongoSocketException.class,
-            DataAccessResourceFailureException.class})
-    public ResponseEntity<ApiError> mongoIndisponivel(Exception ex, HttpServletRequest req) {
-        log.warn("Documentos: banco de documentos indisponível ({})", ex.getClass().getSimpleName());
-        return erro(503, "DOCUMENTOS_INDISPONIVEL",
-                "Os documentos estão temporariamente indisponíveis. Tente novamente em instantes.", req);
+    @Override
+    protected String modulo() {
+        return "Documentos";
+    }
+
+    @Override
+    protected Erro erroIndisponivel() {
+        return new Erro("DOCUMENTOS_INDISPONIVEL",
+                "Os documentos estão temporariamente indisponíveis. Tente novamente em instantes.");
     }
 
     @ExceptionHandler(LimiteDocumentosException.class)
@@ -55,11 +53,6 @@ public class DocumentoExceptionHandler {
     @ExceptionHandler(DocumentoInvalidoException.class)
     public ResponseEntity<ApiError> invalido(DocumentoInvalidoException ex, HttpServletRequest req) {
         return erro(400, "VALIDACAO_INVALIDA", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ApiError> parametroInvalido(MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
-        return erro(400, "VALIDACAO_INVALIDA", "Parâmetro inválido: " + ex.getName(), req);
     }
 
     @ExceptionHandler({MissingServletRequestPartException.class, MissingServletRequestParameterException.class})
@@ -84,6 +77,6 @@ public class DocumentoExceptionHandler {
     }
 
     private static ResponseEntity<ApiError> erro(int status, String codigo, String mensagem, HttpServletRequest req) {
-        return ResponseEntity.status(status).body(ApiError.of(status, codigo, mensagem, req.getRequestURI()));
+        return resposta(status, new Erro(codigo, mensagem), req);
     }
 }

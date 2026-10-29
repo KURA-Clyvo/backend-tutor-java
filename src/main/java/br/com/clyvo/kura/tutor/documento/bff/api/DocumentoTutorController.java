@@ -1,6 +1,6 @@
 package br.com.clyvo.kura.tutor.documento.bff.api;
 
-import br.com.clyvo.kura.tutor.auth.domain.repository.ContaTutorRepository;
+import br.com.clyvo.kura.tutor.shared.security.TutorAutenticado;
 import br.com.clyvo.kura.tutor.documento.application.ArquivoDocumento;
 import br.com.clyvo.kura.tutor.documento.application.DocumentoTutor;
 import br.com.clyvo.kura.tutor.documento.application.DocumentoTutorService;
@@ -8,7 +8,6 @@ import br.com.clyvo.kura.tutor.documento.application.EmissorDocumento;
 import br.com.clyvo.kura.tutor.documento.application.TipoDocumento;
 import br.com.clyvo.kura.tutor.documento.bff.api.dto.DocumentoResponse;
 import br.com.clyvo.kura.tutor.documento.bff.api.dto.ListaDocumentosResponse;
-import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -45,11 +44,11 @@ import java.util.List;
 public class DocumentoTutorController {
 
     private final DocumentoTutorService service;
-    private final ContaTutorRepository contaTutorRepository;
+    private final TutorAutenticado tutorAutenticado;
 
-    public DocumentoTutorController(DocumentoTutorService service, ContaTutorRepository contaTutorRepository) {
+    public DocumentoTutorController(DocumentoTutorService service, TutorAutenticado tutorAutenticado) {
         this.service = service;
-        this.contaTutorRepository = contaTutorRepository;
+        this.tutorAutenticado = tutorAutenticado;
     }
 
     @PostMapping
@@ -74,7 +73,7 @@ public class DocumentoTutorController {
             @RequestParam("tipo") TipoDocumento tipo,
             @RequestParam(value = "emissor", required = false) EmissorDocumento emissor,
             @RequestParam(value = "numero", required = false) String numero) throws IOException {
-        long idTutor = resolverIdTutor(auth);
+        long idTutor = tutorAutenticado.idTutor(auth);
         String numeroLimpo = numero == null || numero.isBlank() ? null : numero;
         DocumentoTutor criado = service.criar(idTutor, idPet, tipo, emissor, numeroLimpo, arquivo.getBytes());
         DocumentoResponse corpo = DocumentoResponse.de(criado, request.getContextPath());
@@ -85,7 +84,7 @@ public class DocumentoTutorController {
     @Operation(summary = "Lista os documentos do pet (sem os bytes)")
     public ResponseEntity<ListaDocumentosResponse> listar(
             Authentication auth, HttpServletRequest request, @PathVariable long idPet) {
-        List<DocumentoResponse> itens = service.listar(resolverIdTutor(auth), idPet).stream()
+        List<DocumentoResponse> itens = service.listar(tutorAutenticado.idTutor(auth), idPet).stream()
                 .map(d -> DocumentoResponse.de(d, request.getContextPath()))
                 .toList();
         return ResponseEntity.ok(new ListaDocumentosResponse(itens));
@@ -96,7 +95,7 @@ public class DocumentoTutorController {
             description = "Content-Type gravado no upload; nosniff (X-Content-Type-Options, escrito pelo Spring Security); sem cache. Documento de outro tutor: 404.")
     public ResponseEntity<byte[]> arquivo(Authentication auth, @PathVariable long idPet,
                                           @PathVariable String idDocumento) {
-        ArquivoDocumento arquivo = service.abrir(resolverIdTutor(auth), idPet, idDocumento);
+        ArquivoDocumento arquivo = service.abrir(tutorAutenticado.idTutor(auth), idPet, idDocumento);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(arquivo.contentType()))
                 .header(HttpHeaders.CACHE_CONTROL, CacheControl.noStore().cachePrivate().getHeaderValue())
@@ -107,13 +106,8 @@ public class DocumentoTutorController {
     @Operation(summary = "Apaga o documento (exclusão física, LGPD art. 18 VI)")
     public ResponseEntity<Void> apagar(Authentication auth, @PathVariable long idPet,
                                        @PathVariable String idDocumento) {
-        service.apagar(resolverIdTutor(auth), idPet, idDocumento);
+        service.apagar(tutorAutenticado.idTutor(auth), idPet, idDocumento);
         return ResponseEntity.noContent().build();
     }
 
-    private long resolverIdTutor(Authentication auth) {
-        return contaTutorRepository
-                .findIdTutorByEmail(auth.getName())
-                .orElseThrow(() -> new RecursoNaoEncontradoException("ContaTutor", auth.getName()));
-    }
 }
