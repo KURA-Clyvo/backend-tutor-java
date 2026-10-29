@@ -93,13 +93,12 @@ public class DocumentoTutorController {
 
     @GetMapping("/{idDocumento}/arquivo")
     @Operation(summary = "Baixa o arquivo do documento",
-            description = "Content-Type gravado no upload; nosniff; sem cache. Documento de outro tutor: 404.")
+            description = "Content-Type gravado no upload; nosniff (X-Content-Type-Options, escrito pelo Spring Security); sem cache. Documento de outro tutor: 404.")
     public ResponseEntity<byte[]> arquivo(Authentication auth, @PathVariable long idPet,
                                           @PathVariable String idDocumento) {
         ArquivoDocumento arquivo = service.abrir(resolverIdTutor(auth), idPet, idDocumento);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(arquivo.contentType()))
-                .header("X-Content-Type-Options", "nosniff")
                 .header(HttpHeaders.CACHE_CONTROL, CacheControl.noStore().cachePrivate().getHeaderValue())
                 .body(arquivo.conteudo());
     }
