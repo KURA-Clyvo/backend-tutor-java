@@ -176,7 +176,7 @@ class LaudoMongoLeituraRealTest {
         assertThat(lista).extracting(LaudoTutor::titulo).containsExactly("bom");
         assertThat(appender.list).hasSize(3).allSatisfy(e -> {
             assertThat(e.getLevel()).isEqualTo(Level.WARN);
-            assertThat(e.getFormattedMessage()).matches(".*_id=[0-9a-f]{24}\)$")
+            assertThat(e.getFormattedMessage()).matches(".*_id=[0-9a-f]{24}[)]$")
                     .doesNotContain("SEGREDO").doesNotContain("clinica/").doesNotContain("HEMOGRAMA");
         });
     }

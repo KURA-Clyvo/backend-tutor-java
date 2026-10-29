@@ -27,7 +27,7 @@ class GeradorUrlLaudoTest {
 
     private static final String CHAVE = "clinica/1/pet/2/laudo/0a1b2c3d4e5f40008000000000abcdef.pdf";
     // Calculada de forma independente (python hmac/hashlib) para segredo+CHAVE+EXP: mesma função do vetor da foto.
-    private static final String SIG_LAUDO = "djpmJVLBV8eNaSfV6MNIDpLXk7CxZIY_Qa7XEbNQctU";
+    private static final String SIG_LAUDO = "PwmI8Icj76GX8-yU84jnDKK1P4CcbgwY_-FNkbLZ6Ag";
     private static final long VALIDADE_MIN = 60;
 
     private final Clock clock = Clock.fixed(Instant.ofEpochSecond(EXP - VALIDADE_MIN * 60), ZoneOffset.UTC);
