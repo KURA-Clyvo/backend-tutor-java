@@ -1,0 +1,144 @@
+package br.com.clyvo.kura.tutor.laudo.infra;
+
+import br.com.clyvo.kura.tutor.laudo.application.LaudoLeituraRepositorio;
+import br.com.clyvo.kura.tutor.laudo.application.LaudoTutor;
+import br.com.clyvo.kura.tutor.shared.mongo.MongodEmbarcado;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
+
+import java.time.Instant;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Contra um mongod real: documentos no formato EXATO do contrato laudos v1 (dono .NET), inclusive
+ * os campos internos que o Java não pode devolver. Consequência declarada do contrato: o escopo
+ * do tutor é o PET, então laudo de QUALQUER clínica para aquele idPet aparece (idClinica não filtra).
+ */
+@Tag("mongo-real")
+class LaudoMongoLeituraRealTest {
+
+    private static final long PET = 10L;
+    private static MongoClient cliente;
+
+    private MongoCollection<Document> colecao;
+    private LaudoMongoLeitura repositorio;
+
+    @BeforeAll
+    static void sobeMongod() {
+        cliente = MongoClients.create(MongodEmbarcado.uri());
+    }
+
+    @AfterAll
+    static void fecha() {
+        cliente.close();
+    }
+
+    @BeforeEach
+    void bancoNovo() {
+        String nome = "kura_docs_" + UUID.randomUUID().toString().replace("-", "");
+        colecao = cliente.getDatabase(nome).getCollection("laudos");
+        repositorio = new LaudoMongoLeitura(new MongoTemplate(new SimpleMongoClientDatabaseFactory(cliente, nome)));
+    }
+
+    /** Documento completo do contrato v1 (todos os campos obrigatórios + os internos). */
+    private static Document laudo(long idClinica, long idPet, String titulo, String dataExame, boolean ativo) {
+        return new Document("idClinica", idClinica)
+                .append("idPet", idPet)
+                .append("idEventoClinico", 55L)
+                .append("idUsuarioAutor", 9L)
+                .append("tipo", "HEMOGRAMA")
+                .append("titulo", titulo)
+                .append("dataExame", Date.from(Instant.parse(dataExame)))
+                .append("laboratorio", "Lab Vet")
+                .append("observacao", "NOTA INTERNA DA CLINICA")
+                .append("dados", new Document("hematocrito", 41.5))
+                .append("arquivo", new Document("chave",
+                                "clinica/" + idClinica + "/pet/" + idPet + "/laudo/0a1b2c3d-0000-4000-8000-00000000abcd.pdf")
+                        .append("contentType", "application/pdf")
+                        .append("tamanhoBytes", 2048L)
+                        .append("sha256", "a".repeat(64)))
+                .append("stAtivo", ativo)
+                .append("criadoEm", new Date())
+                .append("atualizadoEm", new Date())
+                .append("removidoEm", null);
+    }
+
+    @Test
+    @DisplayName("devolve só stAtivo:true do pet pedido, dataExame decrescente; inclui outra clínica com o mesmo idPet")
+    void filtraOrdenaEEscopoEhOPet() {
+        colecao.insertOne(laudo(1, PET, "antigo", "2026-01-10T00:00:00Z", true));
+        colecao.insertOne(laudo(1, PET, "recente", "2026-09-10T00:00:00Z", true));
+        colecao.insertOne(laudo(2, PET, "outra-clinica", "2026-05-10T00:00:00Z", true));
+        colecao.insertOne(laudo(1, PET, "removido", "2026-12-10T00:00:00Z", false));
+        colecao.insertOne(laudo(1, 99L, "outro-pet", "2026-10-10T00:00:00Z", true));
+
+        List<LaudoTutor> lista = repositorio.listarAtivos(PET);
+
+        assertThat(lista).extracting(LaudoTutor::titulo).containsExactly("recente", "outra-clinica", "antigo");
+    }
+
+    @Test
+    @DisplayName("projeção: traz os campos de exibição e a chave; nunca observacao, dados, autoria nem clínica")
+    void projecaoSemCamposInternos() {
+        colecao.insertOne(laudo(1, PET, "hemograma", "2026-09-10T00:00:00Z", true));
+
+        LaudoTutor l = repositorio.listarAtivos(PET).get(0);
+
+        assertThat(l.tipo()).isEqualTo("HEMOGRAMA");
+        assertThat(l.laboratorio()).isEqualTo("Lab Vet");
+        assertThat(l.dataExame()).isEqualTo(Instant.parse("2026-09-10T00:00:00Z"));
+        assertThat(l.contentType()).isEqualTo("application/pdf");
+        assertThat(l.tamanhoBytes()).isEqualTo(2048L);
+        assertThat(l.chaveArquivo()).endsWith(".pdf");
+        // O record não tem campo para os internos; a prova de que nem saem do banco é a consulta crua:
+        Document cru = colecao.find(new Document("titulo", "hemograma"))
+                .projection(new Document("tipo", 1).append("titulo", 1).append("dataExame", 1)
+                        .append("laboratorio", 1).append("arquivo.chave", 1).append("arquivo.contentType", 1)
+                        .append("arquivo.tamanhoBytes", 1))
+                .first();
+        assertThat(cru.keySet()).doesNotContain("observacao", "dados", "idUsuarioAutor", "idClinica", "idEventoClinico");
+        assertThat(cru.get("arquivo", Document.class).keySet()).doesNotContain("sha256");
+    }
+
+    @Test
+    @DisplayName("teto de leitura: no máximo 100 laudos, os mais recentes")
+    void tetoDeLeitura() {
+        for (int i = 0; i < LaudoLeituraRepositorio.TETO_LEITURA + 5; i++) {
+            colecao.insertOne(laudo(1, PET, "l" + i, Instant.parse("2026-01-01T00:00:00Z").plusSeconds(i * 60L).toString(), true));
+        }
+
+        List<LaudoTutor> lista = repositorio.listarAtivos(PET);
+
+        assertThat(lista).hasSize(LaudoLeituraRepositorio.TETO_LEITURA);
+        assertThat(lista.get(0).titulo()).isEqualTo("l104");
+    }
+
+    @Test
+    @DisplayName("o filtro do tutor é atendido pelo índice ix_laudo_pet_ativo_data (IXSCAN, sem SORT em memória)")
+    void usaOIndiceDoContrato() {
+        colecao.createIndex(new Document("idPet", 1).append("stAtivo", 1).append("dataExame", -1),
+                new com.mongodb.client.model.IndexOptions().name("ix_laudo_pet_ativo_data"));
+        colecao.insertOne(laudo(1, PET, "x", "2026-09-10T00:00:00Z", true));
+
+        Document plano = colecao.find(new Document("idPet", PET).append("stAtivo", true))
+                .sort(new Document("dataExame", -1)).limit(LaudoLeituraRepositorio.TETO_LEITURA)
+                .explain();
+        String texto = plano.toJson();
+
+        assertThat(texto).contains("IXSCAN").contains("ix_laudo_pet_ativo_data").doesNotContain("\"stage\": \"SORT\"");
+    }
+}

@@ -1,8 +1,7 @@
 package br.com.clyvo.kura.tutor.documento.application;
 
 import br.com.clyvo.kura.tutor.exception.RecursoNaoEncontradoException;
-import br.com.clyvo.kura.tutor.repository.PetRepository;
-import br.com.clyvo.kura.tutor.shared.exception.ForbiddenException;
+import br.com.clyvo.kura.tutor.shared.pet.GuardaPetDoTutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -27,12 +26,12 @@ public class DocumentoTutorService {
     private static final Pattern NUMERO = Pattern.compile("^[A-Za-z0-9./-]{1,40}$");
 
     private final DocumentoTutorRepositorio repositorio;
-    private final PetRepository petRepository;
+    private final GuardaPetDoTutor guarda;
     private final Clock clock;
 
-    public DocumentoTutorService(DocumentoTutorRepositorio repositorio, PetRepository petRepository, Clock clock) {
+    public DocumentoTutorService(DocumentoTutorRepositorio repositorio, GuardaPetDoTutor guarda, Clock clock) {
         this.repositorio = repositorio;
-        this.petRepository = petRepository;
+        this.guarda = guarda;
         this.clock = clock;
     }
 
@@ -84,13 +83,8 @@ public class DocumentoTutorService {
         log.info("Documento do pet apagado (idPet={})", idPet);
     }
 
-    /** 403 sem vínculo; 404 pet inativo. Roda antes de qualquer chamada ao repositório de documentos. */
     private void garantirPetDoTutor(long idTutor, long idPet) {
-        if (petRepository.countVinculo(idPet, idTutor) == 0) {
-            throw new ForbiddenException("Acesso negado: pet não pertence ao tutor autenticado.");
-        }
-        petRepository.findByIdPetAndStAtivo(idPet, "S")
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Pet", idPet));
+        guarda.garantir(idTutor, idPet);
     }
 
     /** 404 de documento: mesma resposta para "não existe" e "é de outro tutor". */

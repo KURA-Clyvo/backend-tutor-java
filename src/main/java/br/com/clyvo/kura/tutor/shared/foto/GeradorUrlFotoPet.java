@@ -1,8 +1,7 @@
 package br.com.clyvo.kura.tutor.shared.foto;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
-import java.time.Instant;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,40 +37,28 @@ import org.springframework.stereotype.Component;
 public class GeradorUrlFotoPet {
 
     private static final Logger log = LoggerFactory.getLogger(GeradorUrlFotoPet.class);
-    private static final int TAMANHO_MINIMO_SEGREDO_BYTES = 32;
     private static final double VALIDADE_HORAS_PADRAO = 24;
     private static final String PREFIXO_ENDPOINT = "/api/v1/fotos/";
 
-    private final String baseUrl;
-    private final double validadeHoras;
-    private final Clock clock;
-    private final AssinadorUrlFotoHmac assinador;
+    private final MontadorUrlAssinada montador;
+    private final Duration validade;
 
     public GeradorUrlFotoPet(
             @Value("${kura.foto.url-secret:}") String segredo,
             @Value("${kura.foto.url-base:}") String baseUrlConfigurada,
             @Value("${kura.foto.url-validade-horas:" + VALIDADE_HORAS_PADRAO + "}") double validadeHoras,
             Clock clock) {
-        this.clock = clock;
-        this.validadeHoras = validadeHoras;
+        this.validade = Duration.ofSeconds(Math.round(validadeHoras * 3600.0));
+        this.montador = MontadorUrlAssinada.criarOuNulo(segredo, baseUrlConfigurada, clock);
 
-        boolean segredoValido = segredo != null
-                && segredo.getBytes(StandardCharsets.UTF_8).length >= TAMANHO_MINIMO_SEGREDO_BYTES;
-        boolean baseValida = baseUrlConfigurada != null && !baseUrlConfigurada.isBlank();
-
-        if (segredoValido && baseValida) {
-            this.assinador = new AssinadorUrlFotoHmac(segredo);
-            this.baseUrl = removerBarraFinal(baseUrlConfigurada);
-        } else {
-            this.assinador = null;
-            this.baseUrl = null;
+        if (montador == null) {
             log.warn(
                     "URLs assinadas de foto de pet DESABILITADAS: kura.foto.url-secret "
                             + "ausente/curto (<{} bytes UTF-8) ou kura.foto.url-base ausente. "
                             + "dsFotoUrl/dsFotoThumbUrl sairão null nos DTOs do tutor — o app usa a "
                             + "ilustração padrão. Configurar FOTO_URL_SECRET/FOTO_URL_BASE (FT-06) "
                             + "para habilitar.",
-                    TAMANHO_MINIMO_SEGREDO_BYTES);
+                    MontadorUrlAssinada.TAMANHO_MINIMO_SEGREDO_BYTES);
         }
     }
 
@@ -82,26 +69,9 @@ public class GeradorUrlFotoPet {
      * a ilustração padrão em vez de uma foto.
      */
     public String gerarUrl(String chaveBase, String sufixoTamanho) {
-        if (chaveBase == null || chaveBase.isBlank() || assinador == null) {
+        if (chaveBase == null || chaveBase.isBlank() || montador == null) {
             return null;
         }
-
-        String chaveVariante = ChaveFotoPet.variante(chaveBase, sufixoTamanho);
-
-        long validadeSegundos = Math.round(validadeHoras * 3600.0);
-        Instant expiraEm = clock.instant().plusSeconds(validadeSegundos);
-        long exp = expiraEm.getEpochSecond();
-
-        String sig = assinador.assinar(chaveVariante, exp);
-
-        return baseUrl + PREFIXO_ENDPOINT + chaveVariante + "?exp=" + exp + "&sig=" + sig;
-    }
-
-    private static String removerBarraFinal(String url) {
-        int fim = url.length();
-        while (fim > 0 && url.charAt(fim - 1) == '/') {
-            fim--;
-        }
-        return url.substring(0, fim);
+        return montador.montar(PREFIXO_ENDPOINT, ChaveFotoPet.variante(chaveBase, sufixoTamanho), validade);
     }
 }

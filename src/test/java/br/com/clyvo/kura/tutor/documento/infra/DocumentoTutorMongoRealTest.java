@@ -229,7 +229,8 @@ class DocumentoTutorMongoRealTest {
     @DisplayName("M-4 pelo service sobre mongod real: tutor sem vinculo apaga o proprio documento (remove 1); outro tutor recebe 404 e o documento continua")
     void apagarSemVinculoPeloService() {
         PetRepository semVinculo = mock(PetRepository.class);
-        DocumentoTutorService service = new DocumentoTutorService(repositorio, semVinculo,
+        DocumentoTutorService service = new DocumentoTutorService(repositorio,
+                new br.com.clyvo.kura.tutor.shared.pet.GuardaPetDoTutor(semVinculo),
                 Clock.fixed(Instant.parse("2026-10-29T10:00:00Z"), ZoneOffset.UTC));
         DocumentoTutor doc = repositorio.inserir(1L, novo(10L, Instant.parse("2026-10-29T10:00:00Z")));
 
