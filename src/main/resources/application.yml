@@ -20,6 +20,11 @@ spring:
         format_sql: true
   cache:
     type: caffeine
+  servlet:
+    multipart:
+      # S4-JAVA-02: teto do documento do pet (5 MiB por arquivo; o service confere de novo).
+      max-file-size: 5MB
+      max-request-size: 6MB
   web:
     resources:
       cache:
@@ -67,6 +72,10 @@ kura:
     seed-exemplo:
       # EXCEÇÃO D-LOJA-10 à regra "dado fictício nunca em prod": só catalogo_loja, só exemplo=true.
       enabled: ${KURA_LOJA_SEED_EXEMPLO_ENABLED:false}
+  documentos:
+    # S4-JAVA-02. Desligado por padrão (dev/teste não tocam o Mongo); o compose liga.
+    mongo:
+      init-enabled: ${KURA_DOCUMENTOS_MONGO_INIT_ENABLED:false}
   cors:
     # Override em prod: CORS_ALLOWED_ORIGINS=https://app.clyvo.vet
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:19006}

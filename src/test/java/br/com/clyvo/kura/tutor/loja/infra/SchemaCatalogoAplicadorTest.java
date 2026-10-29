@@ -110,8 +110,8 @@ class SchemaCatalogoAplicadorTest {
     }
 
     @Test
-    @DisplayName("índice recusado pelo servidor vira WARN daquele índice e os demais seguem")
-    void indiceRecusadoNaoInterrompe() {
+    @DisplayName("E61: índice divergente (85) é removido pelo nome e recriado; os demais seguem")
+    void indiceDivergenteERecriado() {
         colecoesExistentes("catalogo_loja");
         MongoCommandException recusa = new MongoCommandException(
                 new BsonDocument("code", new BsonInt32(85)).append("errmsg", new BsonString("IndexOptionsConflict")),
@@ -121,6 +121,8 @@ class SchemaCatalogoAplicadorTest {
 
         new SchemaCatalogoAplicador(database).aplicar();
 
-        verify(colecao, times(3)).createIndex(any(Bson.class), any(IndexOptions.class));
+        // 3 índices + 1 recriação do primeiro, depois do drop pelo nome
+        verify(colecao, times(4)).createIndex(any(Bson.class), any(IndexOptions.class));
+        verify(colecao).dropIndex("ix_cat_ativo_categoria_ordem_slug");
     }
 }
