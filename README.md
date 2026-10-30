@@ -73,13 +73,13 @@ flowchart LR
     NET --> ORA
     JAVA --> MONGO[("MongoDB kura_docs")]
     NET --> MONGO
-    MONGO --- C1["catalogo_loja e documentos_tutor<br/>dono: Java"]
+    MONGO --- C1["catalogo_loja, carrinho, pedidos_loja e documentos_tutor<br/>dono: Java"]
     MONGO --- C2["laudos<br/>dono: .NET, o Java so le"]
     JAVA -. "gera URL assinada HMAC<br/>do arquivo do laudo e da foto" .-> APP
     APP -. "abre a URL assinada" .-> NET
 ```
 
-Leitura do diagrama: (1) o Java é dono das coleções `catalogo_loja` e `documentos_tutor`; a `laudos` é da .NET e o Java só lê. (2) O arquivo do laudo e a foto do pet **moram no storage da .NET**: o Java apenas assina a URL (HMAC, mesmo segredo nos dois lados) e o app abre essa URL direto na .NET. (3) Tabelas do Oracle seguem o ownership da seção 1.2.
+Leitura do diagrama: (1) o Java é dono das coleções `catalogo_loja`, `carrinho`, `pedidos_loja` e `documentos_tutor`; a `laudos` é da .NET e o Java só lê. (2) O arquivo do laudo e a foto do pet **moram no storage da .NET**: o Java apenas assina a URL (HMAC, mesmo segredo nos dois lados) e o app abre essa URL direto na .NET. (3) Tabelas do Oracle seguem o ownership da seção 1.2.
 
 ### 1.1 Bounded Contexts
 
@@ -145,7 +145,7 @@ Documentação completa das decisões arquiteturais em [`docs/architecture.md`](
 | `AGENDAMENTO` | **Compartilhada** | Java: POST / PUT / DELETE (tutor); .NET: PATCH ST_STATUS (vet) |
 | `TUTOR`, `PET`, `INVITE_TUTOR`, `CLINICA`, `VETERINARIO` | **.NET** | Somente leitura (`@Immutable`) |
 | `ESPECIE`, `RACA` | **.NET** | Somente leitura + cache Caffeine |
-| Mongo `catalogo_loja`, `documentos_tutor` | **Java** | Leitura e escrita (a `catalogo_loja` só é lida pela API; o seed de exemplo escreve) |
+| Mongo `catalogo_loja`, `carrinho`, `pedidos_loja`, `documentos_tutor` | **Java** | Leitura e escrita (a `catalogo_loja` só é lida pela API; o seed de exemplo escreve) |
 | Mongo `laudos` | **.NET** | Java **somente lê**, sempre pelo `idPet` depois de provar o vínculo no Oracle |
 
 Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita com versão desatualizada retorna **HTTP 409 Conflict** em ambos os backends. A integração não passa por HTTP entre as APIs: as duas leem e escrevem no mesmo banco, cada uma respeitando o ownership acima.
@@ -174,7 +174,7 @@ As migrations vivem em três diretórios: [`db/migration/`](src/main/resources/d
 
 | Decisão | Por que | Onde está no código |
 |---|---|---|
-| **Coleções com dono.** `catalogo_loja` e `documentos_tutor` são do Java; `laudos` é da .NET e o Java só lê. | Duas APIs escrevendo na mesma coleção reproduzem o problema de drift que o Flyway resolveu no Oracle. O contrato `documentos_tutor` v1 foi congelado porque a .NET passa a lê-la. A role Mongo do Java (`kura_java_runtime`) tem só `find` em `laudos`. | [`LaudoLeituraRepositorio`](src/main/java/br/com/clyvo/kura/tutor/laudo/application/LaudoLeituraRepositorio.java) (porta só de leitura), [`DocumentoTutorRepositorio`](src/main/java/br/com/clyvo/kura/tutor/documento/application/DocumentoTutorRepositorio.java) |
+| **Coleções com dono.** `catalogo_loja`, `carrinho`, `pedidos_loja` e `documentos_tutor` são do Java; `laudos` é da .NET e o Java só lê. | Duas APIs escrevendo na mesma coleção reproduzem o problema de drift que o Flyway resolveu no Oracle. O contrato `documentos_tutor` v1 foi congelado porque a .NET passa a lê-la. A role Mongo do Java (`kura_java_runtime`) tem só `find` em `laudos`. | [`LaudoLeituraRepositorio`](src/main/java/br/com/clyvo/kura/tutor/laudo/application/LaudoLeituraRepositorio.java) (porta só de leitura), [`DocumentoTutorRepositorio`](src/main/java/br/com/clyvo/kura/tutor/documento/application/DocumentoTutorRepositorio.java) |
 | **Escopo obrigatório na assinatura do repositório.** Todo método de `DocumentoTutorRepositorio` recebe `long idTutor` como 1º parâmetro; todo método de `LaudoLeituraRepositorio` recebe `long idPet`. Um teste por reflexão trava isso, inclusive em interfaces herdadas. | Esquecer o filtro de tenant foi o defeito mais caro deste projeto. Colocar o escopo na assinatura faz o teste cobrar, em vez de depender de revisão. | [`EscopoRepositorioReflexaoTest`](src/test/java/br/com/clyvo/kura/tutor/documento/application/EscopoRepositorioReflexaoTest.java), [`EscopoLeituraLaudoReflexaoTest`](src/test/java/br/com/clyvo/kura/tutor/laudo/application/EscopoLeituraLaudoReflexaoTest.java) |
 | **Vínculo `TUTOR_PET` no Oracle antes de qualquer leitura no Mongo.** Sem vínculo: 403; pet inativo: 404. | O Mongo guarda `idPet`, mas quem diz que o pet é do tutor é o Oracle. Checar primeiro impede que um `idPet` alheio chegue ao Mongo. | [`GuardaPetDoTutor`](src/main/java/br/com/clyvo/kura/tutor/shared/pet/GuardaPetDoTutor.java) |
 | **Arquivo no próprio documento (BinData), teto de 5 MiB, tipo validado por assinatura.** JPEG, PNG, WEBP e PDF são reconhecidos pelos primeiros bytes (magic bytes), nunca pela extensão nem pelo `Content-Type` do cliente. Limite de 20 documentos por pet. | A alternativa de gravar no storage da .NET exigiria HTTP entre as APIs, proibido pela arquitetura; GridFS só compensa acima do limite de 16 MiB do BSON. As listas não trazem os bytes. | [`AssinaturaArquivo`](src/main/java/br/com/clyvo/kura/tutor/documento/application/AssinaturaArquivo.java), [`DocumentoTutorService`](src/main/java/br/com/clyvo/kura/tutor/documento/application/DocumentoTutorService.java) (`TETO_POR_PET`) |
@@ -430,6 +430,24 @@ As tabelas acima documentam a estrutura de rotas **id-scoped** (`/tutores/{idTut
 |---|---|---|---|
 | `GET` | `/v1/loja/catalogo?categoria=&page=&size=` | JWT | Catálogo global da plataforma (itens ativos, ordem editorial). `categoria` ∈ `ALIMENTACAO\|HIGIENE\|ACESSORIOS\|BRINQUEDOS`; `page` 0–10000 (padrão 0); `size` 1–50 (padrão 20). Envelope `{aviso, content, page, size, hasNext}`; `preco` em centavos |
 
+**`LojaCarrinhoController` — `/v1/loja/carrinho` e `LojaPedidosController` — `/v1/loja/pedidos` (Loja, MongoDB)**
+
+Todas exigem JWT; o `idTutor` vem só do token. Mongo fora do ar: `503 CATALOGO_INDISPONIVEL` (a Loja inteira é um serviço só).
+
+| Método | Endpoint | Status | Descrição |
+|---|---|---|---|
+| `GET` | `/v1/loja/carrinho` | `200` | Carrinho do tutor; ausente ou vencido (mais de 2 h sem mexer) vem vazio, nunca `404`. Preço, nome e imagem são relidos do catálogo; item que saiu do catálogo vem `disponivel:false` e fora do `total` |
+| `POST` | `/v1/loja/carrinho/itens` | `200` · `400` · `404 PRODUTO_NAO_ENCONTRADO` · `422 LIMITE_CARRINHO` | Soma a `quantidade` (1–99) ao produto (`$inc` atômico) |
+| `PUT` | `/v1/loja/carrinho/itens/{slug}` | `200` · `400` · `404` · `422` | Define a quantidade absoluta (idempotente) |
+| `DELETE` | `/v1/loja/carrinho/itens/{slug}` | `200` · `400` | Remove o produto; ausente não é erro |
+| `DELETE` | `/v1/loja/carrinho` | `204` | Esvazia o carrinho |
+| `POST` | `/v1/loja/pedidos` (header `Idempotency-Key`) | `201` criado · `200` mesma chave de volta · `400 HEADER_AUSENTE`/`IDEMPOTENCY_KEY_INVALIDA` · `422 CARRINHO_VAZIO`/`ITEM_INDISPONIVEL` | Finaliza o carrinho em um pedido `AGUARDANDO_PARCEIRO`, com snapshot de nome, categoria e preço |
+| `GET` | `/v1/loja/pedidos?page=&size=` | `200` · `400` | Meus pedidos, do mais novo ao mais antigo; envelope `{aviso, content, page, size, hasNext}` |
+| `GET` | `/v1/loja/pedidos/{id}` | `200` · `404 PEDIDO_NAO_ENCONTRADO` | Detalhe; id malformado ou de outro tutor dá o mesmo `404` |
+| `DELETE` | `/v1/loja/pedidos/{id}` | `200` · `404` | Cancelamento **lógico** (o pedido continua consultável como `CANCELADO`); repetir devolve `200` |
+
+Corpo inválido nestas rotas (JSON malformado, ausente, tipo errado) dá `400 VALIDACAO_INVALIDA` e `Content-Type` errado dá `415`, ambos com mensagem fixa.
+
 **`DocumentoTutorController` — `/v1/tutor/pets/{idPet}/documentos` (documentos do pet, MongoDB)**
 
 | Método | Endpoint | Auth | Descrição |
@@ -459,14 +477,18 @@ Medido no G4 (compose local): `5 MiB` exatos ⇒ `201`; `5 MiB + 1` e `8 MiB` �
 
 #### Loja (pré-lançamento)
 
-A Loja é a vitrine de produtos para o pet dentro do app do tutor. Os dados vivem no **MongoDB** (database `kura_docs`, coleção `catalogo_loja`); o restante do KURA segue em Oracle. A Loja está em **pré-lançamento** e a resposta do catálogo traz sempre este aviso, na raiz do JSON:
+A Loja é a vitrine de produtos para o pet dentro do app do tutor. Os dados vivem no **MongoDB** (database `kura_docs`, coleções `catalogo_loja`, `carrinho` e `pedidos_loja`); o restante do KURA segue em Oracle. A Loja está em **pré-lançamento** e as respostas do catálogo, do carrinho e dos pedidos trazem sempre este aviso, na raiz do JSON:
 
 > Pré-lançamento: pagamento e entrega serão ativados quando os parceiros logísticos concluírem a integração. Nenhuma cobrança é feita.
 
 - **Dados de exemplo.** Todo item do seed vem com `exemplo: true` (produtos genéricos, sem marca); o app mostra o selo "Exemplo" e o preço como "preço de referência". O seed é uma exceção deliberada à regra "dado fictício nunca em prod" (D-LOJA-10): só `catalogo_loja`, só itens `exemplo: true`, e só liga com `KURA_LOJA_SEED_EXEMPLO_ENABLED=true`.
 - **Schema e índices são do código.** Na subida, o runner `LojaMongoInicializador` (`KURA_LOJA_MONGO_INIT_ENABLED=true`) cria a coleção com o `$jsonSchema` de `src/main/resources/mongo/catalogo_loja.schema.json` (ou reaplica com `collMod`) e cria os índices de `catalogo_loja.indexes.json`. Desligado por padrão em `dev` e nos testes.
 - **Mongo fora do ar não derruba o tutor.** O runner captura a falha, registra um `WARN` (sem URI nem credencial) e reaplica na próxima subida; o health indicator do Mongo está desligado (`management.health.mongo.enabled=false`); `GET /v1/loja/catalogo` responde `503` com `codigo: CATALOGO_INDISPONIVEL`, nunca `500`.
-- **Sem pagamento.** Não há carrinho, pedido nem campo de pagamento nesta versão.
+- **Sem pagamento.** Há carrinho e pedido, mas pagamento e entrega são **simulados**: o pedido nasce `AGUARDANDO_PARCEIRO`, só existe também `CANCELADO`, e nenhum campo de pagamento existe (um teste busca nomes de campo no JSON e nos schemas).
+- **Carrinho = chave-valor aproximado com TTL (atividade NoSQL).** Um documento por tutor (`_id = idTutor`, `itens: {slug: quantidade}`), sem preço. Adicionar é `$inc` (o `HINCRBY`); o limite de 99 por produto e 50 produtos é do `$jsonSchema` do banco (erro 121 traduzido para `422 LIMITE_CARRINHO`). O índice TTL `ttl_carrinho_atualizadoEm` expira com 7200 s (2 h) e é deslizante; a API também lê como vazio o carrinho com mais de 2 h, sem depender do monitor do Mongo (que roda a cada 60 s). Mudar o TTL depois exige `collMod` como root.
+- **Pedido no Mongo, destino Oracle (D-LOJA-11).** `pedidos_loja` é um agregado único com os itens embutidos (snapshot); ids do futuro modelo relacional como `long`, preços em centavos inteiros e id do pedido opaco, para a migração não mudar o contrato HTTP.
+- **Idempotência.** `POST /v1/loja/pedidos` exige `Idempotency-Key` (UUID). Regra para o app: 1 UUID v4 por toque em "Finalizar"; reusar a mesma chave só no retry de falha de rede ou de `503`; descartar depois de qualquer `2xx`; depois de `422`, gerar uma nova. O índice único `{idTutor, chaveIdempotencia}` garante 1 pedido por chave.
+- **Resíduos declarados (pré-lançamento, sem cobrança; o tutor cancela o duplicado):** (1) duas chaves diferentes ao mesmo tempo sobre o mesmo carrinho podem gerar dois pedidos; (2) se o último passo (apagar o carrinho) falhar e o app não repetir a chave, um novo "Finalizar" com chave nova cria um segundo pedido idêntico.
 - Conexão: `SPRING_DATA_MONGODB_URI` (o `DevOps-Cloud` injeta o usuário `kura_java`, de privilégio restrito às coleções do Java; em `laudos` ele só tem `find`).
 
 ### Códigos HTTP
