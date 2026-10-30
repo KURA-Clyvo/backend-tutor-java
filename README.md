@@ -567,6 +567,7 @@ O JDK precisa ser o 21 (`JAVA_HOME`). Os testes `mongo-real` baixam o binário d
 | Medição | Resultado | Fonte |
 |---|---|---|
 | Suíte completa em `main` `76f77cb`, 29/10/2026, JDK 21, perfil `dev` | **376 testes, 0 falhas, `EXIT=0`** | reprodução registrada no ledger da Sprint 4 do time (`progress.md`) |
+| Só a tag `mongo-real` (`-Dgroups=mongo-real`), 29/10/2026, branch desta documentação sobre `76f77cb` | 19 testes (14 + 5), 0 falhas, `EXIT=0` | `target/surefire-reports` da execução local |
 | Baseline antes da Sprint 4, `main` `3a97a5c` | 299 testes | G0 da Sprint 4 (`s4-java-01-g0.md`) |
 | G4 contra o compose local (Oracle + MongoDB 7.0.45, role real), 29/10/2026 | smoke `ok=141, FALHA=0, PULADO=1`; JPEG real de 2.713.092 bytes (2,59 MiB) gravado e devolvido com `sha256` idêntico; Mongo parado ⇒ `503` em cerca de 2 s e `kura-tutor` continua `healthy`; reinício com o Mongo fora sobe `healthy`; índice divergente reparado pelo runner (E61) com a role real; log sem nome de arquivo, `sha256` nem URI | `s4-java-05-g4.md` |
 
