@@ -19,10 +19,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * (e das interfaces que ele herda, recursivamente) recebe {@code long idTutor} como primeiro parâmetro.
  * Um método novo sem idTutor quebra aqui em vez de virar leitura sem escopo.
  */
-class EscopoRepositorioReflexaoTest {
+public class EscopoRepositorioReflexaoTest {
 
     /** Devolve "Tipo.metodo" de cada método público sem {@code long idTutor} na primeira posição. */
-    static List<String> metodosSemIdTutor(Class<?> tipo) {
+    public static List<String> metodosSemIdTutor(Class<?> tipo) {
         List<String> violacoes = new ArrayList<>();
         for (Class<?> t : tipoEHerancas(tipo)) {
             for (Method m : t.getDeclaredMethods()) {
