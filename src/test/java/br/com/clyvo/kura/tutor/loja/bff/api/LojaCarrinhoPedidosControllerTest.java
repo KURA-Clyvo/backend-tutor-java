@@ -19,6 +19,9 @@ import br.com.clyvo.kura.tutor.shared.security.TutorAutenticado;
 import com.mongodb.MongoTimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -56,6 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * MockMvc do carrinho e dos pedidos: cada linha da tabela de erros do design, 401 sem JWT, 503 com
  * Mongo fora, validação (o {@code @Validated} de classe) e o idTutor vindo só do JWT.
  */
+@ExtendWith(OutputCaptureExtension.class)
 @WebMvcTest({LojaCarrinhoController.class, LojaPedidosController.class})
 @Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class, GlobalExceptionHandler.class,
         LojaExceptionHandler.class})
@@ -336,5 +340,48 @@ class LojaCarrinhoPedidosControllerTest {
                 .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.codigo").value("CATALOGO_INDISPONIVEL"));
         mockMvc.perform(delete("/v1/loja/pedidos/" + ID_PEDIDO).with(user("a@kura.test")))
                 .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.codigo").value("CATALOGO_INDISPONIVEL"));
+    }
+
+    // ------------------------------------------------------------------ corpo ilegivel (I-1)
+
+    /** Só as linhas WARN/ERROR: o DEBUG do Spring MVC no profile dev ecoa a exceção e não existe em prod (INFO). */
+    private static String avisosEErros(CapturedOutput saida) {
+        return saida.getAll().lines().filter(l -> l.contains("[WARN]") || l.contains("[ERROR]"))
+                .collect(java.util.stream.Collectors.joining(" | "));
+    }
+
+    @Test
+    @DisplayName("controle positivo: o capturador de log enxerga uma linha WARN escrita pelo teste")
+    void capturadorEnxerga(CapturedOutput saida) {
+        org.slf4j.LoggerFactory.getLogger("teste.controle").warn("ISCA-DE-CONTROLE-42");
+
+        org.assertj.core.api.Assertions.assertThat(avisosEErros(saida)).contains("ISCA-DE-CONTROLE-42");
+    }
+
+    @Test
+    @DisplayName("corpo ilegivel: JSON malformado, ausente, quantidade texto, acima de int e vazio dão 400 VALIDACAO_INVALIDA; text/plain dá 415; nunca 500; o log não traz o valor do corpo")
+    void corpoIlegivel(CapturedOutput saida) throws Exception {
+        String isca = "SEGREDO77";
+        String[] corpos = {"{", "{\"slug\":\"abc\",\"quantidade\":\"" + isca + "\"}", "{\"slug\":\"abc\",\"quantidade\":99999999999}"};
+        for (String corpo : corpos) {
+            mockMvc.perform(post("/v1/loja/carrinho/itens").with(user("a@kura.test"))
+                            .contentType(MediaType.APPLICATION_JSON).content(corpo))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.codigo").value("VALIDACAO_INVALIDA"))
+                    .andExpect(jsonPath("$.mensagem").value("Corpo da requisição inválido."));
+        }
+        mockMvc.perform(put("/v1/loja/carrinho/itens/abc").with(user("a@kura.test"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"quantidade\":99999999999}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.codigo").value("VALIDACAO_INVALIDA"));
+        mockMvc.perform(post("/v1/loja/carrinho/itens").with(user("a@kura.test")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.codigo").value("VALIDACAO_INVALIDA"));
+        mockMvc.perform(post("/v1/loja/carrinho/itens").with(user("a@kura.test"))
+                        .contentType(MediaType.TEXT_PLAIN).content("{\"slug\":\"abc\",\"quantidade\":1}"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.codigo").value("CONTENT_TYPE_NAO_SUPORTADO"));
+
+        org.assertj.core.api.Assertions.assertThat(avisosEErros(saida)).contains("corpo da requisição ilegível")
+                .doesNotContain(isca).doesNotContain("99999999999").doesNotContain("Unhandled exception");
+        verifyNoInteractions(carrinhoService);
     }
 }

@@ -581,19 +581,29 @@ class LojaCarrinhoPedidosMongoRealTest {
     // ---------------------------------------------------------------- 7. cancelar e listar
 
     @Test
-    @DisplayName("cancelar: 200 com canceladoEm; cancelar de novo é idempotente (mantém o canceladoEm)")
+    @DisplayName("cancelar: 200 com canceladoEm; cancelar de novo é idempotente e NÃO reescreve o canceladoEm (relógio avança 1 h entre as chamadas)")
     void cancelarEIdempotente() {
         carrinhoService.adicionar(TUTOR_A, SHAMPOO, 1);
         PedidoLoja criado = pedidoService.criar(TUTOR_A, chave()).pedido();
         assertThat(criado.canceladoEm()).isNull();
+        Instant base = Instant.now();
+        int[] chamadas = {0};
+        Clock relogioQueAvanca = new Clock() {
+            @Override public java.time.ZoneId getZone() { return java.time.ZoneOffset.UTC; }
+            @Override public Clock withZone(java.time.ZoneId zone) { return this; }
+            @Override public Instant instant() { return base.plus(Duration.ofHours(chamadas[0]++)); }
+        };
+        PedidoLojaService service = new PedidoLojaService(pedidos, carrinhos, new CatalogoMongoRepositorio(template),
+                relogioQueAvanca);
 
-        PedidoLoja cancelado = pedidoService.cancelar(TUTOR_A, criado.id());
-        PedidoLoja denovo = pedidoService.cancelar(TUTOR_A, criado.id());
+        PedidoLoja cancelado = service.cancelar(TUTOR_A, criado.id());
+        PedidoLoja denovo = service.cancelar(TUTOR_A, criado.id());
 
         assertThat(cancelado.status()).isEqualTo(StatusPedido.CANCELADO);
         assertThat(cancelado.canceladoEm()).isNotNull();
         assertThat(denovo.status()).isEqualTo(StatusPedido.CANCELADO);
         assertThat(denovo.canceladoEm()).isEqualTo(cancelado.canceladoEm());
+        assertThat(chamadas[0]).isEqualTo(2);
         assertThat(colPedidos.countDocuments()).isEqualTo(1);
     }
 
