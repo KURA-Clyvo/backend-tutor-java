@@ -27,6 +27,6 @@ public interface CarrinhoRepositorio {
 
     void esvaziar(long idTutor);
 
-    /** Passo 5 do pedido: só apaga se ninguém mexeu no carrinho depois dele. Devolve se apagou. */
-    boolean apagarSeVersao(long idTutor, Instant versao);
+    /** Passo 5 do pedido: só apaga se ninguém mexeu no carrinho depois dele. */
+    void apagarSeVersao(long idTutor, Instant versao);
 }

@@ -8,6 +8,7 @@ import br.com.clyvo.kura.tutor.loja.application.NovoPedido;
 import br.com.clyvo.kura.tutor.loja.application.PedidoLoja;
 import br.com.clyvo.kura.tutor.loja.application.PedidoLojaRepositorio;
 import br.com.clyvo.kura.tutor.loja.application.StatusPedido;
+import br.com.clyvo.kura.tutor.shared.mongo.IdsMongo;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
@@ -77,29 +78,25 @@ public class PedidoLojaMongoRepositorio implements PedidoLojaRepositorio {
 
     @Override
     public Optional<PedidoLoja> buscar(long idTutor, String idPedido) {
-        return objectId(idPedido)
+        return IdsMongo.objectId(idPedido)
                 .map(id -> mongo.findOne(escopo(idTutor, id), Document.class, COLECAO))
                 .map(PedidoLojaMongoRepositorio::paraPedido);
     }
 
     @Override
-    public boolean cancelar(long idTutor, String idPedido, Instant agora) {
-        Optional<ObjectId> id = objectId(idPedido);
+    public void cancelar(long idTutor, String idPedido, Instant agora) {
+        Optional<ObjectId> id = IdsMongo.objectId(idPedido);
         if (id.isEmpty()) {
-            return false;
+            return;
         }
         Query query = escopo(idTutor, id.get()).addCriteria(Criteria.where("status").is(StatusPedido.AGUARDANDO_PARCEIRO.name()));
         Update update = new Update().set("status", StatusPedido.CANCELADO.name())
                 .set("canceladoEm", Date.from(agora)).set("atualizadoEm", Date.from(agora));
-        return mongo.updateFirst(query, update, COLECAO).getModifiedCount() == 1;
+        mongo.updateFirst(query, update, COLECAO);
     }
 
     private static Query escopo(long idTutor, ObjectId id) {
         return new Query(Criteria.where("_id").is(id).and("idTutor").is(idTutor));
-    }
-
-    private static Optional<ObjectId> objectId(String texto) {
-        return texto != null && ObjectId.isValid(texto) ? Optional.of(new ObjectId(texto)) : Optional.empty();
     }
 
     private static PedidoLoja paraPedido(Document doc) {

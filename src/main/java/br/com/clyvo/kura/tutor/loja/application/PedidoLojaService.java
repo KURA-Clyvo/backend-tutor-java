@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 @Service
 public class PedidoLojaService {
 
-    private static final Pattern UUID = Pattern.compile(
+    private static final Pattern FORMATO_UUID = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     private final PedidoLojaRepositorio pedidos;
@@ -108,7 +108,7 @@ public class PedidoLojaService {
     }
 
     private static String normalizarChave(String chave) {
-        if (chave == null || !UUID.matcher(chave).matches()) {
+        if (chave == null || !FORMATO_UUID.matcher(chave).matches()) {
             throw LojaException.idempotencyKeyInvalida();
         }
         return chave.toLowerCase(Locale.ROOT);

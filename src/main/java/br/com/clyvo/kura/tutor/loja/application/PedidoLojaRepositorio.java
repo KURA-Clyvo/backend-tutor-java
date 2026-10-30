@@ -17,6 +17,6 @@ public interface PedidoLojaRepositorio {
     /** Id malformado ou de outro tutor = vazio. */
     Optional<PedidoLoja> buscar(long idTutor, String idPedido);
 
-    /** AGUARDANDO_PARCEIRO para CANCELADO, atômico no documento. Devolve se esta chamada fez a transição. */
-    boolean cancelar(long idTutor, String idPedido, Instant agora);
+    /** AGUARDANDO_PARCEIRO para CANCELADO, atômico no documento; pedido já cancelado, alheio ou inexistente não muda nada. */
+    void cancelar(long idTutor, String idPedido, Instant agora);
 }

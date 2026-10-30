@@ -78,9 +78,9 @@ public class CarrinhoMongoRepositorio implements CarrinhoRepositorio {
     }
 
     @Override
-    public boolean apagarSeVersao(long idTutor, Instant versao) {
+    public void apagarSeVersao(long idTutor, Instant versao) {
         Query query = new Query(Criteria.where("_id").is(idTutor).and("atualizadoEm").is(Date.from(versao)));
-        return mongo.remove(query, COLECAO).getDeletedCount() > 0;
+        mongo.remove(query, COLECAO);
     }
 
     private static Update upsert(Instant agora) {

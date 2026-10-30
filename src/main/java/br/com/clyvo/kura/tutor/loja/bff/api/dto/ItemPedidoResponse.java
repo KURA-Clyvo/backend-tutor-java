@@ -2,8 +2,10 @@
 package br.com.clyvo.kura.tutor.loja.bff.api.dto;
 
 import br.com.clyvo.kura.tutor.loja.application.ItemPedido;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Item do pedido: snapshot de nome, categoria e preço do momento do pedido.")
 public record ItemPedidoResponse(
         String slug,
