@@ -29,13 +29,15 @@ public record ItemCatalogoResponse(
             @Schema(example = "/api/loja/imagens/shampoo-neutro-500ml.webp") String url,
             @Schema(example = "/api/loja/imagens/shampoo-neutro-500ml_256.webp") String urlThumb,
             String alt) {
+
+        /** Monta as duas URLs a partir da chave da imagem; reusado pelo carrinho. */
+        public static Imagem de(String chave, String alt) {
+            return new Imagem(PREFIXO_IMAGENS + chave + ".webp", PREFIXO_IMAGENS + chave + "_256.webp", alt);
+        }
     }
 
     public static ItemCatalogoResponse de(ItemCatalogo item) {
-        Imagem imagem = item.imagemChave() == null ? null : new Imagem(
-                PREFIXO_IMAGENS + item.imagemChave() + ".webp",
-                PREFIXO_IMAGENS + item.imagemChave() + "_256.webp",
-                item.imagemAlt());
+        Imagem imagem = item.imagemChave() == null ? null : Imagem.de(item.imagemChave(), item.imagemAlt());
         return new ItemCatalogoResponse(item.slug(), item.nome(), item.descricao(),
                 item.categoria().name(), item.preco(), item.moeda(), item.exemplo(), item.dados(), imagem);
     }

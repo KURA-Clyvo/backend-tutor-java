@@ -7,6 +7,7 @@ import br.com.clyvo.kura.tutor.documento.application.DocumentoTutorService;
 import br.com.clyvo.kura.tutor.documento.application.EmissorDocumento;
 import br.com.clyvo.kura.tutor.documento.application.NovoDocumento;
 import br.com.clyvo.kura.tutor.documento.application.TipoDocumento;
+import br.com.clyvo.kura.tutor.shared.mongo.IdsMongo;
 import org.bson.Document;
 import org.bson.types.Binary;
 import org.bson.types.ObjectId;
@@ -73,7 +74,7 @@ public class DocumentoTutorMongoRepositorio implements DocumentoTutorRepositorio
 
     @Override
     public Optional<ArquivoDocumento> abrirArquivo(long idTutor, long idPet, String idDocumento) {
-        Optional<ObjectId> id = objectId(idDocumento);
+        Optional<ObjectId> id = IdsMongo.objectId(idDocumento);
         if (id.isEmpty()) {
             return Optional.empty();
         }
@@ -88,7 +89,7 @@ public class DocumentoTutorMongoRepositorio implements DocumentoTutorRepositorio
 
     @Override
     public boolean apagar(long idTutor, long idPet, String idDocumento) {
-        Optional<ObjectId> id = objectId(idDocumento);
+        Optional<ObjectId> id = IdsMongo.objectId(idDocumento);
         if (id.isEmpty()) {
             return false;
         }
@@ -97,10 +98,6 @@ public class DocumentoTutorMongoRepositorio implements DocumentoTutorRepositorio
 
     private static Query escopo(long idTutor, long idPet, ObjectId id) {
         return new Query(Criteria.where("_id").is(id).and("idTutor").is(idTutor).and("idPet").is(idPet));
-    }
-
-    private static Optional<ObjectId> objectId(String texto) {
-        return texto != null && ObjectId.isValid(texto) ? Optional.of(new ObjectId(texto)) : Optional.empty();
     }
 
     private static DocumentoTutor paraMetadados(Document doc) {

@@ -1,0 +1,25 @@
+{
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "title": "carrinho",
+      "required": ["_id", "itens", "criadoEm", "atualizadoEm"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "bsonType": ["int", "long"] },
+        "itens": {
+          "bsonType": "object",
+          "maxProperties": 50,
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[a-z0-9]+(-[a-z0-9]+)*\\z": { "bsonType": ["int", "long"], "minimum": 1, "maximum": 99 }
+          }
+        },
+        "criadoEm": { "bsonType": "date" },
+        "atualizadoEm": { "bsonType": "date" }
+      }
+    }
+  },
+  "validationLevel": "strict",
+  "validationAction": "error"
+}

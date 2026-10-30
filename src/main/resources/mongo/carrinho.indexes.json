@@ -1,0 +1,3 @@
+[
+  { "name": "ttl_carrinho_atualizadoEm", "key": { "atualizadoEm": 1 }, "expireAfterSeconds": 7200 }
+]
