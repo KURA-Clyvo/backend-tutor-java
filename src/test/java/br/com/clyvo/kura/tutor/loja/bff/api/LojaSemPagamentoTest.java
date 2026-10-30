@@ -27,11 +27,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Pagamento é simulado (D-S4-6): nenhum NOME DE CAMPO (do JSON do pedido, do carrinho e das
  * propriedades dos 2 schemas) sugere pagamento, cartão, Pix ou cobrança. A busca é por nome de
- * campo, não por texto: o aviso literal tem a palavra "pagamento" e o envelope tem {@code page}.
+ * campo, não por texto (o aviso literal tem a palavra "pagamento"), e o padrão usa radicais
+ * inteiros: o prefixo {@code pag} puro acusaria o campo {@code page} do envelope Slice.
  */
 class LojaSemPagamentoTest {
 
-    private static final Pattern PROIBIDO = Pattern.compile("pag|cart|pix|cobr", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PROIBIDO = Pattern.compile("pagament|pago|pagar|cart[aã]o|card|pix|cobran|cobrar", Pattern.CASE_INSENSITIVE);
     private final ObjectMapper mapper = Jackson2ObjectMapperBuilder.json().build();
 
     private static void campos(JsonNode no, List<String> acumulado) {

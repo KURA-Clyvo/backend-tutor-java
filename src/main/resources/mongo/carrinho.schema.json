@@ -12,7 +12,7 @@
           "maxProperties": 50,
           "additionalProperties": false,
           "patternProperties": {
-            "^[a-z0-9]+(-[a-z0-9]+)*\z": { "bsonType": ["int", "long"], "minimum": 1, "maximum": 99 }
+            "^[a-z0-9]+(-[a-z0-9]+)*\\z": { "bsonType": ["int", "long"], "minimum": 1, "maximum": 99 }
           }
         },
         "criadoEm": { "bsonType": "date" },

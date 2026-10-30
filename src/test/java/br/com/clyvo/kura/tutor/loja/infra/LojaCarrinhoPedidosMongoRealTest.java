@@ -181,18 +181,17 @@ class LojaCarrinhoPedidosMongoRealTest {
     }
 
     @Test
-    @DisplayName("E61: índice divergente que atrapalha o TTL (outro nome, mesma chave) é recriado COM o expireAfterSeconds")
+    @DisplayName("E61: TTL do banco divergente do arquivo (3600 x 7200, mesmo nome, código 85) é removido e recriado COM o expireAfterSeconds do arquivo")
     void e61RecriaComTtl() {
         colCarrinho.dropIndex("ttl_carrinho_atualizadoEm");
         colCarrinho.createIndex(BsonDocument.parse("{\"atualizadoEm\": 1}"),
-                new com.mongodb.client.model.IndexOptions().name("residuo_sem_ttl"));
+                new com.mongodb.client.model.IndexOptions().name("ttl_carrinho_atualizadoEm")
+                        .expireAfter(3600L, java.util.concurrent.TimeUnit.SECONDS));
 
         new SchemaCarrinhoAplicador(database).aplicar();
 
-        List<Document> indices = colCarrinho.listIndexes().into(new ArrayList<>());
-        assertThat(indices).extracting(i -> i.getString("name")).doesNotContain("residuo_sem_ttl");
-        Document ttl = indices.stream().filter(i -> "ttl_carrinho_atualizadoEm".equals(i.getString("name")))
-                .findFirst().orElseThrow();
+        Document ttl = colCarrinho.listIndexes().into(new ArrayList<>()).stream()
+                .filter(i -> "ttl_carrinho_atualizadoEm".equals(i.getString("name"))).findFirst().orElseThrow();
         assertThat(ttl.get("expireAfterSeconds")).isEqualTo(7200);
     }
 
