@@ -5,9 +5,42 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2.5-6DB33F?logo=springboot&logoColor=white)
 ![Oracle](https://img.shields.io/badge/Oracle-19c%20%2F%2023c-F80000?logo=oracle&logoColor=white)
-![Flyway](https://img.shields.io/badge/Flyway-V1--V19-CC0200?logo=flyway&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Flyway](https://img.shields.io/badge/Flyway-V1--V23-CC0200?logo=flyway&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?logo=mongodb&logoColor=white)
+[![CI](https://github.com/KURA-Clyvo/backend-tutor-java/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KURA-Clyvo/backend-tutor-java/actions/workflows/ci.yml)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![FIAP](https://img.shields.io/badge/FIAP-Challenge_2026-ED1C24)
+
+---
+
+## Sprint 4 em 1 minuto
+
+**O problema.** Tutor e clínica veterinária ficam desconectados: o tutor não vê o que a clínica registrou (laudos, vacinas, agenda) e não tem onde guardar os documentos do próprio pet. O KURA liga os dois lados. Este repositório é o **backend do lado do tutor**: autentica o tutor, lê o que a clínica registrou e recebe o que o tutor envia.
+
+**Onde ver rodando (links da aplicação).** Os endereços abaixo são os do ambiente Azure da Sprint 4, informados pela equipe em 27/10/2026. **Este README não afirma que estão no ar**: o banco da Azure (VM Oracle + MongoDB) foi desligado em 27/10 e nenhum desses endereços foi chamado na preparação desta entrega.
+
+| Peça | Endereço |
+|---|---|
+| API do tutor (este repositório) | `https://kura-tutor-api-g9e3b2g6aggueuev.eastus2-01.azurewebsites.net` (saúde: `/api/actuator/health`) |
+| App web do tutor (Static Web App) | `https://green-tree-070ecd90f.1.azurestaticapps.net` |
+
+Para rodar sem a Azure, veja a [seção 3](#3-como-executar).
+
+**Vídeo da Sprint 4:** <!-- LINK DO VÍDEO: preencher -->
+
+**O que entrou na Sprint 4 neste backend** (cada item aponta o arquivo que o implementa):
+
+| Entrega | Onde |
+|---|---|
+| Persistência poliglota: MongoDB `kura_docs` ao lado do Oracle | [`loja/`](src/main/java/br/com/clyvo/kura/tutor/loja/), [`documento/`](src/main/java/br/com/clyvo/kura/tutor/documento/), [`laudo/`](src/main/java/br/com/clyvo/kura/tutor/laudo/) |
+| Loja (catálogo de produtos, pré-lançamento): `GET /v1/loja/catalogo` | [`LojaCatalogoController`](src/main/java/br/com/clyvo/kura/tutor/loja/bff/api/LojaCatalogoController.java) |
+| Documentos do pet (RG, carteira de vacina, microchip): upload, lista, download, exclusão | [`DocumentoTutorController`](src/main/java/br/com/clyvo/kura/tutor/documento/bff/api/DocumentoTutorController.java) |
+| Laudos do pet, somente leitura, escritos pela clínica (.NET) | [`LaudoTutorController`](src/main/java/br/com/clyvo/kura/tutor/laudo/bff/api/LaudoTutorController.java) |
+| URL assinada (HMAC) para o arquivo do laudo e da foto, sem HTTP entre as APIs | [`MontadorUrlAssinada`](src/main/java/br/com/clyvo/kura/tutor/shared/foto/MontadorUrlAssinada.java), [`GeradorUrlLaudo`](src/main/java/br/com/clyvo/kura/tutor/laudo/infra/GeradorUrlLaudo.java) |
+| Schema e índices do Mongo versionados no código, com runner idempotente que repara índice divergente | [`AplicadorSchemaColecao`](src/main/java/br/com/clyvo/kura/tutor/shared/mongo/AplicadorSchemaColecao.java), [`src/main/resources/mongo/`](src/main/resources/mongo/) |
+| Testes contra `mongod` real embarcado (tag `mongo-real`) | [`MongodEmbarcado`](src/test/java/br/com/clyvo/kura/tutor/shared/mongo/MongodEmbarcado.java) |
+
+**Testado contra** `mongod` 7.0 embarcado (flapdoodle 4.20.0) nos testes automatizados e contra MongoDB 7.0.45 no compose local do `DevOps-Cloud` (gate G4 desta sprint, ver [seção 7](#7-testes)). Nada aqui foi medido em ambiente de produção.
 
 ---
 
@@ -22,32 +55,31 @@
 7. [Testes](#7-testes)
 8. [Gestão de Configuração dos Artefatos](#8-gestão-de-configuração-dos-artefatos)
 9. [Equipe e Divisão de Trabalho](#9-equipe-e-divisão-de-trabalho)
+10. [Vídeo](#10-vídeo)
+
+Antes do sumário: [Sprint 4 em 1 minuto](#sprint-4-em-1-minuto). Dentro da seção 1: [1.5 Decisões da Sprint 4](#15-decisões-da-sprint-4-persistência-poliglota) e [1.6 Integração com as demais disciplinas](#16-integração-com-as-demais-disciplinas-evidências).
 
 ---
 
 ## 1. Contexto e Arquitetura
 
-O KURA é um sistema com dois backends distintos: este repositório — **Java/Spring Boot** — atende o **aplicativo móvel do Tutor**, enquanto um backend **.NET 10** atende o **front-end web da Clínica**. Ambos compartilham um único schema Oracle 19c hospedado na infraestrutura da FIAP.
+O KURA é um sistema com dois backends distintos: este repositório — **Java/Spring Boot** — atende o **aplicativo móvel do Tutor**, enquanto um backend **.NET 10** atende o **front-end web da Clínica**. Os dois compartilham o mesmo **schema Oracle** (dados transacionais, DDL versionado pelo Flyway deste repositório) e, desde a Sprint 4, o mesmo **MongoDB** (`kura_docs`, dados de documento). **Não há chamada HTTP entre as duas APIs**: a integração acontece pelos dois bancos.
 
+```mermaid
+flowchart LR
+    APP["App do tutor<br/>React Native"] -->|"JWT Java"| JAVA["API do tutor<br/>Java 21 · Spring Boot<br/>:8081/api"]
+    WEB["Front da clinica<br/>React Native web"] -->|"JWT .NET"| NET["API da clinica<br/>.NET 10 · :8080"]
+    JAVA --> ORA[("Oracle<br/>Flyway = dono do DDL")]
+    NET --> ORA
+    JAVA --> MONGO[("MongoDB kura_docs")]
+    NET --> MONGO
+    MONGO --- C1["catalogo_loja e documentos_tutor<br/>dono: Java"]
+    MONGO --- C2["laudos<br/>dono: .NET, o Java so le"]
+    JAVA -. "gera URL assinada HMAC<br/>do arquivo do laudo e da foto" .-> APP
+    APP -. "abre a URL assinada" .-> NET
 ```
-┌─────────────────────┐                       ┌─────────────────────┐
-│  App Mobile Tutor   │                       │  Front da Clínica   │
-│  (React Native)     │                       │  (Web)              │
-└──────────┬──────────┘                       └──────────┬──────────┘
-           │ JWT (Java)                                  │ JWT (.NET)
-           ▼                                             ▼
-┌─────────────────────┐    GET /agenda        ┌─────────────────────┐
-│  Backend Tutor      │◄─────────────────────►│  Backend Clínica    │
-│  Spring Boot 3.2    │    PATCH /status      │  .NET 10            │
-│  :8081/api          │   (NR_VERSION sync)   │  :8080              │
-└──────────┬──────────┘                       └──────────┬──────────┘
-           └─────────────────────┬───────────────────────┘
-                                 ▼
-              ┌─────────────────────────────────────┐
-              │  Oracle 19c — oracle.fiap.com.br    │
-              │  :1521/orcl  (schema compartilhado) │
-              └─────────────────────────────────────┘
-```
+
+Leitura do diagrama: (1) o Java é dono das coleções `catalogo_loja` e `documentos_tutor`; a `laudos` é da .NET e o Java só lê. (2) O arquivo do laudo e a foto do pet **moram no storage da .NET**: o Java apenas assina a URL (HMAC, mesmo segredo nos dois lados) e o app abre essa URL direto na .NET. (3) Tabelas do Oracle seguem o ownership da seção 1.2.
 
 ### 1.1 Bounded Contexts
 
@@ -113,8 +145,10 @@ Documentação completa das decisões arquiteturais em [`docs/architecture.md`](
 | `AGENDAMENTO` | **Compartilhada** | Java: POST / PUT / DELETE (tutor); .NET: PATCH ST_STATUS (vet) |
 | `TUTOR`, `PET`, `INVITE_TUTOR`, `CLINICA`, `VETERINARIO` | **.NET** | Somente leitura (`@Immutable`) |
 | `ESPECIE`, `RACA` | **.NET** | Somente leitura + cache Caffeine |
+| Mongo `catalogo_loja`, `documentos_tutor` | **Java** | Leitura e escrita (a `catalogo_loja` só é lida pela API; o seed de exemplo escreve) |
+| Mongo `laudos` | **.NET** | Java **somente lê**, sempre pelo `idPet` depois de provar o vínculo no Oracle |
 
-Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita com versão desatualizada retorna **HTTP 409 Conflict** em ambos os backends.
+Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita com versão desatualizada retorna **HTTP 409 Conflict** em ambos os backends. A integração não passa por HTTP entre as APIs: as duas leem e escrevem no mesmo banco, cada uma respeitando o ownership acima.
 
 ### 1.3 Principais Decisões de Design
 
@@ -126,13 +160,43 @@ Concorrência em `AGENDAMENTO` gerenciada por `@Version` (`NR_VERSION`). Escrita
 | **Idempotência** | Tabela `IDEMPOTENCY_KEY` (sem Redis) | Segura em rollback — a chave é gravada na mesma transação que a operação protegida |
 | **Cache** | Caffeine in-process apenas para `ESPECIE` / `RACA` | São catálogos estáticos; entidades mutáveis (`Tutor`, `Pet`) nunca são cacheadas |
 | **Envelope de erro** | Subconjunto do RFC 7807 (`status`, `error`, `message`, `path`, `correlationId`) | Contrato consistente; cada request recebe `X-Correlation-Id` para rastreamento no servidor |
-| **Gestão de schema** | Flyway V1–V19 (idempotentes, compatíveis com Oracle 19c) | Java e .NET escrevem no mesmo schema; todo DDL deve ser versionado para evitar drift |
+| **Gestão de schema** | Flyway, 22 migrations aplicadas em `main` (V1 a V23, não existe V20 em `main`) — ver seção 6 | Java e .NET escrevem no mesmo schema; todo DDL deve ser versionado para evitar drift |
 
-As migrations vivem em três diretórios: [`db/migration/`](src/main/resources/db/migration/) tem SQL portável que roda nos dois perfis (`dev` e `prod`); [`db/migration-oracle/`](src/main/resources/db/migration-oracle/) e [`db/migration-h2/`](src/main/resources/db/migration-h2/) têm as versões em que a sintaxe realmente diverge entre os dois bancos (ex.: a expressão de `DEFAULT` da PK — `SEQ_X.NEXTVAL` no Oracle, `NEXT VALUE FOR SEQ_X` no H2) — hoje são V2, V3, V5, V12, V15, V17 e V18. Onde a sintaxe não diverge, existe um arquivo só em `db/migration/` (a V16 e a V19 são assim).
+As migrations vivem em três diretórios: [`db/migration/`](src/main/resources/db/migration/) tem SQL portável que roda nos dois perfis (`dev` e `prod`); [`db/migration-oracle/`](src/main/resources/db/migration-oracle/) e [`db/migration-h2/`](src/main/resources/db/migration-h2/) têm as versões em que a sintaxe realmente diverge entre os dois bancos (ex.: a expressão de `DEFAULT` da PK — `SEQ_X.NEXTVAL` no Oracle, `NEXT VALUE FOR SEQ_X` no H2) — hoje são V2, V3, V5, V12, V15, V17, V18, V21 e V23. Onde a sintaxe não diverge, existe um arquivo só em `db/migration/` (V16, V19 e V22 são assim).
 
 ### 1.4 Diagrama Entidade-Relacionamento (Notação Barker via PlantUML)
 
 ![DER Kura](docs/diagrams/der-plantuml.png)
+
+### 1.5 Decisões da Sprint 4 (persistência poliglota)
+
+**Por que Oracle e MongoDB.** O dado transacional do KURA (tutor, pet, agendamento, consentimento) tem chaves estrangeiras, concorrência otimista e é compartilhado com a .NET: fica no Oracle, onde o Flyway é a autoridade de DDL. O dado de **documento** tem outra forma: o catálogo da Loja tem atributos que variam por categoria, os laudos têm campos variáveis por tipo de exame e o documento do pet carrega um arquivo junto dos metadados. Esse dado é lido por documento inteiro, sem junção, e foi para o MongoDB. O banco documental não substitui o Oracle: o Oracle continua sendo a fonte de verdade de quem é o tutor, de quais pets são dele e de quem pode ver o quê.
+
+| Decisão | Por que | Onde está no código |
+|---|---|---|
+| **Coleções com dono.** `catalogo_loja` e `documentos_tutor` são do Java; `laudos` é da .NET e o Java só lê. | Duas APIs escrevendo na mesma coleção reproduzem o problema de drift que o Flyway resolveu no Oracle. O contrato `documentos_tutor` v1 foi congelado porque a .NET passa a lê-la. A role Mongo do Java (`kura_java_runtime`) tem só `find` em `laudos`. | [`LaudoLeituraRepositorio`](src/main/java/br/com/clyvo/kura/tutor/laudo/application/LaudoLeituraRepositorio.java) (porta só de leitura), [`DocumentoTutorRepositorio`](src/main/java/br/com/clyvo/kura/tutor/documento/application/DocumentoTutorRepositorio.java) |
+| **Escopo obrigatório na assinatura do repositório.** Todo método de `DocumentoTutorRepositorio` recebe `long idTutor` como 1º parâmetro; todo método de `LaudoLeituraRepositorio` recebe `long idPet`. Um teste por reflexão trava isso, inclusive em interfaces herdadas. | Esquecer o filtro de tenant foi o defeito mais caro deste projeto. Colocar o escopo na assinatura faz o teste cobrar, em vez de depender de revisão. | [`EscopoRepositorioReflexaoTest`](src/test/java/br/com/clyvo/kura/tutor/documento/application/EscopoRepositorioReflexaoTest.java), [`EscopoLeituraLaudoReflexaoTest`](src/test/java/br/com/clyvo/kura/tutor/laudo/application/EscopoLeituraLaudoReflexaoTest.java) |
+| **Vínculo `TUTOR_PET` no Oracle antes de qualquer leitura no Mongo.** Sem vínculo: 403; pet inativo: 404. | O Mongo guarda `idPet`, mas quem diz que o pet é do tutor é o Oracle. Checar primeiro impede que um `idPet` alheio chegue ao Mongo. | [`GuardaPetDoTutor`](src/main/java/br/com/clyvo/kura/tutor/shared/pet/GuardaPetDoTutor.java) |
+| **Arquivo no próprio documento (BinData), teto de 5 MiB, tipo validado por assinatura.** JPEG, PNG, WEBP e PDF são reconhecidos pelos primeiros bytes (magic bytes), nunca pela extensão nem pelo `Content-Type` do cliente. Limite de 20 documentos por pet. | A alternativa de gravar no storage da .NET exigiria HTTP entre as APIs, proibido pela arquitetura; GridFS só compensa acima do limite de 16 MiB do BSON. As listas não trazem os bytes. | [`AssinaturaArquivo`](src/main/java/br/com/clyvo/kura/tutor/documento/application/AssinaturaArquivo.java), [`DocumentoTutorService`](src/main/java/br/com/clyvo/kura/tutor/documento/application/DocumentoTutorService.java) (`TETO_POR_PET`) |
+| **Exclusão física.** `DELETE` remove o documento do Mongo (não é soft delete) e responde 404 se o documento não for do tutor e do pet da rota, sem exigir vínculo ativo. | LGPD art. 18, VI: o titular pode pedir a eliminação do próprio dado; o filtro `{_id, idTutor, idPet}` impede tocar dado alheio. Isto difere do soft delete usado no Oracle. | [`DocumentoTutorMongoRepositorio`](src/main/java/br/com/clyvo/kura/tutor/documento/infra/DocumentoTutorMongoRepositorio.java) |
+| **URL assinada em vez de HTTP entre as APIs.** O Java monta `{base}/api/v1/laudos/arquivos/{chave}?exp=&sig=` com HMAC; quem entrega o arquivo é a .NET. Sem base ou segredo configurados, `urlArquivo` vem `null` e a tela mostra só os metadados. | O arquivo do laudo está no storage da .NET. Assinar a URL dá acesso temporário sem o Java chamar a .NET. O segredo é o mesmo `FOTO_URL_SECRET` das fotos; a separação entre foto e laudo vem da rota e da regex da chave. | [`GeradorUrlLaudo`](src/main/java/br/com/clyvo/kura/tutor/laudo/infra/GeradorUrlLaudo.java), [`MontadorUrlAssinada`](src/main/java/br/com/clyvo/kura/tutor/shared/foto/MontadorUrlAssinada.java) |
+| **Mongo fora do ar não derruba a API.** As rotas que dependem dele respondem 503 com código próprio (`DOCUMENTOS_INDISPONIVEL`, `LAUDOS_INDISPONIVEL`, `CATALOGO_INDISPONIVEL`); login e pets continuam. Timeout curto de seleção de servidor (2 s). O health indicator do Mongo está desligado de propósito: um banco que não é o do tutor não pode deixar o container `unhealthy`. | O tutor precisa continuar entrando e vendo os pets mesmo com o Mongo parado. Consequência declarada: `/actuator/health` fica `UP` sem o Mongo. | [`MongoExceptionHandlerBase`](src/main/java/br/com/clyvo/kura/tutor/shared/exception/MongoExceptionHandlerBase.java), [`RunnerMongoTolerante`](src/main/java/br/com/clyvo/kura/tutor/shared/mongo/RunnerMongoTolerante.java), `management.health.mongo.enabled=false` em [`application.yml`](src/main/resources/application.yml) |
+| **Runner de schema idempotente que repara índice divergente (E61).** Na subida (flag ligada) aplica o `$jsonSchema` (`collMod` se a coleção existe) e os índices do arquivo; se o servidor recusa um índice por divergência (códigos 85 e 86), remove pelo nome e recria. | Sem isso, um índice com mesmo nome e chave diferente ficava para sempre divergente do contrato, e o erro era engolido. | [`AplicadorSchemaColecao`](src/main/java/br/com/clyvo/kura/tutor/shared/mongo/AplicadorSchemaColecao.java), [`documentos_tutor.indexes.json`](src/main/resources/mongo/documentos_tutor.indexes.json) |
+
+Limites conhecidos, declarados: o teto de 20 documentos por pet não é atômico (dois uploads simultâneos no 20º podem gerar 21); e quando o Java sobe antes do Mongo num ambiente novo, o schema só é aplicado no próximo boot (no compose do `DevOps-Cloud` o Mongo sobe antes do `kura-tutor`).
+
+### 1.6 Integração com as demais disciplinas (evidências)
+
+Todos os links abaixo são de repositórios públicos da organização, conferidos em 29/10/2026 com `git ls-remote` e `git ls-tree` na `main` de cada um (hash entre parênteses). Onde não há evidência pública, a linha não existe.
+
+| Disciplina | O que foi feito e como se liga a este backend | Evidência |
+|---|---|---|
+| **Database** | Packages PL/SQL da Sprint 4 (`PKG_KURA_LOG`, `PKG_TRIAGEM`, `PKG_COBRANCA`, `PKG_AUDITORIA`), exportação das cobranças para JSON e importação no MongoDB com `$jsonSchema` estrito e índices justificados. | [`src/2TDSPF_2026_Packages_Integrantes.sql`](https://github.com/KURA-Clyvo/Mastering-Relational-Database/blob/main/src/2TDSPF_2026_Packages_Integrantes.sql) · [`scripts/2TDSPF_2026_Exportar_Json.sql`](https://github.com/KURA-Clyvo/Mastering-Relational-Database/blob/main/scripts/2TDSPF_2026_Exportar_Json.sql) · [`mongo/README.md`](https://github.com/KURA-Clyvo/Mastering-Relational-Database/blob/main/mongo/README.md) (`63e5916`) |
+| **.NET** | Dona da coleção `laudos`; grava o laudo que este backend lê, com o contrato v1 e o schema/índices em arquivo. | [`LaudosController.cs`](https://github.com/KURA-Clyvo/backend-clinica-dotnet/blob/main/src/Kura.Api/Controllers/LaudosController.cs) · [`laudos.schema.json`](https://github.com/KURA-Clyvo/backend-clinica-dotnet/blob/main/src/Kura.Infrastructure/Mongo/schema/laudos.schema.json) (`8ed7835`) |
+| **Mobile** | O app do tutor consome `GET /v1/loja/catalogo` (tela e serviço da Loja). As telas de documentos e laudos do pet **não** estão na `main` do app nesta data. | [`src/services/loja.service.ts`](https://github.com/KURA-Clyvo/mobile-tutor-rn/blob/main/src/services/loja.service.ts) · [`src/app/(tabs)/loja/index.tsx`](https://github.com/KURA-Clyvo/mobile-tutor-rn/blob/main/src/app/(tabs)/loja/index.tsx) (`c51073b`) |
+| **QA** | Plano de testes de sistema (PDF), 13 casos, e automação em Selenium IDE sobre os apps; os defeitos E66 e E67 achados pelos testes foram corrigidos antes da entrega, segundo o README do repositório. | [`README.md`](https://github.com/KURA-Clyvo/Compliance-QA-Tests/blob/main/README.md) · [`manual/2TDSPF_2026_PlanoTestes_KURA.pdf`](https://github.com/KURA-Clyvo/Compliance-QA-Tests/blob/main/manual/2TDSPF_2026_PlanoTestes_KURA.pdf) · [`automacao/KURA-QA.side`](https://github.com/KURA-Clyvo/Compliance-QA-Tests/blob/main/automacao/KURA-QA.side) (`1fa8198`) |
+| **DevOps** | `deploy.sh` do App Service injeta `SPRING_DATA_MONGODB_URI`, `KURA_DOCUMENTOS_MONGO_INIT_ENABLED` e `LAUDO_URL_BASE` no `tutor-api`; o script de roles do Mongo cria o usuário `kura_java`; `smoke-contratos.sh` cobre as rotas de documentos e laudos. | [`azure/deploy.sh`](https://github.com/KURA-Clyvo/DevOps-Cloud/blob/main/azure/deploy.sh) · [`mongo/init/01-roles-usuarios.js`](https://github.com/KURA-Clyvo/DevOps-Cloud/blob/main/mongo/init/01-roles-usuarios.js) · [`scripts/smoke-contratos.sh`](https://github.com/KURA-Clyvo/DevOps-Cloud/blob/main/scripts/smoke-contratos.sh) · [`docs/ARQUITETURA.md`](https://github.com/KURA-Clyvo/DevOps-Cloud/blob/main/docs/ARQUITETURA.md) (`cdea5cc`) |
+| **IA** | A Luna (triagem por WhatsApp) fala com a .NET e não chama esta API. A ligação com este repositório é o schema: as migrations V13 (`LOG_ERRO`, escrita pela Luna) e V15/V16 (`INTERACAO_CANAL`, gravada pela .NET a pedido da Luna) são versionadas aqui. | [`README.md` da Luna](https://github.com/KURA-Clyvo/kura-luna-ai/blob/main/README.md) (`d2ccbc2`) |
 
 ---
 
