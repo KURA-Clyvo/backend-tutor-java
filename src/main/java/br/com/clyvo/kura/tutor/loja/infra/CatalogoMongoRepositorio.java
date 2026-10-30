@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,22 @@ public class CatalogoMongoRepositorio implements CatalogoRepositorio {
                     "Loja: documento do catálogo inválido ignorado (slug={})", doc.get("slug")));
         }
         return new FatiaCatalogo(itens, temProxima);
+    }
+
+    @Override
+    public List<ItemCatalogo> buscarAtivosPorSlugs(Collection<String> slugs) {
+        if (slugs.isEmpty()) {
+            return List.of();
+        }
+        Query query = new Query(Criteria.where("slug").in(slugs).and("ativo").is(true));
+        query.fields().exclude("_id")
+                .include("slug", "nome", "descricao", "categoria", "preco", "moeda", "exemplo", "dados", "imagem");
+        List<ItemCatalogo> itens = new ArrayList<>();
+        for (Document doc : mongo.find(query, Document.class, SchemaCatalogoAplicador.COLECAO)) {
+            paraItem(doc).ifPresentOrElse(itens::add, () -> log.warn(
+                    "Loja: documento do catálogo inválido ignorado (slug={})", doc.get("slug")));
+        }
+        return itens;
     }
 
     /**

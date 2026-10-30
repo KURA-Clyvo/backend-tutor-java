@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Runner idempotente do schema da Loja (D-LOJA-4), a cada subida. Desligado por padrão
+ * Runner idempotente do schema da Loja (D-LOJA-4: catálogo, carrinho e pedidos, em sequência; uma falha interrompe o resto até o próximo boot), a cada subida. Desligado por padrão
  * ({@code kura.loja.mongo.init-enabled}); ligado só no compose. O Mongo fora do ar NÃO pode
  * impedir o kura-tutor de subir: toda falha é capturada, 1 WARN sem URI nem credencial (só o
  * nome da classe da exceção), e a reaplicação acontece na próxima subida.
@@ -26,6 +26,8 @@ public class LojaMongoInicializador extends RunnerMongoTolerante {
     @Override
     protected void executar(MongoDatabase database) {
         new SchemaCatalogoAplicador(database).aplicar();
+        new SchemaCarrinhoAplicador(database).aplicar();
+        new SchemaPedidosAplicador(database).aplicar();
     }
 
     @Override

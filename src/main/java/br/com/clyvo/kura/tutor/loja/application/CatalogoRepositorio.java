@@ -9,4 +9,7 @@ public interface CatalogoRepositorio {
 
     /** Itens ativos, ordem editorial (ordem, slug); categoria nula = todas. */
     FatiaCatalogo listarAtivos(CategoriaLoja categoria, int page, int size);
+
+    /** Itens ATIVOS entre os slugs pedidos, num só {@code find}; slug ausente do resultado = indisponível. */
+    java.util.List<ItemCatalogo> buscarAtivosPorSlugs(java.util.Collection<String> slugs);
 }

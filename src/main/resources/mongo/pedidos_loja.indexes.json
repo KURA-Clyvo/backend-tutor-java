@@ -1,0 +1,4 @@
+[
+  { "name": "uk_pedido_tutor_chave",  "key": { "idTutor": 1, "chaveIdempotencia": 1 },   "unique": true },
+  { "name": "ix_pedido_tutor_criado", "key": { "idTutor": 1, "criadoEm": -1, "_id": -1 }, "unique": false }
+]

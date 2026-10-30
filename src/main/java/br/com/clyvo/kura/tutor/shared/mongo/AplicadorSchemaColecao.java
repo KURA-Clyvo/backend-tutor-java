@@ -18,12 +18,13 @@ import org.bson.Document;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Aplica o schema e os índices de uma coleção a partir de arquivos versionados em
- * {@code src/main/resources/mongo/} (catálogo da Loja, documentos do tutor).
+ * {@code src/main/resources/mongo/} (catálogo, carrinho e pedidos da Loja, documentos do tutor).
  *
  * <p>Idempotente: coleção inexistente => createCollection com o validator; existente => collMod
  * (substitui o validator inteiro e reaplica validationLevel/validationAction, desfazendo qualquer
@@ -34,6 +35,10 @@ import java.util.regex.Pattern;
  * recriado como o arquivo manda, com WARN nominal; se o drop falhar, ERROR nominal. Não usa
  * {@code listIndexes} (a role de runtime não tem esse privilégio): o nome do índice conflitante
  * vem do próprio erro do servidor. Os logs trazem só o nome do índice e o código, nunca URI.
+ *
+ * <p>No arquivo de índices, {@code unique} é opcional (padrão false) e {@code expireAfterSeconds}
+ * também (índice TTL). Mudar o TTL de um índice já criado dá 85 e o drop exige privilégio que a role
+ * de runtime não tem em carrinho/pedidos: a mudança futura é {@code collMod} como root.
  *
  * <p>Falhas de conexão propagam daqui; quem decide capturá-las é o runner.
  */
@@ -85,14 +90,23 @@ public class AplicadorSchemaColecao {
         MongoCollection<Document> alvo = database.getCollection(colecao);
         for (BsonValue valor : indices) {
             BsonDocument indice = valor.asDocument();
-            aplicarIndice(alvo, indice.getString("name").getValue(), indice.getDocument("key"),
-                    indice.getBoolean("unique").getValue());
+            aplicarIndice(alvo, new EspecIndice(
+                    indice.getString("name").getValue(),
+                    indice.getDocument("key"),
+                    indice.containsKey("unique") && indice.getBoolean("unique").getValue(),
+                    indice.containsKey("expireAfterSeconds")
+                            ? indice.getNumber("expireAfterSeconds").longValue() : null));
         }
     }
 
-    private void aplicarIndice(MongoCollection<Document> alvo, String nome, BsonDocument chave, boolean unico) {
+    /** Índice como o arquivo o descreve. {@code unique} ausente = false; {@code expireAfterSeconds} ausente = sem TTL. */
+    private record EspecIndice(String nome, BsonDocument chave, boolean unico, Long expiraEmSegundos) {
+    }
+
+    private void aplicarIndice(MongoCollection<Document> alvo, EspecIndice indice) {
+        String nome = indice.nome();
         try {
-            criar(alvo, nome, chave, unico);
+            criar(alvo, indice);
         } catch (MongoCommandException e) {
             if (!divergencia(e)) {
                 log.warn("{}: índice {} não aplicado (código {})", rotulo, nome, e.getErrorCode());
@@ -100,7 +114,7 @@ public class AplicadorSchemaColecao {
             }
             log.warn("{}: índice {} divergente do arquivo (código {}); removendo e recriando",
                     rotulo, nome, e.getErrorCode());
-            recriar(alvo, nome, chave, unico, e);
+            recriar(alvo, indice, e);
         }
     }
 
@@ -108,8 +122,8 @@ public class AplicadorSchemaColecao {
      * Código 85 pode ser "mesma chave, OUTRO nome": nesse caso o índice a remover é o que o
      * servidor cita. Até duas remoções (o do mesmo nome e o de mesma chave podem coexistir).
      */
-    private void recriar(MongoCollection<Document> alvo, String nome, BsonDocument chave, boolean unico,
-                         MongoCommandException conflito) {
+    private void recriar(MongoCollection<Document> alvo, EspecIndice indice, MongoCommandException conflito) {
+        String nome = indice.nome();
         MongoCommandException atual = conflito;
         for (int tentativa = 0; tentativa < 2; tentativa++) {
             String outroNome = nomeConflitante(atual);
@@ -117,7 +131,7 @@ public class AplicadorSchemaColecao {
                 return;
             }
             try {
-                criar(alvo, nome, chave, unico);
+                criar(alvo, indice);
                 return;
             } catch (MongoCommandException e) {
                 if (!divergencia(e)) {
@@ -141,8 +155,13 @@ public class AplicadorSchemaColecao {
         }
     }
 
-    private static void criar(MongoCollection<Document> alvo, String nome, BsonDocument chave, boolean unico) {
-        alvo.createIndex(chave, new IndexOptions().name(nome).unique(unico));
+    /** Único ponto de criação: serve ao caminho normal e ao recriar do E61, então o TTL vai nos dois. */
+    private static void criar(MongoCollection<Document> alvo, EspecIndice indice) {
+        IndexOptions opcoes = new IndexOptions().name(indice.nome()).unique(indice.unico());
+        if (indice.expiraEmSegundos() != null) {
+            opcoes.expireAfter(indice.expiraEmSegundos(), TimeUnit.SECONDS);
+        }
+        alvo.createIndex(indice.chave(), opcoes);
     }
 
     private static boolean divergencia(MongoCommandException e) {
