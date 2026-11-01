@@ -70,7 +70,7 @@ class LojaExceptionHandlerIsolamentoTest {
     @WithMockUser
     void tipoErradoForaDaLojaNaoViraCategoriaInvalida() throws Exception {
         mockMvc.perform(get("/teste-isolamento/tipo").param("categoria", "xyz"))
-                .andExpect(status().is(500))
-                .andExpect(jsonPath("$.codigo").value("ERRO_INTERNO"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("ARGUMENTO_INVALIDO"));
     }
 }
