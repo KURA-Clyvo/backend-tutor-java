@@ -66,6 +66,9 @@ stages:
           # compilação. Perfil dev = H2 em memória: não precisa de Oracle, Mongo nem Docker.
           - script: mvnw.cmd -B -v
             displayName: 'Versão do Maven e do Java'
+          
+          - script: mvnw.cmd -B -ntp -Dspring.profiles.active=dev verify
+            displayName: 'mvnw verify (testes + pacote)'
 
           # Mesmo quando um teste falha, o resultado precisa aparecer na aba Tests da execução.
           - task: PublishTestResults@2
