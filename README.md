@@ -17,7 +17,7 @@
 
 **O problema.** Tutor e clínica veterinária ficam desconectados: o tutor não vê o que a clínica registrou (laudos, vacinas, agenda) e não tem onde guardar os documentos do próprio pet. O KURA liga os dois lados. Este repositório é o **backend do lado do tutor**: autentica o tutor, lê o que a clínica registrou e recebe o que o tutor envia.
 
-**Onde ver rodando (links da aplicação).** Endereços do ambiente Azure da Sprint 4, informados pela equipe em 01/11/2026. Em **01/11/2026**, com o backend publicado no commit `93420dd`, estas chamadas responderam: `GET /api/actuator/health` ⇒ `200 UP`; `GET /api/v3/api-docs` lista carrinho, pedidos, documentos e laudos; registro de tutor por convite ⇒ `201`; login ⇒ `200`; pets, documentos, laudos (lista vazia) e catálogo ⇒ `200`; carrinho com 2 itens ⇒ `200`; pedido ⇒ `201 AGUARDANDO_PARCEIRO`; mesma `Idempotency-Key` ⇒ `200` com o mesmo id; cancelar o pedido ⇒ `200 CANCELADO`; rota protegida sem JWT ⇒ `401`. Isso descreve o que respondeu naquele dia, não uma garantia de disponibilidade. **Não verificado na Azure:** o app publicado navegando nas telas, o isolamento entre dois tutores (provado só localmente, nos testes `mongo-real`) e laudo com conteúdo (a API da clínica ainda não grava laudos lá).
+**Onde ver rodando (links da aplicação).** Endereços do ambiente Azure da Sprint 4, informados pela equipe em 27/10/2026 e reconfirmados em 01/11/2026. Com o backend publicado no commit `93420dd` (deploy de 30/10/2026): em **30/10**, `GET /api/v3/api-docs` passou a listar carrinho, pedidos, documentos e laudos; em **01/11**, registro de tutor por convite ⇒ `201`; login ⇒ `200`; pets, documentos, laudos (lista vazia) e catálogo ⇒ `200`; 1 produto com quantidade 2 no carrinho ⇒ `200`; pedido ⇒ `201 AGUARDANDO_PARCEIRO`; mesma `Idempotency-Key` ⇒ `200` com o mesmo id; cancelar o pedido ⇒ `200 CANCELADO`; rota protegida sem JWT ⇒ `401`. O `GET /api/actuator/health` respondeu `200 UP` em 30/10, antes desse deploy. Isso descreve o que respondeu naqueles dias, não uma garantia de disponibilidade. **Não verificado na Azure:** o app publicado navegando nas telas, o isolamento entre dois tutores (provado só localmente, nos testes `mongo-real`) e laudo com conteúdo (a API da clínica ainda não grava laudos lá).
 
 | Peça | Endereço |
 |---|---|
@@ -591,6 +591,7 @@ O JDK precisa ser o 21 (`JAVA_HOME`). Os testes `mongo-real` baixam o binário d
 
 | Medição | Resultado | Fonte |
 |---|---|---|
+| Suíte completa na branch da S4-JAVA-09 (`5aa8a12`, mesclada em `main`), 01/11/2026, JDK 21, perfil `dev` | **423 testes, 0 falhas, `EXIT=0`** | reprodução registrada no ledger da Sprint 4 do time (`progress.md`) |
 | Suíte completa em `main` `76f77cb`, 29/10/2026, JDK 21, perfil `dev` | **376 testes, 0 falhas, `EXIT=0`** | reprodução registrada no ledger da Sprint 4 do time (`progress.md`) |
 | Só a tag `mongo-real` (`-Dgroups=mongo-real`), 29/10/2026, branch desta documentação sobre `76f77cb` | 19 testes (14 + 5), 0 falhas, `EXIT=0` | `target/surefire-reports` da execução local |
 | Baseline antes da Sprint 4, `main` `3a97a5c` | 299 testes | G0 da Sprint 4 (`s4-java-01-g0.md`) |
