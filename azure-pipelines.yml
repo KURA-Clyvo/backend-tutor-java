@@ -1,0 +1,151 @@
+# =============================================================================
+# Pipeline CI/CD do kura-tutor-api (Spring Boot, Java 21) — Azure Pipelines
+#
+# CI  (estágio Build)   a cada push na main: compila, roda os testes (perfil dev, H2 em memória),
+#                       publica o resultado dos testes e o artefato (app.jar) no Azure DevOps.
+# CD  (estágio Deploy)  roda quando o CI termina com sucesso e há um novo artefato: implanta
+#                       no Azure Web App e confirma o health check.
+#
+# Roda em agente self-hosted WINDOWS (sem WSL). Os passos usam cmd e PowerShell.
+# Guia de configuração no Azure DevOps: docs/AZURE-PIPELINE.md
+# =============================================================================
+
+name: $(Date:yyyyMMdd)$(Rev:.r)
+
+# Regra II: CI dispara a cada alteração na main. batch: pushes seguidos viram uma execução só
+# (há um único agente self-hosted: sem isso, cada push entraria na fila).
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+
+# Sem build de pull request: num agente self-hosted, PR de fork executaria código de terceiros
+# na sua máquina. Os PRs continuam validados pelo GitHub Actions (.github/workflows/ci.yml).
+pr: none
+
+# Agente self-hosted Windows. Pool padrão da organização: 'Default'.
+pool:
+  name: Default
+  demands:
+    - Agent.OS -equals Windows_NT
+
+variables:
+  serviceConnection: 'kura-azure'   # nome da service connection (Project settings > Service connections)
+  webAppName: 'kura-tutor-api'      # $PREFIX-tutor-api, criado pelo azure/deploy.sh infra
+  resourceGroup: 'rg-kura'          # $RG do deploy.sh
+  artifactName: 'tutor-jar'
+
+stages:
+  # ───────────────────────────── CI ─────────────────────────────
+  - stage: Build
+    displayName: 'CI: build e testes'
+    jobs:
+      - job: BuildTest
+        displayName: 'Compilar, testar e publicar o artefato'
+        timeoutInMinutes: 30
+        steps:
+          - checkout: self
+            clean: true
+
+          - powershell: |
+              $ErrorActionPreference = 'Continue'
+              $saida = (cmd /c "java -version 2>&1") -join "`n"
+              Write-Host $saida
+              $major = 0
+              if ($saida -match 'version "(\d+)') { $major = [int]$Matches[1] }
+              if ($major -lt 21) {
+                Write-Host "##vso[task.logissue type=error]JDK 21 ou superior necessario no agente (encontrado: $major). Instale o JDK 21 e reinicie o agente."
+                exit 1
+              }
+            displayName: 'Verificar JDK 21 no agente'
+
+          # Regra VI: testes. `verify` roda os testes (Surefire) e empacota o jar, sem repetir a
+          # compilação. Perfil dev = H2 em memória: não precisa de Oracle, Mongo nem Docker.
+          - script: mvnw.cmd -B -ntp -Dspring.profiles.active=dev verify
+            displayName: 'mvnw verify (testes + pacote)'
+
+          # Mesmo quando um teste falha, o resultado precisa aparecer na aba Tests da execução.
+          - task: PublishTestResults@2
+            displayName: 'Publicar resultados dos testes'
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: '**/target/surefire-reports/TEST-*.xml'
+              searchFolder: '$(System.DefaultWorkingDirectory)'
+              mergeTestResults: true
+              failTaskOnFailedTests: true
+              testRunTitle: 'tutor-api (perfil dev, H2)'
+
+          # O App Service (Java SE) só executa um jar chamado app.jar.
+          - powershell: |
+              $ErrorActionPreference = 'Stop'
+              $jars = @(Get-ChildItem -Path 'target' | Where-Object { $_.Name -like 'kura-backend-tutor-*' -and $_.Extension -eq '.jar' })
+              if ($jars.Count -ne 1) { throw "Esperava 1 jar em target/, encontrei $($jars.Count)" }
+              $destino = '$(Build.ArtifactStagingDirectory)'
+              New-Item -ItemType Directory -Force -Path $destino | Out-Null
+              Copy-Item -Path $jars[0].FullName -Destination (Join-Path $destino 'app.jar')
+              Get-ChildItem $destino | Format-Table Name, Length
+            displayName: 'Separar o artefato (app.jar)'
+
+          # Regra V: artefato publicado no Azure DevOps (aba "Artifacts" da execução).
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publicar artefato'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)'
+              artifact: '$(artifactName)'
+              publishLocation: 'pipeline'
+
+  # ───────────────────────────── CD ─────────────────────────────
+  # Regra III: o estágio só começa depois que o CI gerou e publicou o artefato.
+  - stage: Deploy
+    displayName: 'CD: deploy no Azure Web App'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployTutor
+        displayName: 'Implantar kura-tutor-api'
+        timeoutInMinutes: 30
+        # O ambiente é criado na primeira execução. Para exigir aprovação antes do deploy,
+        # adicione "Approvals" nele (Pipelines > Environments > kura-producao).
+        environment: 'kura-producao'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: '$(artifactName)'
+
+                # Regra VII: deploy em Azure Web App. A autenticação é da service connection
+                # (federação de identidade: nenhuma senha ou token guardado no pipeline), o que
+                # também funciona com a autenticação básica do SCM desligada (como no deploy.sh).
+                - task: AzureWebApp@1
+                  displayName: 'Deploy no Web App'
+                  inputs:
+                    azureSubscription: '$(serviceConnection)'
+                    appType: 'webAppLinux'
+                    appName: '$(webAppName)'
+                    package: '$(Pipeline.Workspace)/$(artifactName)/app.jar'
+
+                # O deploy reinicia a aplicação, e o Flyway aplica as migrations no Oracle ao subir.
+                # Se algo falhar, a execução fica vermelha aqui.
+                - task: AzureCLI@2
+                  displayName: 'Verificar health check'
+                  inputs:
+                    azureSubscription: '$(serviceConnection)'
+                    scriptType: 'ps'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      $ErrorActionPreference = 'Continue'
+                      $hostName = az webapp show -g "$(resourceGroup)" -n "$(webAppName)" --query defaultHostName -o tsv
+                      if ($LASTEXITCODE -ne 0 -or -not $hostName) { throw "Nao foi possivel obter o host do Web App" }
+                      $url = "https://$hostName/api/actuator/health"
+                      Write-Host "Verificando $url"
+                      for ($i = 1; $i -le 40; $i++) {
+                        $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 10 $url
+                        Write-Host "tentativa $i de 40: HTTP $code"
+                        if ($code -eq '200') { exit 0 }
+                        Start-Sleep -Seconds 15
+                      }
+                      Write-Host "##vso[task.logissue type=error]tutor-api nao ficou saudavel em $url"
+                      exit 1
