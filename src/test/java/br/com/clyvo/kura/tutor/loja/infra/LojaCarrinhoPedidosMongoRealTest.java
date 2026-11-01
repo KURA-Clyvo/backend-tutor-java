@@ -464,6 +464,26 @@ class LojaCarrinhoPedidosMongoRealTest {
     }
 
     @Test
+    @DisplayName("corrida da mesma chave (I-1 da G2 da 09): o perdedor passa pelo passo 1 antes do insert e chega ao passo 2 depois do passo 5 do vencedor: 200 com o mesmo pedido, não 422")
+    void perdedorChegaAoPasso2DepoisDoPasso5DoVencedor() {
+        carrinhoService.adicionar(TUTOR_A, SHAMPOO, 1);
+        String k = chave();
+        ResultadoPedido vencedor = pedidoService.criar(TUTOR_A, k);
+        assertThat(colCarrinho.countDocuments()).isZero();
+        PedidoLojaMongoRepositorio espiao = spy(pedidos);
+        doReturn(Optional.empty()).doCallRealMethod().when(espiao).buscarPorChave(anyLong(), anyString());
+        PedidoLojaService perdedor = new PedidoLojaService(espiao, carrinhos, new CatalogoMongoRepositorio(template),
+                Clock.systemUTC());
+
+        ResultadoPedido r = perdedor.criar(TUTOR_A, k);
+
+        assertThat(r.criado()).isFalse();
+        assertThat(r.pedido().id()).isEqualTo(vencedor.pedido().id());
+        assertThat(colPedidos.countDocuments()).isEqualTo(1);
+        assertThat(colCarrinho.countDocuments()).isZero();
+    }
+
+    @Test
     @DisplayName("falha entre os passos 3 e 5: pedido gravado e carrinho intacto; o retry com a mesma chave apaga o carrinho")
     void retryApagaOCarrinhoConsumido() {
         carrinhoService.adicionar(TUTOR_A, SHAMPOO, 2);

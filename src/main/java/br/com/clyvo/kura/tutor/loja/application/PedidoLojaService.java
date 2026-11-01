@@ -20,7 +20,8 @@ import java.util.stream.Collectors;
  * Pedidos da Loja (pagamento e entrega simulados: o pedido nasce AGUARDANDO_PARCEIRO).
  *
  * <p>Criar é idempotente por {@code Idempotency-Key} (por tutor). Passos: (1) chave já usada
- * devolve o pedido; (2) lê o carrinho válido e o catálogo; (3) insere o snapshot; (4) corrida
+ * devolve o pedido; (2) lê o carrinho válido e o catálogo (carrinho ausente: re-consulta a chave, pois a requisição vencedora
+ * da mesma chave pode já ter apagado o carrinho; sem pedido, 422); (3) insere o snapshot; (4) corrida
  * da mesma chave ({@link DuplicateKeyException}, estrito) devolve o pedido existente; (5) apaga o
  * carrinho só se ninguém mexeu nele depois (versão = {@code atualizadoEm} lido no passo 2).
  * Proibido capturar {@code DataIntegrityViolationException}: o 121 do validator é irmão dela.
@@ -53,9 +54,16 @@ public class PedidoLojaService {
         }
 
         Instant agora = clock.instant().truncatedTo(ChronoUnit.MILLIS);
-        CarrinhoSalvo carrinho = carrinhos.buscarValido(idTutor, agora.minus(LojaCarrinho.VALIDADE))
-                .filter(c -> !c.itens().isEmpty())
-                .orElseThrow(LojaException::carrinhoVazio);
+        Optional<CarrinhoSalvo> lido = carrinhos.buscarValido(idTutor, agora.minus(LojaCarrinho.VALIDADE))
+                .filter(c -> !c.itens().isEmpty());
+        if (lido.isEmpty()) {
+            // Corrida: outra requisição com a mesma chave pode ter inserido o pedido e apagado o carrinho
+            // depois do passo 1 e antes deste. Re-consulta a chave: se o pedido existe, é repetição (200).
+            return pedidos.buscarPorChave(idTutor, chave)
+                    .map(p -> repeticao(idTutor, p))
+                    .orElseThrow(LojaException::carrinhoVazio);
+        }
+        CarrinhoSalvo carrinho = lido.get();
         List<ItemPedido> itens = congelar(carrinho);
         long total = itens.stream().mapToLong(ItemPedido::subtotal).sum();
 
