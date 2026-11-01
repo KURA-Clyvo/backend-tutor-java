@@ -17,16 +17,19 @@
 
 **O problema.** Tutor e clínica veterinária ficam desconectados: o tutor não vê o que a clínica registrou (laudos, vacinas, agenda) e não tem onde guardar os documentos do próprio pet. O KURA liga os dois lados. Este repositório é o **backend do lado do tutor**: autentica o tutor, lê o que a clínica registrou e recebe o que o tutor envia.
 
-**Onde ver rodando (links da aplicação).** Os endereços abaixo são os do ambiente Azure da Sprint 4, informados pela equipe em 27/10/2026. **Este README não afirma que estão no ar**: o banco da Azure (VM Oracle + MongoDB) foi desligado em 27/10 e nenhum desses endereços foi chamado na preparação desta entrega.
+**Onde ver rodando (links da aplicação).** Endereços do ambiente Azure da Sprint 4, informados pela equipe em 27/10/2026 e reconfirmados em 01/11/2026. Com o backend publicado no commit `93420dd` (deploy de 30/10/2026): em **30/10**, `GET /api/v3/api-docs` passou a listar carrinho, pedidos, documentos e laudos; em **01/11**, registro de tutor por convite ⇒ `201`; login ⇒ `200`; pets, documentos, laudos (lista vazia) e catálogo ⇒ `200`; 1 produto com quantidade 2 no carrinho ⇒ `200`; pedido ⇒ `201 AGUARDANDO_PARCEIRO`; mesma `Idempotency-Key` ⇒ `200` com o mesmo id; cancelar o pedido ⇒ `200 CANCELADO`; rota protegida sem JWT ⇒ `401`. O `GET /api/actuator/health` respondeu `200 UP` em 30/10, antes desse deploy. Isso descreve o que respondeu naqueles dias, não uma garantia de disponibilidade. **Não verificado na Azure:** o app publicado navegando nas telas, o isolamento entre dois tutores (provado só localmente, nos testes `mongo-real`) e laudo com conteúdo (a API da clínica ainda não grava laudos lá).
 
 | Peça | Endereço |
 |---|---|
-| API do tutor (este repositório) | `https://kura-tutor-api-g9e3b2g6aggueuev.eastus2-01.azurewebsites.net` (saúde: `/api/actuator/health`) |
+| API do tutor (este repositório) | `https://kura-tutor-api-g9e3b2g6aggueuev.eastus2-01.azurewebsites.net` (Swagger: `/api/swagger-ui.html`; saúde: `/api/actuator/health`) |
+| API da clínica (.NET) | `https://kura-clinica-api-ecgub6fwfac3bbgy.eastus2-01.azurewebsites.net` |
+| Luna (IA) | `https://kura-luna-ai-c2d5cravc0avfphv.eastus2-01.azurewebsites.net` |
 | App web do tutor (Static Web App) | `https://green-tree-070ecd90f.1.azurestaticapps.net` |
+| App web da clínica (Static Web App) | `https://white-island-0b5ff020f.6.azurestaticapps.net` |
 
 Para rodar sem a Azure, veja a [seção 3](#3-como-executar).
 
-**Vídeo da Sprint 4:** <!-- LINK DO VÍDEO: preencher -->
+**Vídeo da Sprint 4:** a publicar (o link ainda não existe).
 
 **O que entrou na Sprint 4 neste backend** (cada item aponta o arquivo que o implementa):
 
@@ -497,7 +500,7 @@ A Loja é a vitrine de produtos para o pet dentro do app do tutor. Os dados vive
 |---|---|
 | `201` | Recurso criado com sucesso |
 | `204` | Sucesso sem conteúdo (logout, soft-delete) |
-| `400` | Falha de validação (Bean Validation, senha fraca, payload mal-formado) |
+| `400` | Falha de validação (Bean Validation, senha fraca, payload mal-formado); `ARGUMENTO_INVALIDO` também para id de tipo errado na rota (ex.: `/v1/tutor/pets/abc`) |
 | `401` | JWT ausente, inválido ou expirado |
 | `403` | JWT válido, mas sem permissão |
 | `404` | Recurso não encontrado |
@@ -588,6 +591,7 @@ O JDK precisa ser o 21 (`JAVA_HOME`). Os testes `mongo-real` baixam o binário d
 
 | Medição | Resultado | Fonte |
 |---|---|---|
+| Suíte completa na branch da S4-JAVA-09 (`5aa8a12`, mesclada em `main`), 01/11/2026, JDK 21, perfil `dev` | **423 testes, 0 falhas, `EXIT=0`** | reprodução registrada no ledger da Sprint 4 do time (`progress.md`) |
 | Suíte completa em `main` `76f77cb`, 29/10/2026, JDK 21, perfil `dev` | **376 testes, 0 falhas, `EXIT=0`** | reprodução registrada no ledger da Sprint 4 do time (`progress.md`) |
 | Só a tag `mongo-real` (`-Dgroups=mongo-real`), 29/10/2026, branch desta documentação sobre `76f77cb` | 19 testes (14 + 5), 0 falhas, `EXIT=0` | `target/surefire-reports` da execução local |
 | Baseline antes da Sprint 4, `main` `3a97a5c` | 299 testes | G0 da Sprint 4 (`s4-java-01-g0.md`) |
@@ -683,7 +687,7 @@ O detalhamento por task, incluindo a timeline semanal, está disponível em [`do
 
 ## 10. Vídeo
 
-**Vídeo da Sprint 4:** <!-- LINK DO VÍDEO: preencher -->
+**Vídeo da Sprint 4:** a publicar (o link ainda não existe).
 
 Vídeo anterior, que já constava neste README antes da Sprint 4 (adicionado em 13/09/2026, commit `5326db4`); não é o vídeo da Sprint 4: https://youtu.be/kH5Wnb2Ox7Q
 

@@ -14,6 +14,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
@@ -23,7 +25,8 @@ import java.util.List;
  *
  * Mapeamento:
  *   400 — MethodArgumentNotValidException, ConstraintViolationException,
- *          MissingRequestHeaderException, IllegalArgumentException
+ *          MissingRequestHeaderException, IllegalArgumentException,
+ *          MethodArgumentTypeMismatchException
  *   401 — BadCredentialsException
  *   403 — AccessDeniedException, ForbiddenException, AccountInactiveException
  *   404 — NotFoundException
@@ -75,6 +78,22 @@ public class GlobalExceptionHandler {
             IllegalArgumentException ex, HttpServletRequest req) {
         return ResponseEntity.badRequest()
                 .body(ApiError.of(400, "ARGUMENTO_INVALIDO", ex.getMessage(), req.getRequestURI()));
+    }
+
+    /**
+     * Parâmetro de rota/consulta com tipo errado (ex.: {@code /pets/abc} onde se espera Long).
+     * Sem este handler caía no catch-all e virava 500. A resposta cita só o NOME do parâmetro:
+     * o valor recebido é entrada do usuário e não é ecoado nem na resposta nem no log.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> tipoDeArgumentoInvalido(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
+        // path = padrão da rota ("/v1/tutor/pets/{id}"), não a URI crua, que carregaria o valor.
+        Object padrao = req.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        return ResponseEntity.badRequest()
+                .body(ApiError.of(400, "ARGUMENTO_INVALIDO",
+                        "Valor inválido para o parâmetro '" + ex.getName() + "'.",
+                        padrao != null ? padrao.toString() : ""));
     }
 
     // ─── 401 ─────────────────────────────────────────────────────────────────

@@ -202,4 +202,29 @@ class GlobalExceptionHandlerTest {
 
         assertThat(erros).isEmpty();
     }
+
+    // ─── tipoDeIdInvalidoDeveRetornar400 ──────────────────────────────────────
+
+    @Test
+    @DisplayName("tipoDeIdInvalidoDeveRetornar400 — GET /v1/tutor/pets/abc → 400 ARGUMENTO_INVALIDO sem ecoar o valor")
+    @WithMockUser(username = EMAIL)
+    void tipoDeIdInvalidoDeveRetornar400() throws Exception {
+        String corpo = mockMvc.perform(get("/v1/tutor/pets/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("ARGUMENTO_INVALIDO"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(corpo).doesNotContain("abc").contains("'id'");
+        assertThat(logAppender.list.stream().map(ILoggingEvent::getFormattedMessage).toList())
+                .noneMatch(m -> m.contains("abc"));
+    }
+
+    @Test
+    @DisplayName("tipoDeIdInvalidoEmControllerLegadoDeveRetornar400 — DELETE /agendamentos/abc → 400")
+    @WithMockUser(username = EMAIL)
+    void tipoDeIdInvalidoEmControllerLegadoDeveRetornar400() throws Exception {
+        mockMvc.perform(delete("/agendamentos/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("ARGUMENTO_INVALIDO"));
+    }
 }
